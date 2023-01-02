@@ -31,7 +31,10 @@ class Tag(models.Model):
 class Book(models.Model):
     title = models.CharField(max_length=300)
     title_slug = models.CharField(max_length=300)
-    authors = models.ManyToManyField(Author)
+    additional_authors = models.ManyToManyField(Author)
+    primary_author = models.ForeignKey(
+        Author, null=True, on_delete=models.PROTECT, related_name="books"
+    )
 
     cover = models.FileField(null=True, blank=True)
     cover_source = models.CharField(max_length=300, null=True, blank=True)
@@ -50,8 +53,12 @@ class Book(models.Model):
     series = models.CharField(max_length=300, null=True, blank=True)
     series_position = models.CharField(max_length=5, null=True, blank=True)
 
-    book_tags = models.ManyToManyField(Tag)
+    tags = models.ManyToManyField(Tag)
     plot = models.TextField(null=True, blank=True)
+
+    @cached_property
+    def slug(self):
+        return f"{self.author.name_slug}/{self.title_slug}"
 
 
 class BookRelation(models.Model):
@@ -78,7 +85,7 @@ class Quote(models.Model):
 
 
 class Review(models.Model):
-    book = models.OneToOneField(Book, on_delete=models.PROTECT)
+    book = models.OneToOneField(Book, on_delete=models.PROTECT, related_name="review")
 
     text = models.TextField()
     tldr = models.TextField(null=True, blank=True)
@@ -119,7 +126,7 @@ class Review(models.Model):
     def feed_uuid(self):
         m = hashlib.md5()
         m.update(
-            f"{self.book_title}:reviews:{self.latest_date.isoformat()}:{self.book.goodreads_id or ''}".encode()
+            f"{self.book.title}:reviews:{self.latest_date.isoformat()}:{self.book.goodreads_id or ''}".encode()
         )
         return str(uuid.UUID(m.hexdigest()))
 
@@ -129,8 +136,8 @@ class Spine:
         self.review = review
         self.height = self.get_spine_height()
         self.width = self.get_spine_width()
-        self.color = self.review.book_spine_color
-        self.cover = self.review.book_cover_path
+        self.color = self.review.book.spine_color
+        self.cover = self.review.book.cover_path
         self.starred = self.review.rating == 5
         # self.labels = []
         # for tag_name in self.review.book_tags:
@@ -149,8 +156,8 @@ class Spine:
 
     def get_spine_height(self):
         height = (
-            self.review.book_dimensions.get("height")
-            if self.review.book_dimensions
+            self.review.book.dimensions.get("height")
+            if self.review.book.dimensions
             else None
         )
         if not height:
@@ -159,12 +166,12 @@ class Spine:
 
     def get_spine_width(self):
         width = (
-            self.review.book_dimensions.get("thickness")
-            if self.review.book_dimensions
+            self.review.book.dimensions.get("thickness")
+            if self.review.book.dimensions
             else None
         )
         if not width:
-            pages = self.review.book_pages
+            pages = self.review.book.pages
             if not pages:
                 width = random.randint(1, 4) / 2
             else:
