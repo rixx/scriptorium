@@ -1,6 +1,6 @@
 from django.urls import path
 
-from main import views
+from scriptorium.main import views
 
 urlpatterns = [
     path("", views.IndexView.as_view()),
