@@ -33,7 +33,7 @@ class Book(models.Model):
     title_slug = models.CharField(max_length=300)
     authors = models.ManyToManyField(Author)
 
-    cover = models.CharField(max_length=300, null=True, blank=True)
+    cover = models.FileField(null=True, blank=True)
     cover_source = models.CharField(max_length=300, null=True, blank=True)
     spine_color = models.CharField(max_length=7, null=True, blank=True)
 
@@ -70,6 +70,7 @@ class Quote(models.Model):
         to=Author, on_delete=models.CASCADE, related_name="quotes", null=True
     )
     text = models.TextField()
+    language = models.CharField(max_length=2, default="en")
     order = models.IntegerField(null=True, blank=True)
 
     class Meta:
