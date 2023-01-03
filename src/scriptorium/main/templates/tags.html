@@ -20,7 +20,7 @@
   <a href="/lists/{{ tag.name_slug }}">
     <div class="lists">
       <div class="book-metadata">
-        <p class="title">{{ tag.name or tag.slug }} ({{ tag.book_count }} books)</p>
+        <p class="title">{{ tag.name or tag.slug }} ({{ tag.book_count }} books, {{ tag.page_count | thousands }} pages)</p>
       </div>
       <div class="covers">
         {% for book in tag.top_books[:8] %}

@@ -332,7 +332,7 @@ class ListView(ActiveTemplateView):
     @context
     def tags(self):
         result = []
-        for tag in Tag.objects.all().prefetch_related("book_set", "book_set__review").annotate(book_count=Count("book")).order_by("-book_count"):
+        for tag in Tag.objects.all().prefetch_related("book_set", "book_set__review").annotate(book_count=Count("book"), page_count=Sum("book__pages")).order_by("-book_count"):
             tag.top_books= tag.book_set.order_by("-review__rating")[:8]
             result.append(tag)
         return result
@@ -343,8 +343,13 @@ class ListDetail(ActiveTemplateView):
     active = "list"
 
     @context
-    def tags(self):
+    @cached_property
+    def tag_obj(self):
         return Tag.objects.prefetch_related("book_set", "book_set__review").get(name_slug=self.kwargs["tag"])
+
+    @context
+    def books(self):
+        return self.tag_obj.book_set.all().order_by("-review__rating")
 
 
 class AuthorView(ActiveTemplateView):

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>List: {{ tag_obj.name or tag_obj.name_slug }}</h1>
+
+  {% set shelf_books = books %}
+  {% include "_shelf.html" %}
+
+<section>
+
+  {% if tag_obj.text %} {{ tag_obj.text|render_markdown|safe }}{% endif %}
+
+</section>
+<hr>
+
+<section>
+  {% for book in books.all() %}
+  {% include "_book_card.html" %}
+  {% endfor %}
+</section>
+{% endblock %}

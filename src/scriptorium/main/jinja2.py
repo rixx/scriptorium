@@ -73,6 +73,10 @@ def render_authors(authors):
     return Markup(f"{result} & {authors[-1]}")
 
 
+def thousands(number):
+    return "{:,}".format(number)
+
+
 def environment(**options):
     options["loader"] = FileSystemLoader(pathlib.Path(__file__).parent / "templates")
     options["autoescape"] = select_autoescape(["html", "xml"])
@@ -86,4 +90,5 @@ def environment(**options):
     env.filters["render_date"] = render_date
     env.filters["smartypants"] = smartypants.smartypants
     env.filters["render_authors"] = render_authors
+    env.filters["thousands"] = thousands
     return env
