@@ -1,0 +1,54 @@
+<div class="book-card {% if book.review.rating == 5 %}book-card-fav{% endif %}{% if expand_card %} expand{% endif %}"{% if book.spine_color %}style="border-color: {{ book.spine_color }}{% endif %}">
+  {% include "_external_links.html" %}
+  {% set is_link=book.review.dates_read and book.review.text %}
+  {%- if is_link %}
+    <a href="/{{ book.slug }}/">
+  {% else %}
+    <div>
+  {% endif %}
+  {{ book.cover }}
+    <div class="book-metadata">
+      <div class="book_thumbnail">
+        {% include "_book_cover.html" %}
+      </div>
+      <p class="title">
+        {{ book.title | smartypants | safe }}
+      </p>
+      <small>
+        by 
+        {%- if not is_link %}
+          {{ book.authors | render_authors }}
+        {%- else %}
+          {{ book.author_string }}
+        {%- endif %}
+        <span class="muted">
+        {% if book.publication_year %}· published {{ book.publication_year }}{% endif %}
+        {% if book.review.dates_read %}
+          ·
+          {% if book.review.dates_read_list|length > 1 %} last{% endif %} read {{ book.review.dates_read_list[-1] | render_date(not is_link) }}
+        {% else -%}
+          · added on {{ book.date_added | render_date(not is_link) }}
+        {% endif %}
+        </span>
+      </small>
+      {% if book.review.rating %}
+        <div class="rating">
+            {% include "_rating.html" %}
+        </div>
+      {% endif %}
+      {% if not review_text and book.review.text %}
+        {% set review_text = book.review.first_paragraph %}
+      {% endif %}
+      {% if review_text %}
+      <div class="book-review{% if not book.review.rating %} book-review-padded{% endif %}">
+        {% if is_link %} {{ review_text | strip_markdown | safe }}{% else %}{{ review_text | render_markdown | safe }}{% endif %}
+        </div>
+      {% endif %}
+  </div>
+  {%- if is_link %}
+    </a>
+  {% else %}
+    </div>
+  {% endif %}
+</div>
+
