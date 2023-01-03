@@ -65,8 +65,7 @@ def render_date(date_value, link=True):
 
 def render_authors(authors):
     authors = [
-        f'<a href="/{author.name_slug}/">{author.name}</a>'
-        for author in authors
+        f'<a href="/{author.name_slug}/">{author.name}</a>' for author in authors
     ]
     if len(authors) == 1:
         return Markup(authors[0])

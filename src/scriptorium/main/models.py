@@ -166,12 +166,11 @@ class Review(models.Model):
 
     @cached_property
     def word_count(self):
-        return len(self.content.split())
+        return len(self.text.split())
 
     @cached_property
     def first_paragraph(self):
-        print(self.content)
-        return self.content.strip().split("\n\n")[0] if self.content else ""
+        return self.text.strip().split("\n\n")[0] if self.text else ""
 
     @cached_property
     def feed_uuid(self):
