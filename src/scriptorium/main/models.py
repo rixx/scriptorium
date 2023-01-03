@@ -28,6 +28,16 @@ class Tag(models.Model):
     text = models.TextField(null=True, blank=True)
 
 
+class BookManager(models.Manager):
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .select_related("review", "primary_author")
+            .prefetch_related("additional_authors")
+        )
+
+
 class Book(models.Model):
     title = models.CharField(max_length=300)
     title_slug = models.CharField(max_length=300)
@@ -56,9 +66,26 @@ class Book(models.Model):
     tags = models.ManyToManyField(Tag)
     plot = models.TextField(null=True, blank=True)
 
+    objects = BookManager
+
     @cached_property
     def slug(self):
         return f"{self.author.name_slug}/{self.title_slug}"
+
+    @cached_property
+    def spine(self):
+        return Spine(self)
+
+    @cached_property
+    def authors(self):
+        return [self.primary_author] + list(self.additional_authors.all())
+
+    @cached_property
+    def author_str(self):
+        if len(self.authors) == 1:
+            return self.authors[0].name
+        first = ", ".join([a.name for a in self.authors[:-1]])
+        return f"{first} & {self.authors[-1].name}"
 
 
 class BookRelation(models.Model):
@@ -67,6 +94,11 @@ class BookRelation(models.Model):
     )
     destination = models.ForeignKey(to=Book, on_delete=models.CASCADE, related_name="+")
     text = models.TextField()
+
+
+class QuoteManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().select_related("source_book", "source_author")
 
 
 class Quote(models.Model):
@@ -80,8 +112,20 @@ class Quote(models.Model):
     language = models.CharField(max_length=2, default="en")
     order = models.IntegerField(null=True, blank=True)
 
+    objects = QuoteManager
+
     class Meta:
         ordering = ("source_author", "source_book", "order", "id")
+
+
+class ReviewManager(models.Manager):
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .select_related("book", "book__primary_author")
+            .prefetch_related("book__additional_authors")
+        )
 
 
 class Review(models.Model):
@@ -97,10 +141,6 @@ class Review(models.Model):
     dates_read = models.CharField(max_length=300, null=True, blank=True)
 
     social = models.JSONField(null=True)
-
-    @cached_property
-    def spine(self):
-        return Spine(self)
 
     @cached_property
     def dates_read_list(self):
@@ -132,21 +172,13 @@ class Review(models.Model):
 
 
 class Spine:
-    def __init__(self, review):
-        self.review = review
+    def __init__(self, book):
+        self.book = book
         self.height = self.get_spine_height()
         self.width = self.get_spine_width()
-        self.color = self.review.book.spine_color
-        self.cover = self.review.book.cover_path
-        self.starred = self.review.rating == 5
-        # self.labels = []
-        # for tag_name in self.review.book_tags:
-        #     if tag_name not in TAG_CACHE:
-        #         TAG_CACHE[tag_name] = Tag(tag_name)
-        #     tag = TAG_CACHE[tag_name]
-        #     color = tag.metadata.get("color")
-        #     if color:
-        #         self.labels.append(tag)
+        self.color = self.book.spine_color
+        self.cover = self.book.cover
+        self.starred = self.book.review.rating == 5
 
     def random_height(self):
         return random.randint(16, 25)
@@ -155,23 +187,15 @@ class Spine:
         return max(min(int(height * 4), 110), 50)
 
     def get_spine_height(self):
-        height = (
-            self.review.book.dimensions.get("height")
-            if self.review.book.dimensions
-            else None
-        )
+        height = self.book.dimensions.get("height") if self.book.dimensions else None
         if not height:
             height = self.random_height()
         return self.normalize_height(height)
 
     def get_spine_width(self):
-        width = (
-            self.review.book.dimensions.get("thickness")
-            if self.review.book.dimensions
-            else None
-        )
+        width = self.book.dimensions.get("thickness") if self.book.dimensions else None
         if not width:
-            pages = self.review.book.pages
+            pages = self.book.pages
             if not pages:
                 width = random.randint(1, 4) / 2
             else:
