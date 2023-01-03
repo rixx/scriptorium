@@ -1,14 +1,14 @@
 from itertools import groupby
 
 import networkx as nx
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.views.generic import TemplateView
 from django_context_decorator import context
 
-from scriptorium.main.models import Book, Review, ToRead, Author
+from scriptorium.main.models import Book, Review, ToRead, Author, Tag
 from scriptorium.main.stats import (
     get_all_years,
     get_edges,
@@ -326,13 +326,25 @@ class QueueView(ActiveTemplateView):
 
 
 class ListView(ActiveTemplateView):
-    template_name = "list_reviews.html"
+    template_name = "tags.html"
     active = "list"
+
+    @context
+    def tags(self):
+        result = []
+        for tag in Tag.objects.all().prefetch_related("book_set", "book_set__review").annotate(book_count=Count("book")).order_by("-book_count"):
+            tag.top_books= tag.book_set.order_by("-review__rating")[:8]
+            result.append(tag)
+        return result
 
 
 class ListDetail(ActiveTemplateView):
-    template_name = "index.html"
+    template_name = "tag.html"
     active = "list"
+
+    @context
+    def tags(self):
+        return Tag.objects.prefetch_related("book_set", "book_set__review").get(name_slug=self.kwargs["tag"])
 
 
 class AuthorView(ActiveTemplateView):

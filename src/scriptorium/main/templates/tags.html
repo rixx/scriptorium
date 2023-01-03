@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Book Lists</h1>
+
+<section>
+
+  <p>
+  This is where I group my books into lists – some boring ones, like <a
+  href="/lists/scifi/">Sci-Fi</a>, and some more interesting ones like <a
+  href="/lists/space-monks/">Space Monks</a>. I hope there's a list for you here, too:
+  </p>
+
+</section>
+<hr>
+
+<section>
+{% for tag in tags %}
+  <a href="/lists/{{ tag.name_slug }}">
+    <div class="lists">
+      <div class="book-metadata">
+        <p class="title">{{ tag.name or tag.slug }} ({{ tag.book_count }} books)</p>
+      </div>
+      <div class="covers">
+        {% for book in tag.top_books[:8] %}
+          {% include "_book_cover.html" %}
+        {% endfor %}
+      </div>
+    </div>
+  </a>
+{% endfor %}
+</section>
+{% endblock %}
