@@ -152,15 +152,15 @@ class ReviewByTitle(YearNavMixin, ActiveTemplateView):
 
     @context
     @cached_property
-    def reviews(self):
+    def books(self):
         return sorted(
             [
                 (letter, list(reviews))
                 for (letter, reviews) in groupby(
-                    Review.objects.all().order_by("book__title"),
-                    key=lambda review: (
-                        review.book.title[0].upper()
-                        if review.book.title[0].upper().isalpha()
+                    Book.objects.all().order_by("title"),
+                    key=lambda book: (
+                        book.title[0].upper()
+                        if book.title[0].upper().isalpha()
                         else "_"
                     ),
                 )

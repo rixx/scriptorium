@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  {% include "_year_nav.html" %}
+
+  {% for letter, _ in books %}
+  <a href="#{{ letter }}">{{ letter }}</a> 
+  {% endfor %}
+
+  <h2>All books I've read by title</h2>
+
+  {% for letter, ibooks in books %}{% if ibooks %}
+  <section id="{{ letter }}" class="alphabet-section">
+  <h2 class="alphabet initial">{{ letter }}</h2>
+    <ul>
+    {% for book in ibooks %}
+      <li>
+        {% if book.review.rating == 5 %}
+        <span class="rating rating-inline">★</span>
+        {% endif %}
+        <a href="/{{ book.slug }}/">{{ book.title }}</a>
+        by {{ book.authors | render_authors }}
+      </li>
+    {% endfor %}
+    </ul>
+  </section>
+  <hr>
+
+  {% endif %}{% endfor %}
+
+  {% include "_year_nav.html" %}
+
+{% endblock %}
