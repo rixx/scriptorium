@@ -197,16 +197,10 @@ def get_stats_table():
     reviews = Review.objects.all()
     review_count = reviews.count()
     return [
-        ("Total books", len(reviews), 0),  # TODO len(plans)),
+        ("Total books", len(reviews)),
         (
             "Books without review",
             reviews.filter(Q(text__isnull=True) | Q(text="")).count(),
-            None,
-        ),
-        (
-            "Books without related books",
-            reviews.filter(Q(related_books__isnull=True) | Q(related_books="")).count(),
-            None,
         ),
         (
             "Books per week",
@@ -215,20 +209,9 @@ def get_stats_table():
                 / ((dt.datetime.now().date() - dt.date(1998, 1, 1)).days / 7),
                 2,
             ),
-            None
-            # TODO: plans
-            # round(
-            #     len(plans)
-            #     / ((dt.datetime.now().date() - plans[-1].relevant_date).days / 7),
-            #     2,
-            # ),
         ),
-        (
-            "Median publication year",
-            median_year(reviews),
-            None,
-        ),  # TODO median_year(plans)),
-        ("Median length", median_length(reviews), None),  # TODO median_length(plans)),
+        ("Median publication year", median_year(reviews)),
+        ("Median length", median_length(reviews)),  # TODO median_length(plans)),
     ]
 
 
