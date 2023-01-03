@@ -70,7 +70,7 @@ class Book(models.Model):
 
     @cached_property
     def slug(self):
-        return f"{self.author.name_slug}/{self.title_slug}"
+        return f"{self.primary_author.name_slug}/{self.title_slug}"
 
     @cached_property
     def spine(self):
@@ -81,11 +81,15 @@ class Book(models.Model):
         return [self.primary_author] + list(self.additional_authors.all())
 
     @cached_property
-    def author_str(self):
+    def author_string(self):
         if len(self.authors) == 1:
             return self.authors[0].name
         first = ", ".join([a.name for a in self.authors[:-1]])
         return f"{first} & {self.authors[-1].name}"
+
+    @cached_property
+    def isbn(self):
+        return self.isbn13 or self.isbn10
 
 
 class BookRelation(models.Model):

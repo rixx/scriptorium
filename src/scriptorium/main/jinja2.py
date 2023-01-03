@@ -63,6 +63,17 @@ def render_date(date_value, link=True):
     return Markup(f'<a href="/reviews/{year}">{year}</a>-{rest}')
 
 
+def render_authors(authors):
+    authors = [
+        f'<a href="/{author.name_slug}/">{author.name}</a>'
+        for author in authors
+    ]
+    if len(authors) == 1:
+        return Markup(authors[0])
+    result = ", ".join(authors[:-1])
+    return Markup(f"{result} & {authors[-1]}")
+
+
 def environment(**options):
     options["loader"] = FileSystemLoader(pathlib.Path(__file__).parent / "templates")
     options["autoescape"] = select_autoescape(["html", "xml"])
@@ -75,4 +86,5 @@ def environment(**options):
     env.filters["strip_markdown"] = strip_markdown
     env.filters["render_date"] = render_date
     env.filters["smartypants"] = smartypants.smartypants
+    env.filters["render_authors"] = render_authors
     return env
