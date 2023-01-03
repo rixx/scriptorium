@@ -26,6 +26,9 @@ class Author(models.Model):
     name_slug = models.CharField(max_length=300)
     text = models.TextField(null=True, blank=True)
 
+    def all_books(self):
+        return Book.objects.filter(models.Q(primary_author=self) | models.Q(additional_authors=self))
+
 
 class Tag(models.Model):
     name = models.CharField(max_length=300)

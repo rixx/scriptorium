@@ -8,7 +8,7 @@ from django.utils.timezone import now
 from django.views.generic import TemplateView
 from django_context_decorator import context
 
-from scriptorium.main.models import Book, Review, ToRead
+from scriptorium.main.models import Book, Review, ToRead, Author
 from scriptorium.main.stats import (
     get_all_years,
     get_edges,
@@ -120,24 +120,15 @@ class ReviewByAuthor(YearNavMixin, ActiveTemplateView):
 
     @context
     @cached_property
-    def reviews(self):
-        authors_with_reviews = sorted(
-            [
-                (author, list(reviews))
-                for (author, reviews) in groupby(
-                    Review.objects.all().order_by("book__author__name"),
-                    key=lambda review: review.book.authors.all().first().name,
-                )
-            ],
-            key=lambda x: x[0].upper(),
-        )
+    def authors(self):
+        authors = Author.objects.all().order_by("name")
         return sorted(
             [
                 (letter, list(authors))
                 for letter, authors in groupby(
-                    authors_with_reviews,
-                    key=lambda pair: (
-                        pair[0][0].upper() if pair[0][0].isalpha() else "_"
+                    authors,
+                    key=lambda author: (
+                        author.name[0].upper() if author.name[0].isalpha() else "_"
                     ),
                 )
             ],
