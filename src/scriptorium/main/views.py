@@ -83,6 +83,11 @@ class YearView(YearNavMixin, ActiveTemplateView):
             reverse=True,
         )
 
+    @context
+    @cached_property
+    def books(self):
+        return [review.book for review in self.reviews]
+
 
 class YearInBooksView(YearView):
     template_name = "year_stats.html"
