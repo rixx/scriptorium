@@ -185,23 +185,23 @@ class ReviewBySeries(YearNavMixin, ActiveTemplateView):
 
     @context
     @cached_property
-    def reviews(self):
+    def books(self):
         series_reviews = [
             (
                 series,
-                sorted(list(books), key=lambda book: float(book.book.series_position)),
+                sorted(list(books), key=lambda book: float(book.series_position)),
             )
             for series, books in groupby(
                 sorted(
-                    Review.objects.all()
+                    Book.objects.all()
                     .filter(
-                        book__series__isnull=False, book__series_position__isnull=False
+                        series__isnull=False, series_position__isnull=False
                     )
-                    .exclude(book__series="")
-                    .exclude(book__series_position=""),
-                    key=lambda review: review.book.series,
+                    .exclude(series="")
+                    .exclude(series_position=""),
+                    key=lambda book: book.series,
                 ),
-                key=lambda review: review.book.series,
+                key=lambda book: book.series,
             )
         ]
         return sorted(
