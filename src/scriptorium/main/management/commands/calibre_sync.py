@@ -17,9 +17,13 @@ class Command(BaseCommand):
             shell=True,
             env={},
         ).decode()
-        books = json.loads(result)
+        calibre_books = {(b["title"], b["authors"]): b for b in json.loads(result)}
+        scriptorium_books = {(b.title, b.author): b.id for b in ToRead.objects.all()}
+        unknown = set(calibre_books) - set(scriptorium_books)
+        too_many = set(scriptorium_books) - set(calibre_books)
+        ToRead.objects.filter(id__in=(v for k, v in scriptorium_books.items() if k in too_many))
         ToRead.objects.bulk_create(
             [ToRead(title=b["title"], author=b["authors"], shelf=b["*shelf"], pages=b["*pages"], source="calibre")
-            for b in books],
+            for k, b in calibre_books.items() if k in unknown],
             ignore_conflicts=True,
         )
