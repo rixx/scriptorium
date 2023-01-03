@@ -3,9 +3,14 @@ import hashlib
 import math
 import random
 import uuid
+from pathlib import Path
 
 from django.db import models
 from django.utils.functional import cached_property
+
+
+def get_cover_path(instance, filename):
+    return f"{instance.slug}/cover{Path(filename).suffix}"
 
 
 class ToRead(models.Model):
@@ -46,7 +51,9 @@ class Book(models.Model):
         Author, null=True, on_delete=models.PROTECT, related_name="books"
     )
 
-    cover = models.FileField(null=True, blank=True)
+    cover = models.ImageField(
+        null=True, blank=True, upload_to=get_cover_path, max_length=800
+    )
     cover_source = models.CharField(max_length=300, null=True, blank=True)
     spine_color = models.CharField(max_length=7, null=True, blank=True)
 

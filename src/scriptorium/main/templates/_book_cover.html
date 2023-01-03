@@ -1,0 +1,18 @@
+<div class="cover-wrapper {% if spine_border %}with-spine" style="--spine-color: {% if book.spine_color %}{{ book.spine_color }}{% else %}#3b5053{% endif %}{% endif %}">
+  {% if spine_border %}
+  <div class="cover-spine"></div>
+  {% endif %}
+  {% if book.cover %}
+    <img
+      class="cover"
+      src="{{ book.slug }}/cover.jpg"
+      alt="Cover of {{ book.title }}."
+    >
+  {% else %}
+    <img
+      class="cover"
+      src="{{ static('/cover.png') }}"
+      alt="Cover placeholder for {{ book.title }}."
+    >
+  {% endif %}
+</div>

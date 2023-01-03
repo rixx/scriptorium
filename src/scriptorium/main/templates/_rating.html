@@ -1,0 +1,1 @@
+<div class="rating"> {% for _ in range(book.review.rating) %}★{% endfor %}{% for _ in range(5 - book.review.rating) %}☆{% endfor %} {% if book.review.did_not_finish %} (did not finish) {% endif %} </div>
