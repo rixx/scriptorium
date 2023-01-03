@@ -270,6 +270,11 @@ class ReviewView(ActiveTemplateView):
             title_slug=self.kwargs["book"],
         )
 
+    @context
+    @cached_property
+    def review(self):
+        return self.book.review
+
 
 class ReviewCoverView(ReviewView):
     def dispatch(self, *args, **kwargs):

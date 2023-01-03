@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block head_content %}
+<meta name="twitter:card" content="summary">
+<meta name="twitter:site" content="@rixxtr"/>
+<meta name="twitter:title" content="{{ book.title }} by {{ book.author_string }}"/>
+
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://books.rixx.de/{{ book.slug }}/">
+<meta property="og:title" content="{{ book.title }} by {{ book.author_string }}"/>
+{% if review.tldr %}
+<meta name="og:description" content="Review: {{ review.tldr }}" />
+{% endif %}
+{% if review.book_cover_path %}
+<meta name="twitter:image" content="https://books.rixx.de/{{ book.slug }}/square.png"/>
+<meta property="og:image" content="https://books.rixx.de/{{ book.slug }}/square.png"/>
+{% endif %}
+
+<link rel="canonical" href="https://books.rixx.de/{{ book.slug }}/"/>
+{% endblock %}
+
+{% block content %}
+  <div class="book-meta-wrapper"><div>
+      {% set book = review.book %}
+    <h1 id="title">{{ book.title | smartypants | safe }}</h1>
+    <table class="book_metadata">
+      <tr>
+        <td>author{% if book.authors|length > 1 %}s{% endif %}:</td>
+        <th>{{ book.authors | render_authors }}
+          {%- if book.publication_year %}
+            ({{ book.publication_year}})
+          {%- endif -%}
+        </th>
+      </tr>
+      {% if book.series %}
+      <tr>
+        <td>series:</td>
+        <th><a href="/reviews/by-series/#{{ book.series }}">{{ book.series }} {% if book.series_position %}#{{ book.series_position }}{% endif %}</a></th>
+      </tr>
+      {% endif %}
+      <tr>
+        <td>date added:</td>
+        <th>{{ book.date_added | render_date }}</th>
+      </tr>
+      {% if review.dates_read %}
+      <tr>
+        <td>date read:</td>
+        <th>{% for d in review.dates_read_list %}{{ d | render_date }}<br>{% endfor %}</th>
+      </tr>
+      {% endif %}
+      {% if book.pages %}
+      <tr>
+        <td>pages:</td>
+        <th>{{ book.pages }}</th>
+      </tr>
+      {% endif %}
+      {% if book.tags %}
+      <tr>
+        <td>lists:</td>
+        <th>
+          {% for tag in book.tags.all() %}
+            <a href="/lists/{{ tag.name_slug }}/">{{ tag.name }}</a>{{ ", " if not loop.last }}
+          {% endfor %}
+        </th>
+      </tr>
+      {% endif %}
+      {% if review.rating %}
+      <tr>
+        <td>rating:</td>
+        <th class="rating">
+          {% for _ in range(review.rating) %} ★ {% endfor %} {% for _ in range(5 - review.rating) %} ☆ {% endfor %} {% if review.did_not_finish %} (did not finish) {% endif %}
+        </th>
+      </tr>
+      {% endif %}
+      {% if book.source %}
+      <tr>
+        <td>available:</td>
+        <th><a href="{{ book.source }}" target=_blank>online</a></th>
+      </tr>
+      {% endif %}
+    </table></div>
+    {% if book.cover %}
+    <a class="book-cover" href="/{{ book.slug }}/cover.jpg">
+        {% set spine_border = True %}
+        {% set full_size = True %}
+        {% include "_book_cover.html" %}
+      </a>
+    {% endif %}
+  </div>
+
+  <nav id="toc">
+    <h3>Table of Contents</h3>
+    <ul class="toc">
+      <li><a href="#title">Metadata</a></li>
+      {% if review.plot %}
+        <li><a href="#plot-summary">Plot summary</a></li>
+      {% endif %}
+      {% if review.text %}
+        <li><a href="#review-text">Review</a></li>
+        {{ review.text | render_toc | safe }}
+      {% endif %}
+    </ul>
+    {% if book.quotes.all().exists() %}
+      <ul class="toc"><li><a href="#quotes">Quotes</a></li></ul>
+    {% endif %}
+    {% if book.related_books.all().exists() %}
+      <ul class="toc"><li><a href="#related-books">Related books</a></li></ul>
+    {% endif %}
+  </nav>
+
+  <article>
+    {% if book.plot %}
+      <details>
+        <summary><h2 class="plot-header" id="plot-summary">Plot summary <span title="Plot summaries will contain ALL the spoilers. I mostly write them to remind future!Me what was going on. Especially useful for discusisons and sequels.">❔</span></h2></summary>
+        {{ book.plot | render_markdown | safe }}
+        <hr>
+      </details>
+    {% endif %}
+    <div id="review-text">
+    {{ review.text | render_markdown | safe }}
+    </div>
+  </article>
+
+    {% if book.quotes.all().exists() %}
+    <h2 id="quotes">Quotes</h2>
+
+      {% if book.quotes_by_language|length > 1%}
+        {% for language, quotes in book.quotes_by_language.items() %}
+          <details><summary>{{language}}</summary>
+          {% for quote in quotes %}
+            <div class="quote">{{ quote.text | render_quotes | safe }}</div>
+          {% endfor %}
+          </details>
+        {% endfor %}
+      {% else %}
+        {% for language, quotes in book.quotes_by_language.items() %}
+          {% for quote in quotes %}
+            <div class="quote">{{ quote.text | render_quotes | safe }}</div>
+          {% endfor %}
+        {% endfor %}
+      {% endif %}
+    {% endif %}
+
+    {% if book.related_books.all().exists() %}
+    {% set spine_border = False %}
+    <h2 id="related-books">Related books
+      {% if book.series and book.series_position != "1" %}
+      <small class="muted">Books related to the whole series are linked at the first part of the series.</small>
+      {% endif %}
+    </h2>
+      {% for related in book.related_books.all() %}
+        {% set book = related.destination %}
+        {% set review_text = related.text %}
+        {% set expand_card = True %}
+        {% include  "_book_card.html" %}
+      {% endfor %}
+    {% endif %}
+
+  <hr>
+
+  {% include "_external_links.html" %}
+  <hr>
+
+{% endblock %}

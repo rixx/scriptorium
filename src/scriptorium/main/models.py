@@ -1,3 +1,4 @@
+from itertools import groupby
 import datetime as dt
 import hashlib
 import math
@@ -96,6 +97,10 @@ class Book(models.Model):
             return self.authors[0].name
         first = ", ".join([a.name for a in self.authors[:-1]])
         return f"{first} & {self.authors[-1].name}"
+
+    @cached_property
+    def quotes_by_language(self):
+        return dict(groupby(self.quotes.all(), lambda q: q.language))
 
     @cached_property
     def isbn(self):
