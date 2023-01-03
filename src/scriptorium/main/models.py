@@ -21,6 +21,9 @@ class ToRead(models.Model):
     pages = models.IntegerField(null=True, blank=True)
     source = models.CharField(default="calibre", max_length=300)
 
+    class Meta:
+        unique_together = (("title", "author"), )
+
 
 class Author(models.Model):
     name = models.CharField(max_length=300)
@@ -45,6 +48,10 @@ class BookManager(models.Manager):
             .select_related("review", "primary_author")
             .prefetch_related("additional_authors")
         )
+
+    def get_by_slug(self, slug):
+        author, book = slug.strip("/").split("/")
+        return self.get_queryset().get(primary_author__name_slug=author, title_slug=book)
 
 
 class Book(models.Model):
@@ -77,7 +84,7 @@ class Book(models.Model):
     tags = models.ManyToManyField(Tag)
     plot = models.TextField(null=True, blank=True)
 
-    objects = BookManager
+    objects = BookManager()
 
     @cached_property
     def slug(self):
@@ -100,7 +107,7 @@ class Book(models.Model):
 
     @cached_property
     def quotes_by_language(self):
-        return dict(groupby(self.quotes.all(), lambda q: q.language))
+        return {key: list(value) for key, value in groupby(self.quotes.all(), lambda q: q.language)}
 
     @cached_property
     def isbn(self):

@@ -283,11 +283,6 @@ class ReviewCoverView(ReviewView):
         return FileResponse(self.book.cover)
 
 
-class ReviewEdit(ReviewView):
-    template_name = "index.html"
-    active = "review"
-
-
 class QueueView(ActiveTemplateView):
     template_name = "list_queue.html"
     active = "queue"
@@ -351,5 +346,10 @@ class AuthorEdit(ActiveTemplateView):
 
 
 class ReviewCreate(ReviewView):
+    template_name = "index.html"
+    active = "review"
+
+
+class ReviewEdit(ReviewView):
     template_name = "index.html"
     active = "review"
