@@ -6,7 +6,7 @@ import networkx as nx
 from django.db.models import Q
 from django.utils.timezone import now
 
-from .models import Review
+from .models import Review, Book
 
 
 def get_all_years():
@@ -244,43 +244,44 @@ def get_year_stats(year):
 
 def get_graph():
     graph = nx.Graph()
-    for review in Review.objects.all():
-        other = review.related_books
+    for book in Book.objects.all().prefetch_related("related_books", "related_books__destination"):
+        other = book.related_books.all()
         if not other:
             continue
-        graph.add_node(review.slug)
+        graph.add_node(book.slug)
         for related in other:
-            graph.add_node(related["book"])
-            graph.add_edge(review.slug, related["book"])
+            graph.add_node(related.destination.slug)
+            graph.add_edge(book.slug, related.destination.slug)
     return graph
 
 
 def get_nodes(graph=None):
     graph = graph or get_graph()
     nodes = []
+    book_lookup = {book.slug: book for book in Book.objects.all().select_related("primary_author", "review").prefetch_related("additional_authors")}
     for node in graph.nodes:
         try:
-            review = Review.objects.get(slug=node)
+            book = book_lookup[node]
         except Exception:
             print(f"ERROR! Node {node} not found")
             continue
         nodes.append(
             {
                 "id": node,
-                "name": review.book.title,
-                "cover": bool(review.book.cover_path),
-                "author": review.book.authors.all().first(),
-                "series": review.book.series,
-                "rating": review.rating,
-                "color": review.book.spine_color,
+                "name": book.title,
+                "cover": bool(book.cover),
+                "author": book.author_string,
+                "series": book.series,
+                "rating": book.review.rating,
+                "color": book.spine_color,
                 "connections": len(list(graph.neighbors(node))),
                 "search": [
                     term
-                    for term in review.book.title.lower().split()
-                    + review.book.author.lower().split()
-                    + (review.book.series or "").lower().split()
-                    + [f"tag:{tag}" for tag in review.book.tags or []]
-                    + ([f"rating:{review.rating}"] if review.rating else [])
+                    for term in book.title.lower().split()
+                    + book.primary_author.name.lower().split()
+                    + (book.series or "").lower().split()
+                    + [f"tag:{tag.name}" for tag in book.tags.all() or []]
+                    + ([f"rating:{book.review.rating}"] if book.review.rating else [])
                     if term
                 ],
             }
