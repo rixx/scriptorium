@@ -353,8 +353,17 @@ class ListDetail(ActiveTemplateView):
 
 
 class AuthorView(ActiveTemplateView):
-    template_name = "index.html"
+    template_name = "author.html"
     active = "review"
+
+    @context
+    @cached_property
+    def author_obj(self):
+        return Author.objects.get(name_slug=self.kwargs["author"])
+
+    @context
+    def books(self):
+        return self.author_obj.books.all().select_related("review", "primary_author").prefetch_related("additional_authors").order_by("-review__rating")
 
 
 class AuthorEdit(ActiveTemplateView):

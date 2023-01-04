@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  <h2>Books by {{ author_obj.name }}</h2>
+
+  {% set shelf_books = books %}
+  {% include "_shelf.html" %}
+
+  {% for book in books %}
+    {% include "_book_card.html" %}
+  {% endfor %}
+{% endblock %}
