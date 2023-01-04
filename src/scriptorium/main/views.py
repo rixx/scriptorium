@@ -1,14 +1,14 @@
 from itertools import groupby
 
 import networkx as nx
-from django.db.models import Sum, Count
+from django.db.models import Count, Sum
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.views.generic import TemplateView
 from django_context_decorator import context
 
-from scriptorium.main.models import Book, Review, ToRead, Author, Tag
+from scriptorium.main.models import Author, Book, Review, Tag, ToRead
 from scriptorium.main.stats import (
     get_all_years,
     get_edges,
@@ -194,9 +194,7 @@ class ReviewBySeries(YearNavMixin, ActiveTemplateView):
             for series, books in groupby(
                 sorted(
                     Book.objects.all()
-                    .filter(
-                        series__isnull=False, series_position__isnull=False
-                    )
+                    .filter(series__isnull=False, series_position__isnull=False)
                     .exclude(series="")
                     .exclude(series_position=""),
                     key=lambda book: book.series,
@@ -247,14 +245,14 @@ def graph_data(request):
 
 def search_data(request):
     # TODO tag search
-    search_tags = [
+    # search_tags = [
         # {
         #     "slug": tag.slug,
         #     "name": tag.metadata.get("title") or tag.slug,
         #     "search": (tag.metadata.get("title") or tag.slug).lower().split(),
         # }
         # for tag in tags.keys()
-    ]
+    # ]
     return JsonResponse({"books": get_nodes(), "tags": []})
 
 
@@ -332,8 +330,13 @@ class ListView(ActiveTemplateView):
     @context
     def tags(self):
         result = []
-        for tag in Tag.objects.all().prefetch_related("book_set", "book_set__review").annotate(book_count=Count("book"), page_count=Sum("book__pages")).order_by("-book_count"):
-            tag.top_books= tag.book_set.order_by("-review__rating")[:8]
+        for tag in (
+            Tag.objects.all()
+            .prefetch_related("book_set", "book_set__review")
+            .annotate(book_count=Count("book"), page_count=Sum("book__pages"))
+            .order_by("-book_count")
+        ):
+            tag.top_books = tag.book_set.order_by("-review__rating")[:8]
             result.append(tag)
         return result
 
@@ -345,7 +348,9 @@ class ListDetail(ActiveTemplateView):
     @context
     @cached_property
     def tag_obj(self):
-        return Tag.objects.prefetch_related("book_set", "book_set__review").get(name_slug=self.kwargs["tag"])
+        return Tag.objects.prefetch_related("book_set", "book_set__review").get(
+            name_slug=self.kwargs["tag"]
+        )
 
     @context
     def books(self):
@@ -363,7 +368,12 @@ class AuthorView(ActiveTemplateView):
 
     @context
     def books(self):
-        return self.author_obj.books.all().select_related("review", "primary_author").prefetch_related("additional_authors").order_by("-review__rating")
+        return (
+            self.author_obj.books.all()
+            .select_related("review", "primary_author")
+            .prefetch_related("additional_authors")
+            .order_by("-review__rating")
+        )
 
 
 class AuthorEdit(ActiveTemplateView):

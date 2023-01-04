@@ -6,7 +6,7 @@ import networkx as nx
 from django.db.models import Q
 from django.utils.timezone import now
 
-from .models import Review, Book
+from .models import Book, Review
 
 
 def get_all_years():
@@ -244,7 +244,9 @@ def get_year_stats(year):
 
 def get_graph():
     graph = nx.Graph()
-    for book in Book.objects.all().prefetch_related("related_books", "related_books__destination"):
+    for book in Book.objects.all().prefetch_related(
+        "related_books", "related_books__destination"
+    ):
         other = book.related_books.all()
         if not other:
             continue
@@ -258,7 +260,12 @@ def get_graph():
 def get_nodes(graph=None):
     graph = graph or get_graph()
     nodes = []
-    book_lookup = {book.slug: book for book in Book.objects.all().select_related("primary_author", "review").prefetch_related("additional_authors")}
+    book_lookup = {
+        book.slug: book
+        for book in Book.objects.all()
+        .select_related("primary_author", "review")
+        .prefetch_related("additional_authors")
+    }
     for node in graph.nodes:
         try:
             book = book_lookup[node]

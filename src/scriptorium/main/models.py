@@ -1,9 +1,9 @@
-from itertools import groupby
 import datetime as dt
 import hashlib
 import math
 import random
 import uuid
+from itertools import groupby
 from pathlib import Path
 
 from django.db import models
@@ -22,7 +22,7 @@ class ToRead(models.Model):
     source = models.CharField(default="calibre", max_length=300)
 
     class Meta:
-        unique_together = (("title", "author"), )
+        unique_together = (("title", "author"),)
 
 
 class Author(models.Model):
@@ -31,7 +31,9 @@ class Author(models.Model):
     text = models.TextField(null=True, blank=True)
 
     def all_books(self):
-        return Book.objects.filter(models.Q(primary_author=self) | models.Q(additional_authors=self))
+        return Book.objects.filter(
+            models.Q(primary_author=self) | models.Q(additional_authors=self)
+        )
 
 
 class Tag(models.Model):
@@ -51,7 +53,9 @@ class BookManager(models.Manager):
 
     def get_by_slug(self, slug):
         author, book = slug.strip("/").split("/")
-        return self.get_queryset().get(primary_author__name_slug=author, title_slug=book)
+        return self.get_queryset().get(
+            primary_author__name_slug=author, title_slug=book
+        )
 
 
 class Book(models.Model):
@@ -107,7 +111,10 @@ class Book(models.Model):
 
     @cached_property
     def quotes_by_language(self):
-        return {key: list(value) for key, value in groupby(self.quotes.all(), lambda q: q.language)}
+        return {
+            key: list(value)
+            for key, value in groupby(self.quotes.all(), lambda q: q.language)
+        }
 
     @cached_property
     def isbn(self):
