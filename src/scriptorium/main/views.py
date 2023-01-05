@@ -1,13 +1,16 @@
 from itertools import groupby
 
 import networkx as nx
+from django.contrib.auth import authenticate, login, logout
 from django.db.models import Count, Sum
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
+from django.shortcuts import redirect
 from django.utils.functional import cached_property
 from django.utils.timezone import now
-from django.views.generic import TemplateView
+from django.views.generic import FormView, TemplateView
 from django_context_decorator import context
 
+from scriptorium.main.forms import LoginForm
 from scriptorium.main.models import Author, Book, Review, Tag, ToRead
 from scriptorium.main.stats import (
     get_all_years,
@@ -121,7 +124,11 @@ class ReviewByAuthor(YearNavMixin, ActiveTemplateView):
     @context
     @cached_property
     def authors(self):
-        authors = Author.objects.all().prefetch_related("books", "books__review").order_by("name")
+        authors = (
+            Author.objects.all()
+            .prefetch_related("books", "books__review")
+            .order_by("name")
+        )
         return sorted(
             [
                 (letter, list(authors))
@@ -246,12 +253,12 @@ def graph_data(request):
 def search_data(request):
     # TODO tag search
     # search_tags = [
-        # {
-        #     "slug": tag.slug,
-        #     "name": tag.metadata.get("title") or tag.slug,
-        #     "search": (tag.metadata.get("title") or tag.slug).lower().split(),
-        # }
-        # for tag in tags.keys()
+    # {
+    #     "slug": tag.slug,
+    #     "name": tag.metadata.get("title") or tag.slug,
+    #     "search": (tag.metadata.get("title") or tag.slug).lower().split(),
+    # }
+    # for tag in tags.keys()
     # ]
     return JsonResponse({"books": get_nodes(), "tags": []})
 
@@ -374,6 +381,28 @@ class AuthorView(ActiveTemplateView):
             .prefetch_related("additional_authors")
             .order_by("-review__rating")
         )
+
+
+class LoginView(FormView):
+    template_name = "login.html"
+    form_class = LoginForm
+
+    def post(self, request):
+        form = self.get_form()
+        if form.is_valid():
+            user = authenticate(
+                username=form.cleaned_data["username"],
+                password=form.cleaned_data["password"],
+            )
+            if user:
+                login(request, user)
+                return redirect("/bibliothecarius/new")
+        return redirect("/bibliothecarius/login")
+
+
+def logout_view(request):
+    logout(request)
+    return redirect("/")
 
 
 class AuthorEdit(ActiveTemplateView):

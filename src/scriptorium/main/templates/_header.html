@@ -14,6 +14,7 @@
   </nav>
 
   <div id="sidenav-right" class="sidenav">
+    {% if not request.user.is_anonymous %}<a href="/bibliothecarius/logout">logout</a>{% endif %}
     <div id="search-container" role="search">
       <input type="text" id="search" maxlength="255" placeholder="Search…">
       <div id="search-results" class="empty"></div>
