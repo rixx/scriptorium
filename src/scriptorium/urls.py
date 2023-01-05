@@ -7,6 +7,7 @@ urlpatterns = [
     # editor part, can be blocked off
     path("bibliothecarius/login/", views.LoginView.as_view()),
     path("bibliothecarius/logout", views.logout_view),
+    path("bibliothecarius/<slug:author>/", views.AuthorEdit.as_view()),
 
     path("", views.IndexView.as_view()),
     path("feed.atom", views.feed_view),
@@ -25,7 +26,6 @@ urlpatterns = [
     path("lists/", views.ListView.as_view()),
     path("lists/<slug:tag>/", views.ListDetail.as_view()),
     path("<slug:author>/", views.AuthorView.as_view()),
-    path("<slug:author>/edit", views.AuthorEdit.as_view()),
     path("<slug:author>/<slug:book>/", views.ReviewView.as_view()),
     path("<slug:author>/<slug:book>/cover.jpg", views.ReviewCoverView.as_view()),
     path("<slug:author>/<slug:book>/edit", views.ReviewEdit.as_view()),

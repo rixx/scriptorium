@@ -3,9 +3,18 @@
 {% block content %}
 
   <h2>Books by {{ author_obj.name }}</h2>
+  {% if not request.user.is_anonymous %}
+    <small><a href="/bibliothecarius/{{ author_obj.name_slug }}/">edit</a></small>
+  {% endif %}
 
   {% set shelf_books = books %}
   {% include "_shelf.html" %}
+
+  {% if author_obj.text %}
+  <p>
+    {{ author_obj.text | render_markdown | safe }}
+  </p>
+  {% endif %}
 
   {% for book in books %}
     {% include "_book_card.html" %}

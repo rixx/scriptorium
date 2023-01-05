@@ -7,10 +7,10 @@ from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonRe
 from django.shortcuts import redirect
 from django.utils.functional import cached_property
 from django.utils.timezone import now
-from django.views.generic import FormView, TemplateView
+from django.views.generic import FormView, TemplateView, UpdateView
 from django_context_decorator import context
 
-from scriptorium.main.forms import LoginForm
+from scriptorium.main.forms import AuthorForm, LoginForm
 from scriptorium.main.models import Author, Book, Review, Tag, ToRead
 from scriptorium.main.stats import (
     get_all_years,
@@ -364,10 +364,7 @@ class ListDetail(ActiveTemplateView):
         return self.tag_obj.book_set.all().order_by("-review__rating")
 
 
-class AuthorView(ActiveTemplateView):
-    template_name = "author.html"
-    active = "review"
-
+class AuthorMixin:
     @context
     @cached_property
     def author_obj(self):
@@ -381,6 +378,11 @@ class AuthorView(ActiveTemplateView):
             .prefetch_related("additional_authors")
             .order_by("-review__rating")
         )
+
+
+class AuthorView(AuthorMixin, ActiveTemplateView):
+    template_name = "author.html"
+    active = "review"
 
 
 class LoginView(FormView):
@@ -405,9 +407,17 @@ def logout_view(request):
     return redirect("/")
 
 
-class AuthorEdit(ActiveTemplateView):
-    template_name = "index.html"
-    active = "review"
+class AuthorEdit(AuthorMixin, UpdateView):
+    template_name = "author_edit.html"
+    model = Author
+    form_class = AuthorForm
+
+    def get_object(self):
+        return self.author_obj
+
+    def form_valid(self, form):
+        form.save()
+        return redirect(f"/{form.instance.name_slug}/")
 
 
 class ReviewCreate(ReviewView):
