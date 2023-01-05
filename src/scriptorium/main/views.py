@@ -121,7 +121,7 @@ class ReviewByAuthor(YearNavMixin, ActiveTemplateView):
     @context
     @cached_property
     def authors(self):
-        authors = Author.objects.all().order_by("name")
+        authors = Author.objects.all().prefetch_related("books", "books__review").order_by("name")
         return sorted(
             [
                 (letter, list(authors))
