@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  <h2>Tohuwabohu</h2>
+
+  no plot
+  {% if no_pages %}
+  <h3>No pages: {{ no_pages|length }}</h3>
+    {% for book in no_pages %}
+      {% include "_book_card.html" %}
+    {% endfor %}
+  {% endif %}
+
+  {% if no_related %}
+  <h3>No related books: {{ no_related|length }}</h3>
+    {% for book in no_related[:10] %}
+      {% include "_book_card.html" %}
+    {% endfor %}
+  {% endif %}
+
+  {% if no_plot %}
+  <h3>No plot: {{ no_plot|length }}</h3>
+    {% for book in no_plot[:10] %}
+      {% include "_book_card.html" %}
+    {% endfor %}
+  {% endif %}
+
+  {% if no_cover %}
+  <h3>No cover: {{ no_cover|length }}</h3>
+    {% for book in no_cover[:10] %}
+      {% include "_book_card.html" %}
+    {% endfor %}
+  {% endif %}
+
+  {% if goodreads_cover %}
+  <h3>Generic Goodreads cover: {{ goodreads_cover|length }}</h3>
+    {% for book in goodreads_cover[:10] %}
+      {% include "_book_card.html" %}
+    {% endfor %}
+  {% endif %}
+{% endblock %}

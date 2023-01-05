@@ -2,7 +2,7 @@ from itertools import groupby
 
 import networkx as nx
 from django.contrib.auth import authenticate, login, logout
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, Q
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import redirect
 from django.utils.functional import cached_property
@@ -405,6 +405,30 @@ class LoginView(FormView):
 def logout_view(request):
     logout(request)
     return redirect("/")
+
+
+class TohuwabohuView(TemplateView):
+    template_name = "tohuwabohu.html"
+
+    @context
+    def no_pages(self):
+        return Book.objects.filter(Q(pages__isnull=True) | Q(pages__lte=1))
+
+    @context
+    def no_related(self):
+        return Book.objects.filter(related_books__isnull=True)
+
+    @context
+    def no_plot(self):
+        return Book.objects.filter(Q(plot__isnull=True) | Q(plot=""))
+
+    @context
+    def no_cover(self):
+        return Book.objects.filter(Q(cover__isnull=True) | Q(cover=""))
+
+    @context
+    def goodreads_cover(self):
+        return Book.objects.filter(cover__isnull=False, spine_color="#dad2bf")
 
 
 class AuthorEdit(AuthorMixin, UpdateView):

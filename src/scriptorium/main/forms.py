@@ -1,6 +1,6 @@
 from django import forms
 
-from scriptorium.main.models import Author
+from scriptorium.main.models import Author, Book, Review
 
 
 class LoginForm(forms.Form):
