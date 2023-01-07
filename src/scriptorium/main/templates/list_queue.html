@@ -18,7 +18,7 @@
   {% for shelf in shelves %}
   <h3>{{ shelf.name }}</h3>
   <details>
-    <summary>Show all {{ shelf.books.count() }} books ({{ shelf.page_count }} pages)</summary>
+    <summary>Show all {{ shelf.books.count() }} books ({{ shelf.page_count|thousands }} pages)</summary>
     <ul>
     {% for book in shelf.books %}
       <li>
