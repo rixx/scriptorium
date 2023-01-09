@@ -3,13 +3,11 @@ from django.urls import path
 from scriptorium.main import views
 
 urlpatterns = [
-
     # editor part, can be blocked off
     path("bibliothecarius/login/", views.LoginView.as_view()),
     path("bibliothecarius/logout", views.logout_view),
     path("bibliothecarius/tohuwabohu/", views.TohuwabohuView.as_view()),
     path("bibliothecarius/<slug:author>/", views.AuthorEdit.as_view()),
-
     path("", views.IndexView.as_view()),
     path("feed.atom", views.feed_view),
     path("reviews.atom", views.feed_view),

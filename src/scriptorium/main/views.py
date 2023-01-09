@@ -2,7 +2,7 @@ from itertools import groupby
 
 import networkx as nx
 from django.contrib.auth import authenticate, login, logout
-from django.db.models import Count, Sum, Q
+from django.db.models import Count, Q, Sum
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import redirect
 from django.utils.functional import cached_property

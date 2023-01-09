@@ -49,7 +49,10 @@ class BookManager(models.Manager):
             .get_queryset()
             .select_related("review", "primary_author")
             .prefetch_related("additional_authors")
-        )
+        ).filter(review__is_draft=False)
+
+    def with_drafts(self):
+        return super().get_queryset()
 
     def get_by_slug(self, slug):
         author, book = slug.strip("/").split("/")
@@ -158,7 +161,10 @@ class ReviewManager(models.Manager):
             .get_queryset()
             .select_related("book", "book__primary_author")
             .prefetch_related("book__additional_authors")
-        )
+        ).filter(is_draft=False)
+
+    def with_drafts(self):
+        return super().get_queryset()
 
 
 class Review(models.Model):
@@ -169,6 +175,7 @@ class Review(models.Model):
 
     rating = models.IntegerField(null=True, blank=True)
     did_not_finish = models.BooleanField(default=False)
+    is_draft = models.BooleanField(default=False)
 
     latest_date = models.DateField()
     dates_read = models.CharField(max_length=300, null=True, blank=True)
