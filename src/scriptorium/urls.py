@@ -4,6 +4,7 @@ from scriptorium.main import views
 
 urlpatterns = [
     # editor part, can be blocked off
+    path("bibliothecarius/", views.Bibliothecarius.as_view()),
     path("bibliothecarius/login/", views.LoginView.as_view()),
     path("bibliothecarius/logout", views.logout_view),
     path("bibliothecarius/tohuwabohu/", views.TohuwabohuView.as_view()),

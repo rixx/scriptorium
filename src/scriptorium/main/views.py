@@ -2,6 +2,7 @@ from itertools import groupby
 
 import networkx as nx
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Q, Sum
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import redirect
@@ -9,6 +10,7 @@ from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.views.generic import FormView, TemplateView, UpdateView
 from django_context_decorator import context
+from formtools.wizard.views import SessionWizardView
 
 from scriptorium.main.forms import AuthorForm, LoginForm
 from scriptorium.main.models import Author, Book, Review, Tag, ToRead
@@ -407,7 +409,7 @@ def logout_view(request):
     return redirect("/")
 
 
-class TohuwabohuView(TemplateView):
+class TohuwabohuView(LoginRequiredMixin, TemplateView):
     template_name = "tohuwabohu.html"
 
     @context
@@ -431,7 +433,11 @@ class TohuwabohuView(TemplateView):
         return Book.objects.filter(cover__isnull=False, spine_color="#dad2bf")
 
 
-class AuthorEdit(AuthorMixin, UpdateView):
+class Bibliothecarius(LoginRequiredMixin, TemplateView):
+    template_name = "bibliothecarius.html"
+
+
+class AuthorEdit(AuthorMixin, LoginRequiredMixin, UpdateView):
     template_name = "author_edit.html"
     model = Author
     form_class = AuthorForm
@@ -444,11 +450,11 @@ class AuthorEdit(AuthorMixin, UpdateView):
         return redirect(f"/{form.instance.name_slug}/")
 
 
-class ReviewCreate(ReviewView):
+class ReviewCreate(LoginRequiredMixin, SessionWizardView):
     template_name = "index.html"
     active = "review"
 
 
-class ReviewEdit(ReviewView):
+class ReviewEdit(LoginRequiredMixin, ReviewView):
     template_name = "index.html"
     active = "review"
