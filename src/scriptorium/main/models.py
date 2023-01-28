@@ -21,6 +21,9 @@ class ToRead(models.Model):
     pages = models.IntegerField(null=True, blank=True)
     source = models.CharField(default="calibre", max_length=300)
 
+    def __str__(self):
+        return f"{self.title} by {self.author}"
+
     class Meta:
         unique_together = (("title", "author"),)
 
@@ -29,6 +32,9 @@ class Author(models.Model):
     name = models.CharField(max_length=300)
     name_slug = models.CharField(max_length=300)
     text = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return self.name
 
     def all_books(self):
         return Book.objects.filter(
@@ -40,6 +46,9 @@ class Tag(models.Model):
     name = models.CharField(max_length=300)
     name_slug = models.CharField(max_length=300)
     text = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return self.name
 
 
 class BookManager(models.Manager):
@@ -64,7 +73,7 @@ class BookManager(models.Manager):
 class Book(models.Model):
     title = models.CharField(max_length=300)
     title_slug = models.CharField(max_length=300)
-    additional_authors = models.ManyToManyField(Author)
+    additional_authors = models.ManyToManyField(Author, blank=True)
     primary_author = models.ForeignKey(
         Author, null=True, on_delete=models.PROTECT, related_name="books"
     )
@@ -92,6 +101,9 @@ class Book(models.Model):
     plot = models.TextField(null=True, blank=True)
 
     objects = BookManager()
+
+    def __str__(self):
+        return f"{self.title} by {self.author_string}"
 
     @cached_property
     def slug(self):
@@ -181,6 +193,9 @@ class Review(models.Model):
     dates_read = models.CharField(max_length=300, null=True, blank=True)
 
     social = models.JSONField(null=True)
+
+    def __str__(self):
+        return f"Review ({self.rating}/5) for {self.book}"
 
     @cached_property
     def dates_read_list(self):

@@ -12,7 +12,7 @@ from django.views.generic import FormView, TemplateView, UpdateView
 from django_context_decorator import context
 from formtools.wizard.views import SessionWizardView
 
-from scriptorium.main.forms import AuthorForm, LoginForm
+from scriptorium.main.forms import AuthorForm, BookEditForm, LoginForm, ReviewEditForm
 from scriptorium.main.models import Author, Book, Review, Tag, ToRead
 from scriptorium.main.stats import (
     get_all_years,
@@ -265,10 +265,7 @@ def search_data(request):
     return JsonResponse({"books": get_nodes(), "tags": []})
 
 
-class ReviewView(ActiveTemplateView):
-    template_name = "review.html"
-    active = "review"
-
+class ReviewMixin:
     @context
     @cached_property
     def book(self):
@@ -281,6 +278,11 @@ class ReviewView(ActiveTemplateView):
     @cached_property
     def review(self):
         return self.book.review
+
+
+class ReviewView(ReviewMixin, ActiveTemplateView):
+    template_name = "review.html"
+    active = "review"
 
 
 class ReviewCoverView(ReviewView):
@@ -455,6 +457,24 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
     active = "review"
 
 
-class ReviewEdit(LoginRequiredMixin, ReviewView):
-    template_name = "index.html"
-    active = "review"
+class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):
+    template_name = "review_edit.html"
+    model = Book
+    form_class = BookEditForm
+
+    def get_object(self):
+        return self.book
+
+    @context
+    @cached_property
+    def review_form(self):
+        if self.request.method == "POST":
+            return ReviewEditForm(self.request.POST, instance=self.book.review)
+        return ReviewEditForm(instance=self.book.review)
+
+    def form_valid(self, form):
+        if not self.review_form.is_valid():
+            raise Exception(self.review_form.errors)
+        form.save()
+        self.review_form.save()
+        return redirect(f"/{form.instance.slug}/")
