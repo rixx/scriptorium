@@ -4,9 +4,6 @@
 
   <h2>{{ book.title }}</h2>
 
-  {% set shelf_books = books %}
-  {% include "_shelf.html" %}
-
   <form method="POST">
     {{ csrf_input }}
     {{ form.as_p() }}

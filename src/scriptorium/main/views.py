@@ -3,6 +3,7 @@ from itertools import groupby
 import networkx as nx
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import redirect
@@ -12,7 +13,17 @@ from django.views.generic import FormView, TemplateView, UpdateView
 from django_context_decorator import context
 from formtools.wizard.views import SessionWizardView
 
-from scriptorium.main.forms import AuthorForm, BookEditForm, LoginForm, ReviewEditForm
+from scriptorium.main.forms import (
+    AuthorForm,
+    BookEditForm,
+    BookSearchForm,
+    BookSelectForm,
+    BookWizardForm,
+    EditionSelectForm,
+    LoginForm,
+    ReviewEditForm,
+    ReviewWizardForm,
+)
 from scriptorium.main.models import Author, Book, Review, Tag, ToRead
 from scriptorium.main.stats import (
     get_all_years,
@@ -23,6 +34,7 @@ from scriptorium.main.stats import (
     get_stats_table,
     get_year_stats,
 )
+from scriptorium.main.utils import slugify
 
 
 class ActiveTemplateView(TemplateView):
@@ -455,6 +467,73 @@ class AuthorEdit(AuthorMixin, LoginRequiredMixin, UpdateView):
 class ReviewCreate(LoginRequiredMixin, SessionWizardView):
     template_name = "index.html"
     active = "review"
+    form_list = [
+        ("search", BookSearchForm),
+        ("select", BookSelectForm),
+        ("edition", EditionSelectForm),
+        ("book", BookWizardForm),
+        ("review", ReviewWizardForm),
+        # ("quotes", QuoteWizardForm),
+    ]
+    template_name = "review_create.html"
+
+    #     def get_template_names(self):
+    #         return f"new_review_{self.steps.current}.html"
+
+    def get_form_kwargs(self, step=None):
+        kwargs = {}
+        from scriptorium.main.metadata import (
+            get_openlibrary_book,
+            get_openlibrary_editions,
+            search_book,
+        )
+
+        if step == "select":
+            kwargs["works"] = search_book(
+                self.get_cleaned_data_for_step("search")["search_input"]
+            )
+        elif step == "edition":
+            # includes cover
+            select_data = self.get_cleaned_data_for_step("select")
+            editions = get_openlibrary_editions(select_data["search_selection"])
+            kwargs[
+                "editions"
+            ] = editions  # form can use url https://covers.openlibrary.org/b/olid/{key}-L.jpg to preview the cover, and should build a select from key, title, language, whatever
+        elif step == "book":
+            olid = self.get_cleaned_data_for_step("edition")["edition_selection"]
+            book = get_openlibrary_book(olid=olid)
+            kwargs["openlibrary"] = book
+            # kwargs = {# TODO pre-fill fields here!}
+        elif step == "review":
+            select_data = self.get_cleaned_data_for_step("select")
+        return kwargs
+
+    @transaction.atomic()
+    def done(self, form_list, *args, **kwargs):
+        steps = {
+            step: self.get_cleaned_data_for_step(step) for step in self.form_list.keys()
+        }
+        author_name = steps["book"].pop("author_name")
+        author, _ = Author.objects.get_or_create(
+            name=author_name, defaults={"name_slug": slugify(author_name)}
+        )
+        new_tags = steps["book"].pop("new_tags").split(",")
+        tags = list(steps["book"].pop("tags")) or []
+        if new_tags:
+            for tag in new_tags:
+                tags.append(
+                    Tag.objects.create(name=tag.strip(), name_slug=slugify(tag))
+                )
+        book = Book.objects.create(**steps["book"], primary_author=author)
+        book.tags.set(tags)
+        review = Review.objects.create(
+            **steps["review"],
+            book=book,
+            latest_date=steps["review"]["dates_read"].split(",")[-1],
+        )
+        # TODO create quotes
+        # TODO download cover, update dimensions etc
+        return redirect(f"/{book.slug}/")
 
 
 class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):

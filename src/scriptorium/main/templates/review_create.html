@@ -7,6 +7,7 @@
   <form method="POST">
     {{ wizard.form.media }}
     {{ wizard.management_form }}
+    {{ wizard.form.errors }}
     {{ csrf_input }}
     {{ wizard.form.as_p() }}
     <button type="submit" class="btn btn-success btn-lg float-right flip ml-auto">Next step</button>

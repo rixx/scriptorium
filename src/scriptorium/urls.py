@@ -8,6 +8,7 @@ urlpatterns = [
     path("bibliothecarius/login/", views.LoginView.as_view()),
     path("bibliothecarius/logout", views.logout_view),
     path("bibliothecarius/tohuwabohu/", views.TohuwabohuView.as_view()),
+    path("bibliothecarius/new", views.ReviewCreate.as_view()),
     path("bibliothecarius/<slug:author>/", views.AuthorEdit.as_view()),
     path("bibliothecarius/<slug:author>/<slug:book>/", views.ReviewEdit.as_view()),
     path("", views.IndexView.as_view()),
