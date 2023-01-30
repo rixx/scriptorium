@@ -85,14 +85,15 @@ class Book(models.Model):
     spine_color = models.CharField(max_length=7, null=True, blank=True)
 
     goodreads_id = models.CharField(max_length=30, null=True, blank=True)
+    openlibrary_id = models.CharField(max_length=30, null=True, blank=True)
     isbn10 = models.CharField(max_length=30, null=True, blank=True)
     isbn13 = models.CharField(max_length=30, null=True, blank=True)
 
-    dimensions = models.JSONField(null=True)
+    dimensions = models.JSONField(null=True, blank=True)
     source = models.CharField(max_length=300, null=True, blank=True)
     pages = models.IntegerField(null=True, blank=True)
     publication_year = models.IntegerField(null=True, blank=True)
-    date_added = models.DateField()
+    date_added = models.DateField(auto_now_add=True)
 
     series = models.CharField(max_length=300, null=True, blank=True)
     series_position = models.CharField(max_length=5, null=True, blank=True)

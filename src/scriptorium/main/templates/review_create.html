@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  <h2>{{ wizard.steps.current }}</h2>
+
+  <form method="POST">
+    {{ wizard.form.media }}
+    {{ wizard.management_form }}
+    {{ csrf_input }}
+    {{ wizard.form.as_p() }}
+    <button type="submit" class="btn btn-success btn-lg float-right flip ml-auto">Next step</button>
+    {% if wizard.steps.prev %}
+        <button name="wizard_goto_step" type="submit" value="{{ wizard.steps.prev }}" class="btn btn-lg btn-info">Previous step</button>
+    {% else %}
+        <span></span>
+    {% endif %}
+  </form>
+
+{% endblock %}
