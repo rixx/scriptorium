@@ -265,3 +265,12 @@ class Spine:
         short_side = self.width * math.cos(math.radians(tilt))
         total_required_margin = long_side + short_side - self.width
         return total_required_margin / 2
+
+
+class Page(models.Model):
+    title = models.CharField(max_length=300)
+    slug = models.CharField(max_length=300)
+    text = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return self.title
