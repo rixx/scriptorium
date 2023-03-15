@@ -21,7 +21,7 @@ class BookSearchForm(forms.Form):
 
 
 class BookSelectForm(forms.Form):
-    search_selection = forms.ChoiceField()
+    search_selection = forms.ChoiceField(widget=forms.RadioSelect)
 
     def __init__(self, *args, works, **kwargs):
         super().__init__(*args, **kwargs)

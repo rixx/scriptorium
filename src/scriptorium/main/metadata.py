@@ -27,7 +27,7 @@ def get_openlibrary_editions(work_id):
     return [
         (
             r["key"].split("/")[-1],
-            f"{r.get('publish_date'), r.get('languages', [''])[0].split('/')[-1]}, {r.get('number_of_pages', r.get('pagination'))} pages",
+            f"{r.get('publish_date' or ['', ''])[0], r.get('languages', [''])[0].split('/')[-1]}, {r.get('number_of_pages', r.get('pagination'))} pages",
         )
         for r in result["entries"]
         if not r.get("languages")
