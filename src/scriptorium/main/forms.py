@@ -1,6 +1,6 @@
 from django import forms
 
-from scriptorium.main.models import Author, Book, Review
+from scriptorium.main.models import Author, Book, Page, Review
 from scriptorium.main.utils import slugify
 
 
@@ -131,3 +131,9 @@ class ReviewEditForm(forms.ModelForm):
     class Meta:
         model = Review
         fields = ("dates_read", "rating", "text", "tldr", "did_not_finish")
+
+
+class PageForm(forms.ModelForm):
+    class Meta:
+        model = Page
+        fields = ("title", "slug", "text")

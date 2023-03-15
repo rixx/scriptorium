@@ -269,7 +269,7 @@ class Spine:
 
 class Page(models.Model):
     title = models.CharField(max_length=300)
-    slug = models.CharField(max_length=300)
+    slug = models.CharField(max_length=300, unique=True)
     text = models.TextField(null=True, blank=True)
 
     def __str__(self):

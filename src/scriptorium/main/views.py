@@ -9,7 +9,7 @@ from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonRe
 from django.shortcuts import redirect
 from django.utils.functional import cached_property
 from django.utils.timezone import now
-from django.views.generic import FormView, TemplateView, UpdateView
+from django.views.generic import CreateView, FormView, TemplateView, UpdateView
 from django_context_decorator import context
 from formtools.wizard.views import SessionWizardView
 
@@ -21,10 +21,11 @@ from scriptorium.main.forms import (
     BookWizardForm,
     EditionSelectForm,
     LoginForm,
+    PageForm,
     ReviewEditForm,
     ReviewWizardForm,
 )
-from scriptorium.main.models import Author, Book, Review, Tag, ToRead
+from scriptorium.main.models import Author, Book, Page, Review, Tag, ToRead
 from scriptorium.main.stats import (
     get_all_years,
     get_edges,
@@ -557,3 +558,41 @@ class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):
         form.save()
         self.review_form.save()
         return redirect(f"/{form.instance.slug}/")
+
+
+class PageCreate(LoginRequiredMixin, CreateView):
+    model = Page
+    form_class = PageForm
+    template_name = "page_create.html"
+
+    def form_valid(self, form):
+        form.save()
+        return redirect(f"/p/{form.instance.slug}/")
+
+
+class PageEdit(LoginRequiredMixin, UpdateView):
+    model = Page
+    form_class = PageForm
+    template_name = "page_edit.html"
+
+    def get_object(self):
+        return Page.objects.get(slug=self.kwargs["slug"])
+
+    def form_valid(self, form):
+        form.save()
+        return redirect(f"/p/{form.instance.slug}/")
+
+
+class PageList(AuthorMixin, LoginRequiredMixin, ListView):
+    template_name = "page_list.html"
+    model = Page
+
+
+class PageView(TemplateView):
+    template_name = "page.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        page = Page.objects.get(slug=self.kwargs["slug"])
+        context["page"] = page
+        return context
