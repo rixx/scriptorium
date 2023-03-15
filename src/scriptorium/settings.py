@@ -17,7 +17,7 @@ SECRET_KEY = "django-insecure-z59ed4#87anp9l%$m)fv^gz_elaai7y7i7c6*guj()lumfr2xp
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "books.rixx.de"]
 
 
 # Application definition
