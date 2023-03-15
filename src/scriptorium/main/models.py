@@ -6,8 +6,12 @@ import uuid
 from itertools import groupby
 from pathlib import Path
 
+import requests
+from django.core.files.base import ContentFile
 from django.db import models
 from django.utils.functional import cached_property
+
+from .utils import get_spine_color
 
 
 def get_cover_path(instance, filename):
@@ -135,6 +139,27 @@ class Book(models.Model):
     @cached_property
     def isbn(self):
         return self.isbn13 or self.isbn10
+
+    def download_cover(self):
+        if not self.cover_source:
+            return
+        response = requests.get(self.cover_source)
+        if response.status_code != 200:
+            return
+        if self.cover:
+            self.cover.delete()
+        self.cover.save(f"{self.title_slug}.jpg", ContentFile(response.content))
+        self.update_spine_color()
+
+    def update_spine_color(self):
+        if self.cover:
+            self.spine_color = get_spine_color(self.cover)
+
+    def save(self, *args, **kwargs):
+        result = super().save(*args, **kwargs)
+        if not self.cover and self.cover_source:
+            self.download_cover()
+        return result
 
 
 class BookRelation(models.Model):

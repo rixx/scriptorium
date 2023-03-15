@@ -98,6 +98,8 @@ class BookEditForm(forms.ModelForm):
         # TODO put all this in BookMixin
         # download cover if necessary and recalculate spine colour
         # if part of a series, make sure series height is matching
+        if "cover_source" in self.changed_data:
+            self.instance.download_cover()
         return super().save(*args, **kwargs)
 
     class Meta:
