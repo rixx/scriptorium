@@ -29,7 +29,7 @@ class BookSelectForm(forms.Form):
 
 
 class EditionSelectForm(forms.Form):
-    edition_selection = forms.ChoiceField()
+    edition_selection = forms.ChoiceField(widget=forms.RadioSelect)
 
     def __init__(self, *args, editions, **kwargs):
         super().__init__(*args, **kwargs)
@@ -80,6 +80,9 @@ class BookWizardForm(forms.ModelForm):
             "new_tags",
             "plot",
         )
+        widgets = {
+            "tags": forms.CheckboxSelectMultiple(),
+        }
 
 
 class ReviewWizardForm(forms.ModelForm):

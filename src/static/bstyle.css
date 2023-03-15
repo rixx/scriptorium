@@ -1,0 +1,29 @@
+form p {
+  display: flex;
+  flex-direction: column;
+  min-width: 800px;
+  max-width: 100%;
+}
+form p label {
+  font-weight: bold;
+}
+form p input, form p textarea {
+  margin-top: 0.5em;
+  padding: 0.5em;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 1em;
+}
+form button, form input[type="submit"] {
+  margin-top: 1em;
+  padding: 0.6em 1em 0.4em 1em;
+  border: 0;
+  border-radius: 3px;
+  background: #333;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1em;
+  font-weight: bold;
+  cursor: pointer;
+}

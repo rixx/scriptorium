@@ -8,6 +8,9 @@
 
     <link rel="stylesheet" href="{{static('/style.css')}}">
     <link rel="stylesheet" href="{{static('/fonts/stylesheet.css')}}">
+    {% if request.path[:3] == '/b/' %}
+    <link rel="stylesheet" href="{{static('/bstyle.css')}}">
+    {% endif %}
 
     <script src="{{static('/search.js')}}" defer></script>
 
