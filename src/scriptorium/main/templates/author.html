@@ -4,7 +4,7 @@
 
   <h2>Books by {{ author_obj.name }}</h2>
   {% if not request.user.is_anonymous %}
-    <small><a href="/bibliothecarius/{{ author_obj.name_slug }}/">edit</a></small>
+    <small><a href="/b/{{ author_obj.name_slug }}/">edit</a></small>
   {% endif %}
 
   {% set shelf_books = books %}

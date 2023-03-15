@@ -415,8 +415,8 @@ class LoginView(FormView):
             )
             if user:
                 login(request, user)
-                return redirect("/bibliothecarius/new")
-        return redirect("/bibliothecarius/login")
+                return redirect("/b/new")
+        return redirect("/b/login")
 
 
 def logout_view(request):

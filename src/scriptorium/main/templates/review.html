@@ -24,7 +24,7 @@
       {% set book = review.book %}
     <h1 id="title">{{ book.title | smartypants | safe }}</h1>
     {% if not request.user.is_anonymous %}
-      <small><a href="/bibliothecarius/{{ book.slug }}/">edit</a></small>
+      <small><a href="/b/{{ book.slug }}/">edit</a></small>
     {% endif %}
     <table class="book_metadata">
       <tr>
