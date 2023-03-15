@@ -13,7 +13,7 @@ setup(
     install_requires=[
         "bs4",
         "django==4.1.*",
-        "django_context_decorator-1.6.0",
+        "django_context_decorator==1.6.0",
         "django-formtools==2.4",
         "inquirer==2.6.*",
         "jinja2==2.11.*",
