@@ -583,9 +583,13 @@ class PageEdit(LoginRequiredMixin, UpdateView):
         return redirect(f"/p/{form.instance.slug}/")
 
 
-class PageList(AuthorMixin, LoginRequiredMixin, ListView):
+class PageList(LoginRequiredMixin, TemplateView):
     template_name = "page_list.html"
-    model = Page
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["pages"] = Page.objects.all()
+        return context
 
 
 class PageView(TemplateView):

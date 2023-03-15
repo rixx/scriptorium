@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  <h2>Page list</h2>
+
+  <a href="/b/page/new">Create new page</a>
+  <ul>
+  {% for page in pages %}
+    <li><a href="/b/page/{{ page.slug }}">{{ page.title }}</a></li>
+  {% endfor %}
+  </ul>
+{% endblock %}
