@@ -3,6 +3,7 @@ import hashlib
 import math
 import random
 import uuid
+from io import BytesIO
 from itertools import groupby
 from pathlib import Path
 
@@ -10,12 +11,17 @@ import requests
 from django.core.files.base import ContentFile
 from django.db import models
 from django.utils.functional import cached_property
+from PIL import Image
 
 from .utils import get_spine_color
 
 
 def get_cover_path(instance, filename):
     return f"{instance.slug}/cover{Path(filename).suffix}"
+
+
+def get_thumbnail_path(instance, filename):
+    return f"{instance.book.slug}/{instance.size}{Path(filename).suffix}"
 
 
 class ToRead(models.Model):
@@ -140,6 +146,14 @@ class Book(models.Model):
     def isbn(self):
         return self.isbn13 or self.isbn10
 
+    @cached_property
+    def cover_thumbnail(self):
+        return Thumbnail.objects.filter(book=self, size="thumbnail").first()
+
+    @cached_property
+    def cover_square(self):
+        return Thumbnail.objects.filter(book=self, size="square").first()
+
     def download_cover(self):
         if not self.cover_source:
             return
@@ -148,8 +162,42 @@ class Book(models.Model):
             return
         if self.cover:
             self.cover.delete()
+        Thumbnail.objects.filter(book=self).delete()
         self.cover.save(f"{self.title_slug}.jpg", ContentFile(response.content))
         self.update_spine_color()
+
+    def update_thumbnail(self):
+        if not self.cover:
+            return
+        if self.cover_thumbnail:
+            del self.cover_thumbnail
+        if self.cover_square:
+            del self.cover_square
+        im = Image.open(self.cover.path)
+        if im.width > 240 and im.height > 240:
+            im.thumbnail((240, 240))
+        buffer = BytesIO()
+        im.save(fp=buffer, format="JPEG", quality=95)
+        imgfile = ContentFile(buffer.getvalue())
+
+        t = Thumbnail.objects.create(book=self, size="thumbnail")
+        t.thumb.save("thumbnail.jpg", imgfile)
+
+        im = Image.open(self.cover.path)
+        im.thumbnail((240, 240))
+        dimension = max(im.size)
+        im = Image.new("RGBA", size=(dimension, dimension), color=(255, 255, 255, 0))
+
+        if im.height > im.width:
+            im.paste(im, box=((dimension - im.width) // 2, 0))
+        else:
+            im.paste(im, box=(0, (dimension - im.height) // 2))
+
+        buffer = BytesIO()
+        im.save(fp=buffer, format="PNG", quality=95)
+        imgfile = ContentFile(buffer.getvalue())
+        t = Thumbnail.objects.create(book=self, size="square")
+        t.thumb.save("square.png", imgfile)
 
     def update_spine_color(self):
         if self.cover:
@@ -299,3 +347,9 @@ class Page(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Thumbnail(models.Model):
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name="thumbnails")
+    size = models.CharField(max_length=255)
+    thumb = models.FileField(upload_to=get_thumbnail_path)
