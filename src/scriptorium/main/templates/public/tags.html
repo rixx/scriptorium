@@ -16,7 +16,7 @@
 <hr>
 
 <section>
-{% for tag in tags %}
+  {% for tag in tags %}{% if tag.book_count %}
   <a href="/lists/{{ tag.name_slug }}">
     <div class="lists">
       <div class="book-metadata">
@@ -29,6 +29,6 @@
       </div>
     </div>
   </a>
-{% endfor %}
+{% endif %}{% endfor %}
 </section>
 {% endblock %}
