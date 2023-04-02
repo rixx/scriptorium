@@ -1,17 +1,8 @@
 #!/bin/bash
-# Update this web app
 
-# Switch to proper user
-su - books
-cd /usr/share/webapps/books/scriptorium/src
+runuser -u books git pull
 
-# Update the code
-git pull
+runuser -u books python manage.py migrate
+runuser -u books python manage.py collectstatic --noinput
 
-# Update the database
-python manage.py migrate
-python manage.py collectstatic --noinput
-
-# Restart the web server as root
-exit
-systemctl restart nginx
+systemctl restart books
