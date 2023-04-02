@@ -27,3 +27,7 @@ form button, form input[type="submit"] {
   font-weight: bold;
   cursor: pointer;
 }
+p .ts-control, p .ts-control input, p .ts-dropdown {
+  font-size: 1em;
+  line-height: inherit;
+}
