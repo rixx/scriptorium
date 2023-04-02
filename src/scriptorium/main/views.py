@@ -45,7 +45,7 @@ class ActiveTemplateView(TemplateView):
 
 
 class IndexView(ActiveTemplateView):
-    template_name = "index.html"
+    template_name = "public/index.html"
 
     @context
     def shelf_books(self):
@@ -74,7 +74,7 @@ class YearNavMixin:
 
 
 class YearView(YearNavMixin, ActiveTemplateView):
-    template_name = "list_reviews.html"
+    template_name = "public/list_reviews.html"
     active = "read"
 
     @context
@@ -108,7 +108,7 @@ class YearView(YearNavMixin, ActiveTemplateView):
 
 
 class YearInBooksView(YearView):
-    template_name = "year_stats.html"
+    template_name = "public/year_stats.html"
     active = "read"
 
     @context
@@ -123,7 +123,7 @@ class YearInBooksView(YearView):
 
 
 class ReviewByAuthor(YearNavMixin, ActiveTemplateView):
-    template_name = "list_by_author.html"
+    template_name = "public/list_by_author.html"
     active = "read"
 
     @context
@@ -159,7 +159,7 @@ class ReviewByAuthor(YearNavMixin, ActiveTemplateView):
 
 
 class ReviewByTitle(YearNavMixin, ActiveTemplateView):
-    template_name = "list_by_title.html"
+    template_name = "public/list_by_title.html"
     active = "read"
 
     @context
@@ -192,7 +192,7 @@ class ReviewByTitle(YearNavMixin, ActiveTemplateView):
 
 
 class ReviewBySeries(YearNavMixin, ActiveTemplateView):
-    template_name = "list_by_series.html"
+    template_name = "public/list_by_series.html"
     active = "read"
 
     @context
@@ -231,7 +231,7 @@ class ReviewBySeries(YearNavMixin, ActiveTemplateView):
 
 
 class StatsView(ActiveTemplateView):
-    template_name = "stats.html"
+    template_name = "public/stats.html"
     active = "stats"
 
     @context
@@ -244,7 +244,7 @@ class StatsView(ActiveTemplateView):
 
 
 class GraphView(ActiveTemplateView):
-    template_name = "graph.html"
+    template_name = "public/graph.html"
     active = "graph"
 
     def get_context_data(self, **kwargs):
@@ -294,7 +294,7 @@ class ReviewMixin:
 
 
 class ReviewView(ReviewMixin, ActiveTemplateView):
-    template_name = "review.html"
+    template_name = "public/review.html"
     active = "review"
 
 
@@ -326,7 +326,7 @@ class ReviewCoverSquareView(ReviewView):
 
 
 class QueueView(ActiveTemplateView):
-    template_name = "list_queue.html"
+    template_name = "public/list_queue.html"
     active = "queue"
 
     @context
@@ -368,7 +368,7 @@ class QueueView(ActiveTemplateView):
 
 
 class ListView(ActiveTemplateView):
-    template_name = "tags.html"
+    template_name = "public/tags.html"
     active = "list"
 
     @context
@@ -386,7 +386,7 @@ class ListView(ActiveTemplateView):
 
 
 class ListDetail(ActiveTemplateView):
-    template_name = "tag.html"
+    template_name = "public/tag.html"
     active = "list"
 
     @context
@@ -418,7 +418,7 @@ class AuthorMixin:
 
 
 class AuthorView(AuthorMixin, ActiveTemplateView):
-    template_name = "author.html"
+    template_name = "public/author.html"
     active = "review"
 
 
@@ -445,7 +445,7 @@ def logout_view(request):
 
 
 class TohuwabohuView(LoginRequiredMixin, TemplateView):
-    template_name = "tohuwabohu.html"
+    template_name = "private/tohuwabohu.html"
 
     @context
     def no_pages(self):
@@ -469,11 +469,11 @@ class TohuwabohuView(LoginRequiredMixin, TemplateView):
 
 
 class Bibliothecarius(LoginRequiredMixin, TemplateView):
-    template_name = "bibliothecarius.html"
+    template_name = "private/bibliothecarius.html"
 
 
 class AuthorEdit(AuthorMixin, LoginRequiredMixin, UpdateView):
-    template_name = "author_edit.html"
+    template_name = "private/author_edit.html"
     model = Author
     form_class = AuthorForm
 
@@ -486,7 +486,6 @@ class AuthorEdit(AuthorMixin, LoginRequiredMixin, UpdateView):
 
 
 class ReviewCreate(LoginRequiredMixin, SessionWizardView):
-    template_name = "index.html"
     active = "review"
     form_list = [
         ("search", BookSearchForm),
@@ -496,7 +495,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
         ("review", ReviewWizardForm),
         # ("quotes", QuoteWizardForm),
     ]
-    template_name = "review_create.html"
+    template_name = "private/review_create.html"
 
     #     def get_template_names(self):
     #         return f"new_review_{self.steps.current}.html"
@@ -558,7 +557,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
 
 
 class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):
-    template_name = "review_edit.html"
+    template_name = "private/review_edit.html"
     model = Book
     form_class = BookEditForm
 
@@ -583,7 +582,7 @@ class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):
 class PageCreate(LoginRequiredMixin, CreateView):
     model = Page
     form_class = PageForm
-    template_name = "page_create.html"
+    template_name = "private/page_create.html"
 
     def form_valid(self, form):
         form.save()
@@ -593,7 +592,7 @@ class PageCreate(LoginRequiredMixin, CreateView):
 class PageEdit(LoginRequiredMixin, UpdateView):
     model = Page
     form_class = PageForm
-    template_name = "page_edit.html"
+    template_name = "private/page_edit.html"
 
     def get_object(self):
         return Page.objects.get(slug=self.kwargs["slug"])
@@ -604,7 +603,7 @@ class PageEdit(LoginRequiredMixin, UpdateView):
 
 
 class PageList(LoginRequiredMixin, TemplateView):
-    template_name = "page_list.html"
+    template_name = "private/page_list.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -613,7 +612,7 @@ class PageList(LoginRequiredMixin, TemplateView):
 
 
 class PageView(TemplateView):
-    template_name = "page.html"
+    template_name = "public/page.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
