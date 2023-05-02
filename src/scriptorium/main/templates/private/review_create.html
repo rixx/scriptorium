@@ -4,7 +4,7 @@
 
   <h2>{{ wizard.steps.current }}</h2>
 
-  <form method="POST">
+  <form method="POST" id="wizard-{{ wizard.steps.current }}">
     {{ wizard.form.media }}
     {{ wizard.management_form }}
     {{ wizard.form.errors }}
