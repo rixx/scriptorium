@@ -45,7 +45,7 @@ class BookWizardForm(forms.ModelForm):
         if openlibrary:
             initial["title"] = initial.get("title") or openlibrary["title"]
             initial["openlibrary_id"] = openlibrary["identifiers"]["openlibrary"]
-            initial["isbn13"] = openlibrary["identifiers"]["isbn_13"][0]
+            initial["isbn13"] = openlibrary["identifiers"].get("isbn_13", [""])[0]
             initial["goodreads_id"] = openlibrary["identifiers"].get("goodreads")
             initial["pages"] = openlibrary.get(
                 "number_of_pages", openlibrary.get("pagination")
