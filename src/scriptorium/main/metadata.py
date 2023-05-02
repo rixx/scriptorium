@@ -28,11 +28,14 @@ def get_openlibrary_editions(work_id):
         if language and language not in known_languages:
             continue
         language = language.split("/")[-1] if language else language
+        pages = edition.get("number_of_pages", edition.get("pagination")) or 0
         result.append((
             edition["key"].split("/")[-1],
-            f"{edition['title']}: {edition.get('publish_date' or '')}, {language}, {edition.get('number_of_pages', edition.get('pagination'))} pages",
-            ))
-    return result
+            f"{edition['title']}: {edition.get('publish_date' or '')}, {language}, {pages} pages",
+            {"lang": language, "pages": pages}
+        ))
+    result = sorted(result, key=lambda x: (x[2]["lang"] or "zzz", -int(x[2]["pages"])))
+    return [(r[0], r[1]) for r in result]
 
 
 def get_openlibrary_book(isbn=None, olid=None):
