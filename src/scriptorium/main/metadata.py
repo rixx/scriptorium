@@ -19,22 +19,20 @@ def search_book(search):
 
 
 def get_openlibrary_editions(work_id):
-    result = requests.get(
-        f"https://openlibrary.org/works/{work_id}/editions.json"
-    ).json()
+    data = requests.get(f"https://openlibrary.org/works/{work_id}/editions.json").json()
+    result = []
     # we don't paginate, fuckit
     known_languages = ("/languages/eng", "/languages/ger", "/languages/lat")
-    return [
-        (
-            r["key"].split("/")[-1],
-            f"{r.get('publish_date' or ['', ''])[0], r.get('languages', [''])[0].split('/')[-1]}, {r.get('number_of_pages', r.get('pagination'))} pages",
-        )
-        for r in result["entries"]
-        if not r.get("languages")
-        or any(lang in known_languages for lang in r["languages"])
-        and r.get("covers")
-        and r["covers"][0] != -1
-    ]
+    for edition in data["entries"]:
+        language = edition["languages"][0]["key"] if edition.get("languages") else ""
+        if language and language not in known_languages:
+            continue
+        language = language.split("/")[-1] if language else language
+        result.append((
+            edition["key"].split("/")[-1],
+            f"{edition['title']}: {edition.get('publish_date' or '')}, {language}, {edition.get('number_of_pages', edition.get('pagination'))} pages",
+            ))
+    return result
 
 
 def get_openlibrary_book(isbn=None, olid=None):
