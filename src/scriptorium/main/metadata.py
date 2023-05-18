@@ -6,7 +6,8 @@ import requests
 def search_book(search):
     query = urllib.parse.quote(search)
     url = f"https://openlibrary.org/search.json?q={query}"
-    response = requests.get(url).json()
+    # timeout is 5 seconds
+    response = requests.get(url, timeout=5).json()
     result = []
     for item in response["docs"]:
         result.append(
@@ -19,7 +20,7 @@ def search_book(search):
 
 
 def get_openlibrary_editions(work_id):
-    data = requests.get(f"https://openlibrary.org/works/{work_id}/editions.json").json()
+    data = requests.get(f"https://openlibrary.org/works/{work_id}/editions.json", timeout=5).json()
     result = []
     # we don't paginate, fuckit
     known_languages = ("/languages/eng", "/languages/ger", "/languages/lat")
@@ -47,7 +48,8 @@ def get_openlibrary_book(isbn=None, olid=None):
         search = f"OLID:{olid}"
     return list(
         requests.get(
-            f"https://openlibrary.org/api/books?bibkeys={search}&format=json&jscmd=data"
+            f"https://openlibrary.org/api/books?bibkeys={search}&format=json&jscmd=data",
+            timeout=5,
         )
         .json()
         .values()

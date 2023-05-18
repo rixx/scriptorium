@@ -520,22 +520,39 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
         )
 
         if step == "select":
-            kwargs["works"] = search_book(
-                self.get_cleaned_data_for_step("search")["search_input"]
-            )
+            try:
+                kwargs["works"] = search_book(
+                    self.get_cleaned_data_for_step("search")["search_input"]
+                )
+            except Exception:
+                messages.error(
+                    self.request,
+                    "Something went wrong while searching for books. Please try again or enter the data yourself.",
+                )
+                kwargs["works"] = [("manual", "Enter manually")]
         elif step == "edition":
             # includes cover
             select_data = self.get_cleaned_data_for_step("select")
             if select_data and select_data.get("search_selection") != "manual":
-                editions = get_openlibrary_editions(select_data["search_selection"])
-                kwargs[
-                    "editions"
-                ] = editions  # form can use url https://covers.openlibrary.org/b/olid/{key}-L.jpg to preview the cover, and should build a select from key, title, language, whatever
+                try:
+                    editions = get_openlibrary_editions(select_data["search_selection"])
+                    kwargs[
+                        "editions"
+                    ] = editions  # form can use url https://covers.openlibrary.org/b/olid/{key}-L.jpg to preview the cover, and should build a select from key, title, language, whatever
+                except Exception:
+                    messages.error(
+                        self.request,
+                        "Something went wrong while searching for books. Please try again or enter the data yourself.",
+                    )
+                    kwargs["editions"] = []
         elif step == "book":
             if "edition" in self.get_form_list():
                 olid = self.get_cleaned_data_for_step("edition")["edition_selection"]
-                book = get_openlibrary_book(olid=olid)
-                kwargs["openlibrary"] = book
+                try:
+                    book = get_openlibrary_book(olid=olid)
+                    kwargs["openlibrary"] = book
+                except Exception:
+                    kwargs["openlibrary"] = {}
             # kwargs = {# TODO pre-fill fields here!}
         elif step == "review":
             select_data = self.get_cleaned_data_for_step("select")

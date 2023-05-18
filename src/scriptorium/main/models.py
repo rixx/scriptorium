@@ -157,8 +157,10 @@ class Book(models.Model):
     def download_cover(self):
         if not self.cover_source:
             return
-        response = requests.get(self.cover_source)
-        if response.status_code != 200:
+        try:
+            response = requests.get(self.cover_source, timeout=5)
+            response.raise_for_status()
+        except Exception:
             return
         if self.cover:
             self.cover.delete()
