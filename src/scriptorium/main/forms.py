@@ -51,7 +51,8 @@ class BookWizardForm(forms.ModelForm):
             initial["pages"] = openlibrary.get(
                 "number_of_pages", openlibrary.get("pagination")
             )
-            initial["cover_source"] = openlibrary["cover"].get("large")
+            if "cover" in openlibrary:
+                initial["cover_source"] = openlibrary["cover"].get("large")
             initial["publication_year"] = openlibrary["publish_date"]
             initial["author_name"] = " & ".join(
                 a["name"] for a in openlibrary["authors"]
