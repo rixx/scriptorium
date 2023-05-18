@@ -486,6 +486,8 @@ class AuthorEdit(AuthorMixin, LoginRequiredMixin, UpdateView):
 
 
 def show_edition_step(wizard):
+    if wizard.get_step_index() == 0:
+        return True
     return (wizard.get_cleaned_data_for_step("select") or {}).get(
         "search_selection"
     ) != "manual"
