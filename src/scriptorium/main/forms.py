@@ -5,7 +5,6 @@ from scriptorium.main.utils import slugify
 
 
 class LoginForm(forms.Form):
-
     username = forms.CharField()
     password = forms.CharField(widget=forms.PasswordInput)
 
@@ -25,15 +24,15 @@ class BookSelectForm(forms.Form):
 
     def __init__(self, *args, works, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["search_selection"].choices = works
+        self.fields["search_selection"].choices = works + [("manual", "Manual entry")]
 
 
 class EditionSelectForm(forms.Form):
     edition_selection = forms.ChoiceField(widget=forms.RadioSelect)
 
-    def __init__(self, *args, editions, **kwargs):
+    def __init__(self, *args, editions=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["edition_selection"].choices = editions
+        self.fields["edition_selection"].choices = editions or []
 
 
 class BookWizardForm(forms.ModelForm):
@@ -46,7 +45,9 @@ class BookWizardForm(forms.ModelForm):
             initial["title"] = initial.get("title") or openlibrary["title"]
             initial["openlibrary_id"] = openlibrary["identifiers"]["openlibrary"]
             initial["isbn13"] = openlibrary["identifiers"].get("isbn_13", [""])[0]
-            initial["goodreads_id"] = openlibrary["identifiers"].get("goodreads", [""])[0]
+            initial["goodreads_id"] = openlibrary["identifiers"].get("goodreads", [""])[
+                0
+            ]
             initial["pages"] = openlibrary.get(
                 "number_of_pages", openlibrary.get("pagination")
             )

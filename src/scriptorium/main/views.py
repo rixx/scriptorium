@@ -485,6 +485,12 @@ class AuthorEdit(AuthorMixin, LoginRequiredMixin, UpdateView):
         return redirect(f"/{form.instance.name_slug}/")
 
 
+def show_edition_step(wizard):
+    return (wizard.get_cleaned_data_for_step("select") or {}).get(
+        "search_selection"
+    ) != "manual"
+
+
 class ReviewCreate(LoginRequiredMixin, SessionWizardView):
     active = "review"
     form_list = [
@@ -495,6 +501,9 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
         ("review", ReviewWizardForm),
         # ("quotes", QuoteWizardForm),
     ]
+    condition_dict = {
+        "edition": show_edition_step,
+    }
     template_name = "private/review_create.html"
 
     #     def get_template_names(self):
@@ -515,14 +524,16 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
         elif step == "edition":
             # includes cover
             select_data = self.get_cleaned_data_for_step("select")
-            editions = get_openlibrary_editions(select_data["search_selection"])
-            kwargs[
-                "editions"
-            ] = editions  # form can use url https://covers.openlibrary.org/b/olid/{key}-L.jpg to preview the cover, and should build a select from key, title, language, whatever
+            if select_data and select_data.get("search_selection") != "manual":
+                editions = get_openlibrary_editions(select_data["search_selection"])
+                kwargs[
+                    "editions"
+                ] = editions  # form can use url https://covers.openlibrary.org/b/olid/{key}-L.jpg to preview the cover, and should build a select from key, title, language, whatever
         elif step == "book":
-            olid = self.get_cleaned_data_for_step("edition")["edition_selection"]
-            book = get_openlibrary_book(olid=olid)
-            kwargs["openlibrary"] = book
+            if "edition" in self.get_form_list():
+                olid = self.get_cleaned_data_for_step("edition")["edition_selection"]
+                book = get_openlibrary_book(olid=olid)
+                kwargs["openlibrary"] = book
             # kwargs = {# TODO pre-fill fields here!}
         elif step == "review":
             select_data = self.get_cleaned_data_for_step("select")
