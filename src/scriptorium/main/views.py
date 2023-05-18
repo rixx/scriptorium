@@ -544,7 +544,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
     @transaction.atomic()
     def done(self, form_list, *args, **kwargs):
         steps = {
-            step: self.get_cleaned_data_for_step(step) for step in self.form_list.keys()
+            step: self.get_cleaned_data_for_step(step) for step in self.get_form_list().keys()
         }
         author_name = steps["book"].pop("author_name")
         author, _ = Author.objects.get_or_create(
