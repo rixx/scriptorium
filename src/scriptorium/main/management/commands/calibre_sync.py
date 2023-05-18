@@ -10,7 +10,6 @@ class Command(BaseCommand):
     help = "Closes the specified poll for voting"
 
     def handle(self, *args, **options):
-
         query = "'tags:\"=on-device\"'"
         result = subprocess.check_output(
             f"calibredb list -s {query} --fields authors,title,*pages,*shelf --for-machine",

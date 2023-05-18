@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("main", "0011_book_openlibrary_id_alter_book_additional_authors_and_more"),
     ]

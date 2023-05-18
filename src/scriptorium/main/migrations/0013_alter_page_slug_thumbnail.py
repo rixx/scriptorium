@@ -6,7 +6,6 @@ import scriptorium.main.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("main", "0012_page"),
     ]

@@ -5,7 +5,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("main", "0004_rename_book_tags_book_tags_alter_review_book"),
     ]

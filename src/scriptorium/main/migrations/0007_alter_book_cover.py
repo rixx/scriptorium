@@ -5,7 +5,6 @@ import scriptorium.main.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("main", "0006_primary_author"),
     ]
