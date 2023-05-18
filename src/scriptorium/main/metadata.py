@@ -1,8 +1,28 @@
 import urllib.parse
+from functools import cache
+from django.conf import settings
 
 import requests
 
+# add profiling decorator
+def time_taken(func):
+    def wrapper(*args, **kwargs):
+        if not settings.DEBUG:
+            return func(*args, **kwargs)
 
+        import time
+
+        start = time.time()
+        result = func(*args, **kwargs)
+        end = time.time()
+        print(f"Time taken for {func.__name__}: {end - start:.2f}s")
+        return result
+
+    return wrapper
+
+
+@time_taken
+@cache
 def search_book(search):
     query = urllib.parse.quote(search)
     url = f"https://openlibrary.org/search.json?q={query}"
@@ -19,6 +39,8 @@ def search_book(search):
     return result
 
 
+@time_taken
+@cache
 def get_openlibrary_editions(work_id):
     data = requests.get(f"https://openlibrary.org/works/{work_id}/editions.json", timeout=5).json()
     result = []
@@ -41,6 +63,8 @@ def get_openlibrary_editions(work_id):
     return [(r[0], r[1]) for r in result]
 
 
+@time_taken
+@cache
 def get_openlibrary_book(isbn=None, olid=None):
     if isbn:
         search = f"ISBN:{isbn}"
