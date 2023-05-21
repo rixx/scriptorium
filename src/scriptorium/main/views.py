@@ -568,7 +568,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
         author, _ = Author.objects.get_or_create(
             name=author_name, defaults={"name_slug": slugify(author_name)}
         )
-        new_tags = steps["book"].pop("new_tags").split(",")
+        new_tags = steps["book"].pop("new_tags")
         tags = list(steps["book"].pop("tags")) or []
         if new_tags:
             for tag in new_tags:
