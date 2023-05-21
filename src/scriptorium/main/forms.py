@@ -61,6 +61,12 @@ class BookWizardForm(forms.ModelForm):
             initial["title_slug"] = slugify(initial["title"])
         super().__init__(*args, **kwargs, initial=initial)
 
+    def clean_new_tags(self):
+        new_tags = self.cleaned_data["new_tags"]
+        if new_tags:
+            return [t.strip() for t in new_tags.split(",") if t.strip()]
+        return []
+
     class Meta:
         model = Book
         # TODO handle authors here D:
@@ -95,6 +101,12 @@ class ReviewWizardForm(forms.ModelForm):
 
 class BookEditForm(forms.ModelForm):
     new_tags = forms.CharField(required=False)
+
+    def clean_new_tags(self):
+        new_tags = self.cleaned_data["new_tags"]
+        if new_tags:
+            return [t.strip() for t in new_tags.split(",") if t.strip()]
+        return []
 
     def save(self, *args, **kwargs):
         # TODO put all this in BookMixin
