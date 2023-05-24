@@ -88,9 +88,6 @@ class BookWizardForm(forms.ModelForm):
             "new_tags",
             "plot",
         )
-        widgets = {
-            "tags": forms.CheckboxSelectMultiple(),
-        }
 
 
 class ReviewWizardForm(forms.ModelForm):
