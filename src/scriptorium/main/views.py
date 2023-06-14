@@ -573,8 +573,9 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
         tags = list(steps["book"].pop("tags")) or []
         if new_tags:
             for tag in new_tags:
+                category, name = tag.split(":")
                 tags.append(
-                    Tag.objects.create(name=tag.strip(), name_slug=slugify(tag))
+                    Tag.objects.create(name_slug=name, category=category)
                 )
         book = Book.objects.create(**steps["book"], primary_author=author)
         book.tags.set(tags)
