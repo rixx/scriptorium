@@ -53,12 +53,15 @@ class Author(models.Model):
 
 
 class Tag(models.Model):
-    name = models.CharField(max_length=300)
+    category = models.CharField(max_length=300)
     name_slug = models.CharField(max_length=300)
     text = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        ordering = ("category", "name_slug")
 
 
 class BookManager(models.Manager):
