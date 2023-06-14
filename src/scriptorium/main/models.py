@@ -53,7 +53,16 @@ class Author(models.Model):
 
 
 class Tag(models.Model):
-    category = models.CharField(max_length=300)
+    class TagCategory(models.TextChoices):
+        GENRE = "genre", "genre"
+        FORMAT = "format", "format"
+        LANGUAGE = "language", "language"
+        AWARDS = "awards", "awards"
+        THEMES = "themes", "themes"
+
+    category = models.CharField(
+        max_length=300, choices=TagCategory.choices, default=TagCategory.GENRE
+    )
     name_slug = models.CharField(max_length=300)
     text = models.TextField(null=True, blank=True)
 
