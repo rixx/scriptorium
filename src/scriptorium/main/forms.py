@@ -16,7 +16,9 @@ class AuthorForm(forms.ModelForm):
 
 
 class BookSearchForm(forms.Form):
-    search_input = forms.CharField(label="Search for a book", widget=forms.TextInput(attrs={"autofocus": True}))
+    search_input = forms.CharField(
+        label="Search for a book", widget=forms.TextInput(attrs={"autofocus": True})
+    )
 
 
 class BookSelectForm(forms.Form):

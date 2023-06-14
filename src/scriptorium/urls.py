@@ -1,4 +1,4 @@
-from django.urls import path, include
+from django.urls import include, path
 
 from scriptorium.main import views
 
@@ -33,13 +33,17 @@ urlpatterns = [
     path("<slug:author>/", views.AuthorView.as_view()),
     path("<slug:author>/<slug:book>/", views.ReviewView.as_view()),
     path("<slug:author>/<slug:book>/cover.jpg", views.ReviewCoverView.as_view()),
-    path("<slug:author>/<slug:book>/thumbnail.jpg", views.ReviewCoverThumbnailView.as_view()),
+    path(
+        "<slug:author>/<slug:book>/thumbnail.jpg",
+        views.ReviewCoverThumbnailView.as_view(),
+    ),
     path("<slug:author>/<slug:book>/square.png", views.ReviewCoverSquareView.as_view()),
     path("<slug:author>/<slug:book>/edit", views.ReviewEdit.as_view()),
 ]
 
 try:
     import debug_toolbar
+
     # insert url for debug toolbar at the top of the list
     urlpatterns.insert(0, path("__debug__/", include(debug_toolbar.urls)))
 except ImportError:

@@ -128,11 +128,11 @@ try:
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.append("debug_toolbar.middleware.DebugToolbarMiddleware")
     TEMPLATES.append(
-                {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "APP_DIRS": True,
-    }
-                )
+        {
+            "BACKEND": "django.template.backends.django.DjangoTemplates",
+            "APP_DIRS": True,
+        }
+    )
     INTERNAL_IPS = ["127.0.0.1", "localhost"]
 except ImportError:
     pass

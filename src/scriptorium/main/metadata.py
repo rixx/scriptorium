@@ -1,8 +1,9 @@
 import urllib.parse
 from functools import cache
-from django.conf import settings
 
 import requests
+from django.conf import settings
+
 
 # add profiling decorator
 def time_taken(func):
@@ -42,7 +43,9 @@ def search_book(search):
 @time_taken
 @cache
 def get_openlibrary_editions(work_id):
-    data = requests.get(f"https://openlibrary.org/works/{work_id}/editions.json", timeout=5).json()
+    data = requests.get(
+        f"https://openlibrary.org/works/{work_id}/editions.json", timeout=5
+    ).json()
     result = []
     # we don't paginate, fuckit
     known_languages = ("/languages/eng", "/languages/ger", "/languages/lat")
