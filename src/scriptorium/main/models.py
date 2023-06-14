@@ -67,7 +67,7 @@ class Tag(models.Model):
     text = models.TextField(null=True, blank=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.category}:{self.name_slug}"
 
     class Meta:
         ordering = ("category", "name_slug")
