@@ -62,7 +62,7 @@
         <td>lists:</td>
         <th>
           {% for tag in book.tags.all() %}
-            <a href="/lists/{{ tag.name_slug }}/">{{ tag.name }}</a>{{ ", " if not loop.last }}
+            <a href="/lists/{{ tag.name_slug }}/">{{ tag }}</a>{{ ", " if not loop.last }}
           {% endfor %}
         </th>
       </tr>

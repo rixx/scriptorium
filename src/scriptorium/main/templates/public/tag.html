@@ -2,7 +2,7 @@
 
 {% block content %}
 
-<h1>List: {{ tag_obj.name or tag_obj.name_slug }}</h1>
+<h1>List: {{ tag_obj }}</h1>
 
   {% set shelf_books = books %}
   {% include "_shelf.html" %}
