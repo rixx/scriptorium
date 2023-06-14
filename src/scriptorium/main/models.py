@@ -59,6 +59,7 @@ class Tag(models.Model):
         LANGUAGE = "language", "language"
         AWARDS = "awards", "awards"
         THEMES = "themes", "themes"
+        AUTHOR = "author", "author"
 
     category = models.CharField(
         max_length=300, choices=TagCategory.choices, default=TagCategory.GENRE
