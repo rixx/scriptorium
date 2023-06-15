@@ -16,19 +16,11 @@
 <hr>
 
 <section>
-  {% for tag in tags %}{% if tag.book_count %}
-  <a href="/lists/{{ tag.name_slug }}">
-    <div class="lists">
-      <div class="book-metadata">
-        <p class="title">{{ tag }} ({{ tag.book_count }} books, {{ tag.page_count | thousands }} pages)</p>
-      </div>
-      <div class="covers">
-        {% for book in tag.top_books[:8] %}
-          {% include "_book_cover.html" %}
-        {% endfor %}
-      </div>
-    </div>
-  </a>
-{% endif %}{% endfor %}
+  {% for category, c_tags in tags.items() %}
+    <h2>{{ category }}</h2>
+    {% for tag in c_tags %}{% if tag.book_count %} <a href="/lists/{{ tag.name_slug }}">{{ tag.name_slug }} ({{ tag.book_count }} books, {{ tag.page_count | thousands }} pages) </a>
+      {% if not loop.last %}, {% endif %}
+    {% endif %} {% endfor %}
+  {% endfor %}
 </section>
 {% endblock %}

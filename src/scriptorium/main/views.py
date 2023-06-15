@@ -386,16 +386,15 @@ class ListView(ActiveTemplateView):
 
     @context
     def tags(self):
-        result = []
-        for tag in (
+        tags = (
             Tag.objects.all()
-            .prefetch_related("book_set", "book_set__review")
+            .prefetch_related("book_set", "book_set__review", "book_set__primary_author")
             .annotate(book_count=Count("book"), page_count=Sum("book__pages"))
             .order_by("-book_count")
-        ):
-            tag.top_books = tag.book_set.order_by("-review__rating")[:8]
-            result.append(tag)
-        return result
+        )
+        # grouped by category
+        tags = {key: sorted(value, key=lambda x: x.name_slug) for key, value in groupby(tags, lambda tag: tag.category)}
+        return tags
 
 
 class ListDetail(ActiveTemplateView):
