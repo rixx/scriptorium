@@ -1,3 +1,4 @@
+from collections import defaultdict
 from itertools import groupby
 
 import networkx as nx
@@ -392,8 +393,10 @@ class ListView(ActiveTemplateView):
             .order_by("-book_count")
         )
         # grouped by category
-        tags = {key: sorted(value, key=lambda x: x.name_slug) for key, value in groupby(tags, lambda tag: tag.category)}
-        return tags
+        grouped_tags = defaultdict(list)
+        for tag in tags:
+            grouped_tags[tag.category].append(tag)
+        return grouped_tags
 
 
 class ListDetail(ActiveTemplateView):
