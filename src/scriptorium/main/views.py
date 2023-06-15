@@ -283,9 +283,21 @@ class ReviewMixin:
     @context
     @cached_property
     def book(self):
-        return Book.objects.get(
-            primary_author__name_slug=self.kwargs["author"],
-            title_slug=self.kwargs["book"],
+        return (
+            Book.objects.select_related("primary_author", "review")
+            .prefetch_related(
+                "tags",
+                "additional_authors",
+                "related_books__destination",
+                "related_books__destination__primary_author",
+                "related_books__destination__additional_authors",
+                "related_books__destination__review",
+                "quotes",
+            )
+            .get(
+                primary_author__name_slug=self.kwargs["author"],
+                title_slug=self.kwargs["book"],
+            )
         )
 
     @context
@@ -574,9 +586,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
         if new_tags:
             for tag in new_tags:
                 category, name = tag.split(":")
-                tags.append(
-                    Tag.objects.create(name_slug=name, category=category)
-                )
+                tags.append(Tag.objects.create(name_slug=name, category=category))
         book = Book.objects.create(**steps["book"], primary_author=author)
         book.tags.set(tags)
         review = Review.objects.create(
