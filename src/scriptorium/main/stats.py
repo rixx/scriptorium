@@ -287,7 +287,7 @@ def get_nodes(graph=None):
                     for term in book.title.lower().split()
                     + book.primary_author.name.lower().split()
                     + (book.series or "").lower().split()
-                    + [f"tag:{tag.name}" for tag in book.tags.all() or []]
+                    + [f"tag:{tag}" for tag in book.tags.all() or []]
                     + ([f"rating:{book.review.rating}"] if book.review.rating else [])
                     if term
                 ],
