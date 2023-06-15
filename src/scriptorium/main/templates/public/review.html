@@ -59,12 +59,14 @@
       {% endif %}
       {% if book.tags %}
       <tr>
-        <td>lists:</td>
-        <th>
-          {% for tag in book.tags.all() %}
-            <a href="/lists/{{ tag.name_slug }}/">{{ tag }}</a>{{ ", " if not loop.last }}
-          {% endfor %}
-        </th>
+        {% for category, tags in book.tags_by_category.items() %}
+          <td>{{ category }}:</td>
+          <th>
+            {% for tag in tags %}
+              <a href="/lists/{{ tag.name_slug }}/">{{ tag.name_slug }}</a>{{ ", " if not loop.last }}
+            {% endfor %}
+          </th>
+        {% endfor %}
       </tr>
       {% endif %}
       {% if review.rating %}

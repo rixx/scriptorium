@@ -156,6 +156,13 @@ class Book(models.Model):
         }
 
     @cached_property
+    def tags_by_category(self):
+        return {
+            key: list(value)
+            for key, value in groupby(self.tags.all(), lambda t: t.category)
+        }
+
+    @cached_property
     def isbn(self):
         return self.isbn13 or self.isbn10
 
