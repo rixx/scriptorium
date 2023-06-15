@@ -57,18 +57,16 @@
         <th>{{ book.pages }}</th>
       </tr>
       {% endif %}
-      {% if book.tags %}
-      <tr>
-        {% for category, tags in book.tags_by_category.items() %}
+      {% if book.tags %}{% for category, tags in book.tags_by_category.items() %}
+        <tr>
           <td>{{ category }}:</td>
           <th>
             {% for tag in tags %}
               <a href="/lists/{{ tag.name_slug }}/">{{ tag.name_slug }}</a>{{ ", " if not loop.last }}
             {% endfor %}
           </th>
-        {% endfor %}
-      </tr>
-      {% endif %}
+        </tr>
+      {% endfor %}{% endif %}
       {% if review.rating %}
       <tr>
         <td>rating:</td>
