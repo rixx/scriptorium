@@ -18,9 +18,9 @@
 <section>
   {% for category, c_tags in tags.items() %}
     <h2>{{ category }}</h2>
-    {% for tag in c_tags %}{% if tag.book_count %} <a href="/lists/{{ tag.name_slug }}">{{ tag.name_slug }} ({{ tag.book_count }} books, {{ tag.page_count | thousands }} pages) </a>
+    {% for tag in c_tags %} <a href="/lists/{{ tag.name_slug }}">{{ tag.name_slug }} ({{ tag.book_count }} books, {{ tag.page_count | thousands }} pages) </a>
       {% if not loop.last %}, {% endif %}
-    {% endif %} {% endfor %}
+    {% endfor %}
   {% endfor %}
 </section>
 {% endblock %}

@@ -388,7 +388,6 @@ class ListView(ActiveTemplateView):
     def tags(self):
         tags = (
             Tag.objects.all()
-            .prefetch_related("book_set", "book_set__review", "book_set__primary_author")
             .annotate(book_count=Count("book"), page_count=Sum("book__pages"))
             .order_by("-book_count")
         )
