@@ -51,6 +51,10 @@ class Author(models.Model):
             models.Q(primary_author=self) | models.Q(additional_authors=self)
         )
 
+    def tag_author(self, tag):
+        for book in self.books.all():
+            book.tags.add(tag)
+
 
 class Tag(models.Model):
     class TagCategory(models.TextChoices):
