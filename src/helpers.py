@@ -22,3 +22,4 @@ def new_author_tag(tag, alt_tag=None):
 
 # create thumbnails if none exist
 # create colour if none exists
+# remove empty tags
