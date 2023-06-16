@@ -393,6 +393,7 @@ class ListView(ActiveTemplateView):
                 book_count=Count("book"),
                 rating=Avg("book__review__rating"),
             )
+            .filter(book_count__gt=0)
             .order_by("-book_count")
         )
         # grouped by category
