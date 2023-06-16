@@ -1077,6 +1077,22 @@ h1#year-stats-headline:after {
   height: 350px;
   max-height: 350px;
 }
+table.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 auto;
+  margin-bottom: 30px;
+}
+table.stats-table th, td {
+  text-align: right;
+  padding: 6px 12px;
+}
+table.stats-table td:first-child {
+  text-align: left;
+}
+table.stats-table .highlight {
+  background-color: #ffcc004a;
+}
 a#mastodon-linkback {
   display: none;
 }
