@@ -29,7 +29,7 @@ urlpatterns = [
     path("search.json", views.search_data),
     path("queue/", views.QueueView.as_view()),
     path("lists/", views.ListView.as_view()),
-    path("lists/<slug:tag>/", views.ListDetail.as_view()),
+    path("lists/<tag>/", views.ListDetail.as_view()),
     path("<slug:author>/", views.AuthorView.as_view()),
     path("<slug:author>/<slug:book>/", views.ReviewView.as_view()),
     path("<slug:author>/<slug:book>/cover.jpg", views.ReviewCoverView.as_view()),
