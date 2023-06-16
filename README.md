@@ -5,7 +5,9 @@ Calibre and various online APIs. It's currently powering [books.rixx.de](https:/
 
 ## Project status
 
-This project is under heavy development, do not use.
+This project is under heavy development, but stable enough to run [books.rixx.de](https://books.rixx.de). There are
+still plenty of actions that require you (me) to use the shell, it's nowhere near an out-of-the-box solution to hosting
+your books (and it likely never will be). After setup, adding books via the web interface is possible, though!
 
 ## Setup, docs, screenshots
 
