@@ -224,7 +224,7 @@
                 <td>% female / % male authors</td>
                 <td>{{ (stats.previous.gender.female * 100 / stats.previous.total_books) | round(1) }}% / {{ (stats.previous.gender.male * 100 / stats.previous.total_books) | round(1) }}% </td>
                 <td class="highlight">{{ (stats.gender.female * 100 / stats.total_books) | round(1) }}% / {{ (stats.gender.male * 100 / stats.total_books) | round(1) }}% </td>
-                <td>{{ (stats.next.gender.female * 100 / stats.next.total_books) | round(1) }}% / {{ (stats.next.gender.male * 100 / stats.next.total_books) | round(1) }}% </td>
+                {% if stats.next %}<td>{{ (stats.next.gender.female * 100 / stats.next.total_books) | round(1) }}% / {{ (stats.next.gender.male * 100 / stats.next.total_books) | round(1) }}% </td>{% endif %}
                 <td>{{ stats.all_time['Percent female/male authors'] }}</td>
             </tr>
 
