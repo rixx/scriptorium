@@ -590,7 +590,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
         tags = list(steps["book"].pop("tags")) or []
         if new_tags:
             for tag in new_tags:
-                category, name = tag.split(":")
+                category, name = tag.split(":", maxsplit=1)
                 tags.append(Tag.objects.create(name_slug=name, category=category))
         book = Book.objects.create(**steps["book"], primary_author=author)
         book.tags.set(tags)
@@ -623,7 +623,13 @@ class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):
         if not self.review_form.is_valid():
             raise Exception(self.review_form.errors)
         form.save()
-        self.review_form.save()
+        new_tags = form.cleaned_data.pop("new_tags")
+        if new_tags:
+            for tag in new_tags:
+                category, name = tag.split(":", maxsplit=1)
+                form.instance.tags.add(
+                    Tag.objects.create(name_slug=name, category=category)
+                )
         return redirect(f"/{form.instance.slug}/")
 
 

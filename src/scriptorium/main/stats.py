@@ -3,10 +3,10 @@ import statistics
 from collections import Counter, defaultdict
 
 import networkx as nx
-from django.db.models import Q
+from django.db.models import Avg, Q, Sum
 from django.utils.timezone import now
 
-from .models import Book, Review
+from .models import Book, Review, Tag
 
 
 def get_all_years():
@@ -179,25 +179,46 @@ def get_stats_grid():
 
 def median_year(reviews):
     return statistics.median(
-        Review.objects.all()
-        .filter(book__publication_year__isnull=False)
-        .values_list("book__publication_year", flat=True)
+        reviews.filter(book__publication_year__isnull=False).values_list(
+            "book__publication_year", flat=True
+        )
     )
 
 
 def median_length(reviews):
     return statistics.median(
-        Review.objects.all()
-        .filter(book__pages__isnull=False)
-        .values_list("book__pages", flat=True)
+        reviews.filter(book__pages__isnull=False).values_list("book__pages", flat=True)
     )
+
+
+def average_rating(reviews):
+    return round(reviews.aggregate(Avg("rating"))["rating__avg"], 1)
+
+
+def count_pages(reviews):
+    return reviews.aggregate(Sum("book__pages"))["book__pages__sum"]
+
+
+def get_tag_count(reviews, tag_name):
+    category, name_slug = tag_name.split(":", maxsplit=1)
+    return reviews.filter(
+        book__tags__in=[Tag.objects.get(category=category, name_slug=name_slug)]
+    ).count()
 
 
 def get_stats_table():
     reviews = Review.objects.all()
     review_count = reviews.count()
+    percent_female = round(
+        get_tag_count(reviews, "author:gender:female") * 100 / review_count, 1
+    )
+    percent_male = round(
+        get_tag_count(reviews, "author:gender:male") * 100 / review_count, 1
+    )
+
     return [
         ("Total books", len(reviews)),
+        ("Total pages", count_pages(reviews)),
         (
             "Books without review",
             reviews.filter(Q(text__isnull=True) | Q(text="")).count(),
@@ -212,19 +233,19 @@ def get_stats_table():
         ),
         ("Median publication year", median_year(reviews)),
         ("Median length", median_length(reviews)),  # TODO median_length(plans)),
+        ("Average rating", average_rating(reviews)),
+        ("Percent female/male authors", f"{percent_female}% / {percent_male}%"),
     ]
 
 
-def get_year_stats(year):
-    reviews = Review.objects.filter(dates_read__contains=year)
+def get_year_stats(year, extra_years=True):
+    reviews = Review.objects.filter(dates_read__contains=year).select_related("book")
     stats = {}
     total_books = len(reviews)
     stats["total_books"] = total_books
-    stats["total_pages"] = sum(review.book.pages or 0 for review in reviews)
+    stats["total_pages"] = count_pages(reviews)
     stats["average_pages"] = round(stats["total_pages"] / total_books, 1)
-    stats["average_rating"] = round(
-        sum(review.rating or 0 for review in reviews) / total_books, 1
-    )
+    stats["average_rating"] = average_rating(reviews)
     page_reviews = reviews.order_by("book__pages")
     stats["shortest_book"] = page_reviews.first().book
     stats["longest_book"] = page_reviews.last().book
@@ -234,6 +255,17 @@ def get_year_stats(year):
     stats["average_review"] = round(
         sum(review.word_count for review in reviews) / total_books, 1
     )
+    stats["median_year"] = median_year(reviews)
+    stats["median_length"] = median_length(reviews)
+    stats["all_time"] = dict(get_stats_table())
+    if extra_years:
+        stats["previous"] = get_year_stats(year - 1, extra_years=False)
+        if Review.objects.filter(dates_read__contains=year + 1).exists():
+            stats["next"] = get_year_stats(year + 1, extra_years=False)
+    stats["gender"] = {
+        "male": get_tag_count(reviews, "author:gender:male"),
+        "female": get_tag_count(reviews, "author:gender:female"),
+    }
     reviews = sorted(reviews, key=lambda x: x.date_read_lookup[year], reverse=True)
     stats["first_book"] = reviews[-1].book
     stats["last_book"] = reviews[0].book

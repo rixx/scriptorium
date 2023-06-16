@@ -31,7 +31,7 @@
                 </div>
             </div>
         </div>
-        <div class="stats-line-ps">♥</div>
+        <div class="stats-line-ps">❤️  📚 ❤️</div>
     </div>
     <div class="stats-line-wrapper">
         <div class="stats-line">
@@ -143,6 +143,9 @@
         <div class="stats-line-ps">
             <span class="number">{{ stats.average_review }}</span> words in the average review
         </div>
+        <div class="stats-line-ps">
+            More detailed stats and numbers <a href="#details">below</a>.
+        </div>
     </div>
 </div>
 
@@ -160,5 +163,73 @@
     {% endfor %}
 
 </div>
+
+<div>
+    <h2 id="details">Stats and numbers</h2>
+
+    <table class="stats-table">
+        <thead>
+            <tr>
+                <th></th>
+                <th>{{ year - 1 }}</th>
+                <th class="highlight">{{ year }}</th>
+                {% if stats.next %}<th>{{ year + 1 }}</th>{% endif %}
+                <th>all time</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>books read</td>
+                <td>{{ stats.previous.total_books }}</td>
+                <td class="highlight">{{ stats.total_books }}</td>
+                {% if stats.next %}<td>{{ stats.next.total_books }}</td>{% endif %}
+                <td>{{ stats.all_time['Total books'] }}</td>
+            </tr>
+            <tr>
+                <td>pages read</td>
+                <td>{{ stats.previous.total_pages| thousands  }}</td>
+                <td class="highlight">{{ stats.total_pages | thousands }}</td>
+                {% if stats.next %}<td>{{ stats.next.total_pages| thousands  }}</td>{% endif %}
+                <td>{{ stats.all_time['Total pages'] | thousands }}</td>
+            </tr>
+            <tr>
+                <td>books per week</td>
+                <td>{{ (stats.previous.total_books / 52) | round(1) }}</td>
+                <td class="highlight">{{ (stats.total_books / 52) | round(1) }}</td>
+                {% if stats.next %}<td>{{ (stats.next.total_books / 52) | round(1) }}</td>{% endif %}
+                <td>{{ stats.all_time['Books per week'] }}</td>
+            </tr>
+            <tr>
+                <td>median length</td>
+                <td>{{ stats.previous.median_length | round(0) }}</td>
+                <td class="highlight">{{ stats.median_length | round(0) }}</td>
+                {% if stats.next %}<td>{{ stats.next.median_length | round(0) }}</td>{% endif %}
+                <td>{{ stats.all_time['Median length'] }}</td>
+            </tr>
+            <tr>
+                <td>median publication year</td>
+                <td>{{ stats.previous.median_year | int }}</td>
+                <td class="highlight">{{ stats.median_year | int }}</td>
+                {% if stats.next %}<td>{{ stats.next.median_year | int }}</td>{% endif %}
+                <td>{{ stats.all_time['Median publication year'] }}</td>
+            </tr>
+            <tr>
+                <td>average rating</td>
+                <td>{{ stats.previous.average_rating | round(1) }}</td>
+                <td class="highlight">{{ stats.average_rating | round(1) }}</td>
+                {% if stats.next %}<td>{{ stats.next.average_rating | round(1) }}</td>{% endif %}
+                <td>{{ stats.all_time['Average rating'] }}</td>
+            </tr>
+            <tr>
+                <td>% female / % male authors</td>
+                <td>{{ (stats.previous.gender.female * 100 / stats.previous.total_books) | round(1) }}% / {{ (stats.previous.gender.male * 100 / stats.previous.total_books) | round(1) }}% </td>
+                <td class="highlight">{{ (stats.gender.female * 100 / stats.total_books) | round(1) }}% / {{ (stats.gender.male * 100 / stats.total_books) | round(1) }}% </td>
+                <td>{{ (stats.next.gender.female * 100 / stats.next.total_books) | round(1) }}% / {{ (stats.next.gender.male * 100 / stats.next.total_books) | round(1) }}% </td>
+                <td>{{ stats.all_time['Percent female/male authors'] }}</td>
+            </tr>
+
+        </tbody>
+    </table>
+
 
 {% endblock %}
