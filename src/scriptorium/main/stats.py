@@ -262,6 +262,8 @@ def get_year_stats(year, extra_years=True):
         stats["previous"] = get_year_stats(year - 1, extra_years=False)
         if Review.objects.filter(dates_read__contains=year + 1).exists():
             stats["next"] = get_year_stats(year + 1, extra_years=False)
+        else:
+            stats["next"] = None
     stats["gender"] = {
         "male": get_tag_count(reviews, "author:gender:male"),
         "female": get_tag_count(reviews, "author:gender:female"),
