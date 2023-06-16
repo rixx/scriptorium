@@ -211,7 +211,7 @@
                 <td>{{ stats.previous.median_year | int }}</td>
                 <td class="highlight">{{ stats.median_year | int }}</td>
                 {% if stats.next %}<td>{{ stats.next.median_year | int }}</td>{% endif %}
-                <td>{{ stats.all_time['Median publication year'] }}</td>
+                <td>{{ stats.all_time['Median publication year'] | int }}</td>
             </tr>
             <tr>
                 <td>average rating</td>
