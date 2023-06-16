@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
-from django.db.models import Count, Q, Sum
+from django.db.models import Avg, Count, Q, Sum
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import redirect
 from django.utils.functional import cached_property
@@ -389,7 +389,10 @@ class ListView(ActiveTemplateView):
     def tags(self):
         tags = (
             Tag.objects.all()
-            .annotate(book_count=Count("book"), page_count=Sum("book__pages"))
+            .annotate(
+                book_count=Count("book"),
+                rating=Avg("book__review__rating"),
+            )
             .order_by("-book_count")
         )
         # grouped by category

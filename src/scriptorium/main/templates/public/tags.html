@@ -18,7 +18,7 @@
 <section>
   {% for category, c_tags in tags.items() %}
     <h2>{{ category }}</h2>
-    {% for tag in c_tags %} <a href="/lists/{{ tag.name_slug }}">{{ tag.name_slug }} ({{ tag.book_count }} books, {{ tag.page_count | thousands }} pages) </a>
+    {% for tag in c_tags %} <a href="/lists/{{ tag.name_slug }}">{{ tag.name_slug }} ({{ tag.book_count }} books, {{ tag.rating | round(1) }} avg. rating) </a>
       {% if not loop.last %}, {% endif %}
     {% endfor %}
   {% endfor %}
