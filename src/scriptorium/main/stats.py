@@ -3,7 +3,8 @@ import statistics
 from collections import Counter, defaultdict
 
 import networkx as nx
-from django.db.models import Avg, Q, Sum
+import pygal
+from django.db.models import Avg, Max, Q, Sum
 from django.utils.timezone import now
 
 from .models import Book, Review, Tag
@@ -107,7 +108,7 @@ def generate_svg(
 def get_stats_grid():
     stats = {}
     time_lookup = defaultdict(list)
-    for review in Review.objects.all():
+    for review in Review.objects.all().select_related("book"):
         for timestamp in review.dates_read_list:
             key = timestamp.strftime("%Y-%m")
             time_lookup[key].append(review)
@@ -333,3 +334,140 @@ def get_nodes(graph=None):
 def get_edges(graph=None):
     graph = graph or get_graph()
     return [{"source": source, "target": target} for source, target in graph.edges]
+
+
+def _get_chart(data, title, y_label, **kwargs):
+    style = pygal.style.DefaultStyle
+    style.colors = [
+        "#990000",
+        "#007171",
+    ]
+    style.font_family = "EB Garamond 12"
+    style.label_font_size = 18
+    style.major_label_font_size = 18
+    style.value_font_size = 18
+    style.major_value_font_size = 18
+    style.tooltip_font_size = 18
+    style.title_font_size = 24
+    style.background = "transparent"
+
+    config = {
+        "interpolate": "cubic",
+        "show_legend": False,
+        "dot_size": 10,
+        "js": ["/static/vendored/pygal-tooltips.min.js"],
+        "style": style,
+        "x_label_rotation": 40,
+    }
+    for key, value in kwargs.items():
+        config[key] = value
+    chart = pygal.Line(**config)
+    chart.title = title
+    chart.x_labels = [x for x, _ in data]
+    chart.add(y_label, [y for _, y in data])
+    return chart
+
+
+def get_charts():
+    rating_over_time = [
+        (
+            year,
+            Review.objects.filter(
+                rating__isnull=False, dates_read__contains=year
+            ).aggregate(Avg("rating"))["rating__avg"],
+        )
+        for year in reversed(get_all_years())
+    ]
+
+    page_buckets = [0, 50, 100, 150, 200, 250, 300, 350, 400, 500, 750, 1000, 2000]
+
+    rating_over_pages = [
+        (
+            f"{pages}-{next_pages or '∞'}",
+            round(
+                Review.objects.filter(
+                    rating__isnull=False,
+                    book__pages__gte=pages,
+                    book__pages__lt=next_pages,
+                ).aggregate(Avg("rating"))["rating__avg"],
+                1,
+            ),
+        )
+        for pages, next_pages in zip(page_buckets, page_buckets[1:])
+    ]
+    rating_over_pages.append(
+        (
+            f"{page_buckets[-1]}+",
+            Review.objects.filter(
+                rating__isnull=False, book__pages__gte=page_buckets[-2]
+            ).aggregate(Avg("rating"))["rating__avg"],
+        )
+    )
+
+    publication_year_buckets = [
+        0,
+        1900,
+        1925,
+        1950,
+        1975,
+        1985,
+        1990,
+        1995,
+        2000,
+        2005,
+        2010,
+        2015,
+        2020,
+    ]
+    rating_over_publication_year = [
+        (
+            f"{year}-{(next_year if next_year == 1900 else str(next_year)[2:]) or '∞'}",
+            round(
+                Review.objects.filter(
+                    rating__isnull=False,
+                    book__publication_year__gte=year,
+                    book__publication_year__lt=next_year,
+                ).aggregate(Avg("rating"))["rating__avg"],
+                2,
+            ),
+        )
+        for year, next_year in zip(
+            publication_year_buckets, publication_year_buckets[1:]
+        )
+    ]
+    rating_over_publication_year.append(
+        (
+            f"{publication_year_buckets[-1]}+",
+            Review.objects.filter(
+                rating__isnull=False,
+                book__publication_year__gte=publication_year_buckets[-2],
+            ).aggregate(Avg("rating"))["rating__avg"],
+        )
+    )
+
+    return [
+        {
+            "title": "Average rating over time",
+            "svg": _get_chart(
+                rating_over_time, "Average rating over time", "Rating", range=(2.5, 4.5)
+            ).render(is_unicode=True),
+        },
+        {
+            "title": "Average rating per page count",
+            "svg": _get_chart(
+                rating_over_pages,
+                "Average rating per page count",
+                "Rating",
+                range=(2.5, 4.5),
+            ).render(is_unicode=True),
+        },
+        {
+            "title": "Average rating per publication year",
+            "svg": _get_chart(
+                rating_over_publication_year,
+                "Average rating per publication year",
+                "Rating",
+                range=(2.5, 4.5),
+            ).render(is_unicode=True),
+        },
+    ]

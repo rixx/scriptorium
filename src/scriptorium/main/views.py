@@ -30,6 +30,7 @@ from scriptorium.main.forms import (
 from scriptorium.main.models import Author, Book, Page, Review, Tag, ToRead
 from scriptorium.main.stats import (
     get_all_years,
+    get_charts,
     get_edges,
     get_graph,
     get_nodes,
@@ -237,12 +238,19 @@ class StatsView(ActiveTemplateView):
     active = "stats"
 
     @context
+    @cached_property
     def grid(self):
         return get_stats_grid()
 
     @context
+    @cached_property
     def table(self):
         return get_stats_table()
+
+    @context
+    @cached_property
+    def charts(self):
+        return get_charts()
 
 
 class GraphView(ActiveTemplateView):

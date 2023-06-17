@@ -56,4 +56,11 @@ But still, it's nice to look at, and I'm tempted to add more ridiculous charts, 
 </table>
 
 </section>
+
+<section id="charts">
+{% for chart in charts %}
+  {{ chart.svg|safe }}
+{% endfor %}
+</section>
+
 {% endblock %}
