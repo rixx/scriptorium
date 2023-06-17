@@ -4,7 +4,7 @@ from collections import Counter, defaultdict
 
 import networkx as nx
 import pygal
-from django.db.models import Avg, Max, Q, Sum
+from django.db.models import Avg, Q, Sum
 from django.utils.timezone import now
 
 from .models import Book, Review, Tag
@@ -461,30 +461,34 @@ def get_charts():
     return [
         {
             "title": "Average rating over time",
-            "svg": _get_chart(
-                rating_over_time, "Rating", range=(2.5, 4.5)
-            ).render(is_unicode=True),
+            "svg": _get_chart(rating_over_time, "Rating", range=(2.5, 4.5)).render(
+                is_unicode=True
+            ),
             "comment": "The first books are always the best. Wild oscillations when I read nearly nothing, then a steady decline as I turn into a crotchety old man. (The pandemic didn't help, either).",
         },
         {
             "title": "Average rating per page count",
             "svg": _get_chart(
-                rating_over_pages, "Rating", range=(2.5, 4.5),
+                rating_over_pages,
+                "Rating",
+                range=(2.5, 4.5),
             ).render(is_unicode=True),
             "comment": "300 to 400 pages is my happy place, apparently. Expected a much steeper drop-off for the 2000+ books (aka fanfics).",
         },
         {
             "title": "Average rating per publication year",
             "svg": _get_chart(
-                rating_over_publication_year, "Rating", range=(2.5, 4.5),
+                rating_over_publication_year,
+                "Rating",
+                range=(2.5, 4.5),
             ).render(is_unicode=True),
             "comment": "Look, I'm an early 90s kid, what did you expect?",
         },
         {
             "title": "Books per publication year",
-            "svg": _get_chart(
-                books_per_publication_year, "Books", _type="bar"
-            ).render(is_unicode=True),
+            "svg": _get_chart(books_per_publication_year, "Books", _type="bar").render(
+                is_unicode=True
+            ),
             "comment": "Just as context for the previous chart.",
         },
     ]

@@ -602,7 +602,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
                 tags.append(Tag.objects.create(name_slug=name, category=category))
         book = Book.objects.create(**steps["book"], primary_author=author)
         book.tags.set(tags)
-        review = Review.objects.create(
+        Review.objects.create(
             **steps["review"],
             book=book,
             latest_date=steps["review"]["dates_read"].split(",")[-1],
