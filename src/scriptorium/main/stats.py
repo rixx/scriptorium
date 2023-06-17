@@ -336,7 +336,7 @@ def get_edges(graph=None):
     return [{"source": source, "target": target} for source, target in graph.edges]
 
 
-def _get_chart(data, title, y_label, **kwargs):
+def _get_chart(data, y_label, _type="line", **kwargs):
     style = pygal.style.DefaultStyle
     style.colors = [
         "#990000",
@@ -361,8 +361,10 @@ def _get_chart(data, title, y_label, **kwargs):
     }
     for key, value in kwargs.items():
         config[key] = value
-    chart = pygal.Line(**config)
-    chart.title = title
+    if _type == "line":
+        chart = pygal.Line(**config)
+    elif _type == "bar":
+        chart = pygal.Bar(**config)
     chart.x_labels = [x for x, _ in data]
     chart.add(y_label, [y for _, y in data])
     return chart
@@ -444,30 +446,45 @@ def get_charts():
             ).aggregate(Avg("rating"))["rating__avg"],
         )
     )
+    books_per_publication_year = [
+        (
+            f"{year}-{(next_year if next_year == 1900 else str(next_year)[2:]) or '∞'}",
+            Review.objects.filter(
+                book__publication_year__gte=year, book__publication_year__lt=next_year
+            ).count(),
+        )
+        for year, next_year in zip(
+            publication_year_buckets, publication_year_buckets[1:]
+        )
+    ]
 
     return [
         {
             "title": "Average rating over time",
             "svg": _get_chart(
-                rating_over_time, "Average rating over time", "Rating", range=(2.5, 4.5)
+                rating_over_time, "Rating", range=(2.5, 4.5)
             ).render(is_unicode=True),
+            "comment": "The first books are always the best. Wild oscillations when I read nearly nothing, then a steady decline as I turn into a crotchety old man. (The pandemic didn't help, either).",
         },
         {
             "title": "Average rating per page count",
             "svg": _get_chart(
-                rating_over_pages,
-                "Average rating per page count",
-                "Rating",
-                range=(2.5, 4.5),
+                rating_over_pages, "Rating", range=(2.5, 4.5),
             ).render(is_unicode=True),
+            "comment": "300 to 400 pages is my happy place, apparently. Expected a much steeper drop-off for the 2000+ books (aka fanfics).",
         },
         {
             "title": "Average rating per publication year",
             "svg": _get_chart(
-                rating_over_publication_year,
-                "Average rating per publication year",
-                "Rating",
-                range=(2.5, 4.5),
+                rating_over_publication_year, "Rating", range=(2.5, 4.5),
             ).render(is_unicode=True),
+            "comment": "Look, I'm an early 90s kid, what did you expect?",
+        },
+        {
+            "title": "Books per publication year",
+            "svg": _get_chart(
+                books_per_publication_year, "Books", _type="bar"
+            ).render(is_unicode=True),
+            "comment": "Just as context for the previous chart.",
         },
     ]
