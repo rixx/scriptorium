@@ -1177,8 +1177,19 @@ progress::-moz-progress-bar {
   border-radius: 15px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25) inset;
 }
+#charts {
+  margin-top: 40px;
+}
 #charts svg .tooltip text.legend, #charts svg .tooltip text.x_label, #charts svg .tooltip text.value {
     font-size: 18px !important;
+}
+.chart-title, .chart-comment {
+  text-align: center;
+}
+.chart-title {
+  margin-top: 40px;
+  font-size: 28px;
+  margin-bottom: 0;
 }
 
 @media (max-width: 480px) {

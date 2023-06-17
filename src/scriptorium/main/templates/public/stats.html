@@ -59,6 +59,8 @@ But still, it's nice to look at, and I'm tempted to add more ridiculous charts, 
 
 <section id="charts">
 {% for chart in charts %}
+  <div class="chart-title">{{ chart.title }}</div>
+  <div class="chart-comment">{{ chart.comment }}</div>
   {{ chart.svg|safe }}
 {% endfor %}
 </section>
