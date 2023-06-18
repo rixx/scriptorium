@@ -1,3 +1,5 @@
+import json
+import re
 import urllib.parse
 from functools import cache
 
@@ -81,3 +83,77 @@ def get_openlibrary_book(isbn=None, olid=None):
         .json()
         .values()
     )[0]
+
+
+@time_taken
+@cache
+def get_goodreads_book(goodreads_id):
+    response = requests.get(
+        f"https://www.goodreads.com/book/show/{goodreads_id}-placeholder",
+        timeout=5,
+    )
+
+    if not response.ok:
+        return {}
+    # parse with beautifulsoup
+    from bs4 import BeautifulSoup
+
+    html = BeautifulSoup(response.text, "html.parser")
+    # there is data in <script type="application/ld+json">
+    try:
+        json_data = json.loads(
+            html.select_one("script[type='application/ld+json']").text
+        )
+    except Exception:
+        return {}
+    result = {
+        "title": json_data["name"],
+        "cover_source": json_data.get("image"),
+        "pages": json_data.get("numberOfPages"),
+        "isbn": json_data.get("isbn"),
+    }
+    details = html.select_one(".FeaturedDetails").text
+    # Year is in the format "First published <optional: month> <year>"
+    year = re.search(r"First published.*(\d{4})", details)
+    if year:
+        result["publication_year"] = int(year.group(1))
+    if not result.get("publication_year"):
+        for dl in html.select("dl"):
+            term = dl.select_one("dt").text
+            content = dl.select_one("dd").text
+            if "published" in term:
+                # find the year with a regex
+                year = re.search(r"\d{4}", content)
+                if year:
+                    result["publication_year"] = int(year.group(0))
+    return result
+
+
+def merge_goodreads(book):
+    if not book.goodreads_id:
+        return
+    goodreads_data = get_goodreads_book(book.goodreads_id)
+    if not goodreads_data:
+        raise Exception(f"Failed to get goodreads data for {book.title}")
+    print(f"Got goodreads data for {book.title}")
+    if not book.cover and goodreads_data.get("cover_source"):
+        book.cover_source = goodreads_data["cover_source"]
+        print(f"Setting cover for {book.title}")
+    if goodreads_data.get("publication_year") and (
+        not book.publication_year
+        or book.publication_year > goodreads_data["publication_year"]
+    ):
+        book.publication_year = goodreads_data["publication_year"]
+        print(f"Setting publication year for {book.title}")
+    if goodreads_data.get("pages") and (
+        not book.pages or book.pages < goodreads_data["pages"]
+    ):
+        book.pages = goodreads_data["pages"]
+        print(f"Setting pages for {book.title}")
+    if len(goodreads_data.get("isbn")) == 13 and not book.isbn:
+        book.isbn = goodreads_data["isbn"]
+        print(f"Setting isbn for {book.title}")
+    if len(goodreads_data.get("isbn")) == 10 and not book.isbn10:
+        book.isbn10 = goodreads_data["isbn"]
+        print(f"Setting isbn10 for {book.title}")
+    book.save()
