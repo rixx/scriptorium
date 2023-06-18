@@ -1183,6 +1183,9 @@ progress::-moz-progress-bar {
 #charts svg .tooltip text.legend, #charts svg .tooltip text.x_label, #charts svg .tooltip text.value {
     font-size: 18px !important;
 }
+#charts svg .series path.line {
+  stroke-width: 2px;
+}
 .chart-title, .chart-comment {
   text-align: center;
 }

@@ -410,12 +410,12 @@ def get_edges(graph=None):
     return [{"source": source, "target": target} for source, target in graph.edges]
 
 
-def _get_chart(data, y_label, _type="line", **kwargs):
+def _get_chart(data, _type="line", **kwargs):
     style = pygal.style.DefaultStyle
-    style.colors = [
-        "#990000",
-        "#007171",
-    ]
+    style.colors = [c for c in style.colors]
+    style.colors[0] = "#990000"
+    style.colors[1] = "#007171"
+    style.opacity = ".3"
     style.font_family = "EB Garamond 12"
     style.label_font_size = 18
     style.major_label_font_size = 18
