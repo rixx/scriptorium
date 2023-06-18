@@ -10,3 +10,4 @@ class Command(BaseCommand):
         for book in Book.objects.filter(spine_color__isnull=True):
             book.update_spine_color()
             book.update_thumbnail()
+            book.save()
