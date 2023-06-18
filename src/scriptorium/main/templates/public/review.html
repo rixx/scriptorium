@@ -19,6 +19,8 @@
 <link rel="canonical" href="https://books.rixx.de/{{ book.slug }}/"/>
 {% endblock %}
 
+{% block title %}{{ book.title }} by {{ book.author_string }}{% endblock %}
+
 {% block content %}
   <div class="book-meta-wrapper"><div>
       {% set book = review.book %}
