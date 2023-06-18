@@ -190,6 +190,7 @@ class Book(models.Model):
             self.cover.delete()
         Thumbnail.objects.filter(book=self).delete()
         self.cover.save(f"{self.title_slug}.jpg", ContentFile(response.content))
+        self.cover_source = None
         self.spine_color = None
         self.save()
         self.update_spine_color()
