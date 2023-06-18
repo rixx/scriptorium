@@ -549,7 +549,7 @@ def get_charts():
 
     default_chart_config = {
         "range": (2.5, 4.5),
-        "secondary_range": (0, 225),
+        "secondary_range": (0, 270),
         "_type": "linebar",
     }
     return [
