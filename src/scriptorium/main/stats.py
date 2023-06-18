@@ -459,13 +459,16 @@ def get_charts():
             Review.objects.filter(
                 rating__isnull=False, dates_read__contains=year
             ).aggregate(Avg("rating"))["rating__avg"],
+            Review.objects.filter(
+                rating__isnull=False, dates_read__contains=year
+            ).count(),
         )
-        for year in reversed(get_all_years())
+        for year in reversed(get_all_years()[:-1])
     ]
 
     page_buckets = [0, 50, 100, 150, 200, 250, 300, 350, 400, 500, 750, 1000, 2000]
 
-    rating_over_pages = [
+    rating_book_pages = [
         (
             f"{pages}-{next_pages or '∞'}",
             round(
@@ -476,15 +479,23 @@ def get_charts():
                 ).aggregate(Avg("rating"))["rating__avg"],
                 1,
             ),
+            Review.objects.filter(
+                rating__isnull=False,
+                book__pages__gte=pages,
+                book__pages__lt=next_pages,
+            ).count(),
         )
         for pages, next_pages in zip(page_buckets, page_buckets[1:])
     ]
-    rating_over_pages.append(
+    rating_book_pages.append(
         (
             f"{page_buckets[-1]}+",
             Review.objects.filter(
                 rating__isnull=False, book__pages__gte=page_buckets[-2]
             ).aggregate(Avg("rating"))["rating__avg"],
+            Review.objects.filter(
+                rating__isnull=False, book__pages__gte=page_buckets[-2]
+            ).count(),
         )
     )
 
@@ -503,7 +514,7 @@ def get_charts():
         2015,
         2020,
     ]
-    rating_over_publication_year = [
+    rating_book_publication_year = [
         (
             f"{year}-{(next_year if next_year == 1900 else str(next_year)[2:]) or '∞'}",
             round(
@@ -514,23 +525,6 @@ def get_charts():
                 ).aggregate(Avg("rating"))["rating__avg"],
                 2,
             ),
-        )
-        for year, next_year in zip(
-            publication_year_buckets, publication_year_buckets[1:]
-        )
-    ]
-    rating_over_publication_year.append(
-        (
-            f"{publication_year_buckets[-1]}+",
-            Review.objects.filter(
-                rating__isnull=False,
-                book__publication_year__gte=publication_year_buckets[-2],
-            ).aggregate(Avg("rating"))["rating__avg"],
-        )
-    )
-    books_per_publication_year = [
-        (
-            f"{year}-{(next_year if next_year == 1900 else str(next_year)[2:]) or '∞'}",
             Review.objects.filter(
                 book__publication_year__gte=year, book__publication_year__lt=next_year
             ).count(),
@@ -539,38 +533,39 @@ def get_charts():
             publication_year_buckets, publication_year_buckets[1:]
         )
     ]
+    rating_book_publication_year.append(
+        (
+            f"{publication_year_buckets[-1]}+",
+            Review.objects.filter(
+                rating__isnull=False,
+                book__publication_year__gte=publication_year_buckets[-2],
+            ).aggregate(Avg("rating"))["rating__avg"],
+            Review.objects.filter(
+                rating__isnull=False,
+                book__publication_year__gte=publication_year_buckets[-2],
+            ).count(),
+        )
+    )
 
+    default_chart_config = {
+        "range": (2.5, 4.5),
+        "secondary_range": (0, 225),
+        "_type": "linebar",
+    }
     return [
         {
-            "title": "Average rating over time",
-            "svg": _get_chart(rating_over_time, "Rating", range=(2.5, 4.5)).render(
-                is_unicode=True
-            ),
+            "title": "Rating and books over time",
+            "svg": _get_chart(rating_over_time, **default_chart_config),
             "comment": "The first books are always the best. Wild oscillations when I read nearly nothing, then a steady decline as I turn into a crotchety old man. (The pandemic didn't help, either).",
         },
         {
-            "title": "Average rating per page count",
-            "svg": _get_chart(
-                rating_over_pages,
-                "Rating",
-                range=(2.5, 4.5),
-            ).render(is_unicode=True),
+            "title": "Rating and books per page count",
+            "svg": _get_chart(rating_book_pages, **default_chart_config),
             "comment": "300 to 400 pages is my happy place, apparently. Expected a much steeper drop-off for the 2000+ books (aka fanfics).",
         },
         {
-            "title": "Average rating per publication year",
-            "svg": _get_chart(
-                rating_over_publication_year,
-                "Rating",
-                range=(2.5, 4.5),
-            ).render(is_unicode=True),
+            "title": "Ratings and books per publication year",
+            "svg": _get_chart(rating_book_publication_year, **default_chart_config),
             "comment": "Look, I'm an early 90s kid, what did you expect?",
-        },
-        {
-            "title": "Books per publication year",
-            "svg": _get_chart(books_per_publication_year, "Books", _type="bar").render(
-                is_unicode=True
-            ),
-            "comment": "Just as context for the previous chart.",
         },
     ]
