@@ -380,4 +380,4 @@ class Page(models.Model):
 class Thumbnail(models.Model):
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name="thumbnails")
     size = models.CharField(max_length=255)
-    thumb = models.FileField(upload_to=get_thumbnail_path)
+    thumb = models.FileField(upload_to=get_thumbnail_path, max_length=800)
