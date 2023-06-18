@@ -193,6 +193,7 @@ class Book(models.Model):
         self.spine_color = None
         self.save()
         self.update_spine_color()
+        self.update_thumbnail()
 
     def update_thumbnail(self):
         if not self.cover:
