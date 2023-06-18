@@ -8,5 +8,5 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         for book in Book.objects.filter(spine_color__isnull=True):
-            self.update_spine_color()
-            self.update_thumbnail()
+            book.update_spine_color()
+            book.update_thumbnail()
