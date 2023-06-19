@@ -40,6 +40,18 @@ Or: of course there's no such thing as a book. To put it differently: what even 
 But still, it's nice to look at, and I'm tempted to add more ridiculous charts, like mapping publication years against length, or temperature against ratings, or …
 </p>
 
+</section>
+
+<section id="charts">
+{% for chart in charts %}
+  <div class="chart-title">{{ chart.title }}</div>
+  <div class="chart-comment">{{ chart.comment }}</div>
+  {{ chart.svg|safe }}
+{% endfor %}
+</section>
+
+<section id="table">
+
 <table>
   <thead>
     <tr>
@@ -55,14 +67,6 @@ But still, it's nice to look at, and I'm tempted to add more ridiculous charts, 
   {% endfor %}
 </table>
 
-</section>
-
-<section id="charts">
-{% for chart in charts %}
-  <div class="chart-title">{{ chart.title }}</div>
-  <div class="chart-comment">{{ chart.comment }}</div>
-  {{ chart.svg|safe }}
-{% endfor %}
 </section>
 
 {% endblock %}

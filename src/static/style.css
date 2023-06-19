@@ -1234,6 +1234,9 @@ progress::-moz-progress-bar {
   .alphabet-section ul {
     margin-top: 0
   }
+  #stats-section svg {
+    padding-left: 0;
+  }
 }
 @media (max-width: 880px) {
   main {
