@@ -1,29 +1,29 @@
 {% extends "base.html" %}
 
 {% block head_content %}
-<meta name="twitter:card" content="summary">
-<meta name="twitter:site" content="@rixxtr"/>
-<meta name="twitter:title" content="{{ book.title }} by {{ book.author_string }}"/>
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:site" content="@rixxtr"/>
+  <meta name="twitter:title" content="{{ book.title }} by {{ book.author_string }}"/>
 
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://books.rixx.de/{{ book.slug }}/">
-<meta property="og:title" content="{{ book.title }} by {{ book.author_string }}"/>
-{% if review.tldr %}
-<meta name="og:description" content="Review: {{ review.tldr }}" />
-{% endif %}
-{% if review.book_cover_path %}
-<meta name="twitter:image" content="https://books.rixx.de/{{ book.slug }}/square.png"/>
-<meta property="og:image" content="https://books.rixx.de/{{ book.slug }}/square.png"/>
-{% endif %}
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://books.rixx.de/{{ book.slug }}/">
+  <meta property="og:title" content="{{ book.title }} by {{ book.author_string }}"/>
+  {% if review.tldr %}
+    <meta name="og:description" content="Review: {{ review.tldr }}" />
+  {% endif %}
+  {% if review.book_cover_path %}
+    <meta name="twitter:image" content="https://books.rixx.de/{{ book.slug }}/square.png"/>
+    <meta property="og:image" content="https://books.rixx.de/{{ book.slug }}/square.png"/>
+  {% endif %}
 
-<link rel="canonical" href="https://books.rixx.de/{{ book.slug }}/"/>
+  <link rel="canonical" href="https://books.rixx.de/{{ book.slug }}/"/>
 {% endblock %}
 
 {% block title %}{{ book.title }} by {{ book.author_string }}{% endblock %}
 
 {% block content %}
   <div class="book-meta-wrapper"><div>
-      {% set book = review.book %}
+    {% set book = review.book %}
     <h1 id="title">{{ book.title | smartypants | safe }}</h1>
     {% if not request.user.is_anonymous %}
       <small><a href="/b/{{ book.slug }}/">edit</a></small>
@@ -38,26 +38,26 @@
         </th>
       </tr>
       {% if book.series %}
-      <tr>
-        <td>series:</td>
-        <th><a href="/reviews/by-series/#{{ book.series }}">{{ book.series }} {% if book.series_position %}#{{ book.series_position }}{% endif %}</a></th>
-      </tr>
+        <tr>
+          <td>series:</td>
+          <th><a href="/reviews/by-series/#{{ book.series }}">{{ book.series }} {% if book.series_position %}#{{ book.series_position }}{% endif %}</a></th>
+        </tr>
       {% endif %}
       <tr>
         <td>date added:</td>
         <th>{{ book.date_added | render_date }}</th>
       </tr>
       {% if review.dates_read %}
-      <tr>
-        <td>date read:</td>
-        <th>{% for d in review.dates_read_list %}{{ d | render_date }}<br>{% endfor %}</th>
-      </tr>
+        <tr>
+          <td>date read:</td>
+          <th>{% for d in review.dates_read_list %}{{ d | render_date }}<br>{% endfor %}</th>
+        </tr>
       {% endif %}
       {% if book.pages %}
-      <tr>
-        <td>pages:</td>
-        <th>{{ book.pages }}</th>
-      </tr>
+        <tr>
+          <td>pages:</td>
+          <th>{{ book.pages }}</th>
+        </tr>
       {% endif %}
       {% if book.tags %}{% for category, tags in book.tags_by_category.items() %}
         <tr>
@@ -70,22 +70,22 @@
         </tr>
       {% endfor %}{% endif %}
       {% if review.rating %}
-      <tr>
-        <td>rating:</td>
-        <th class="rating">
-          {% for _ in range(review.rating) %} ★ {% endfor %} {% for _ in range(5 - review.rating) %} ☆ {% endfor %} {% if review.did_not_finish %} (did not finish) {% endif %}
-        </th>
-      </tr>
+        <tr>
+          <td>rating:</td>
+          <th class="rating">
+            {% for _ in range(review.rating) %} ★ {% endfor %} {% for _ in range(5 - review.rating) %} ☆ {% endfor %} {% if review.did_not_finish %} (did not finish) {% endif %}
+          </th>
+        </tr>
       {% endif %}
       {% if book.source %}
-      <tr>
-        <td>available:</td>
-        <th><a href="{{ book.source }}" target=_blank>online</a></th>
-      </tr>
+        <tr>
+          <td>available:</td>
+          <th><a href="{{ book.source }}" target=_blank>online</a></th>
+        </tr>
       {% endif %}
     </table></div>
     {% if book.cover %}
-    <a class="book-cover" href="/{{ book.slug }}/cover.jpg">
+      <a class="book-cover" href="/{{ book.slug }}/cover.jpg">
         {% set spine_border = True %}
         {% set full_size = True %}
         {% include "_book_cover.html" %}
@@ -122,44 +122,44 @@
       </details>
     {% endif %}
     <div id="review-text">
-    {{ review.text | render_markdown | safe }}
+      {{ review.text | render_markdown | safe }}
     </div>
   </article>
 
-    {% if book.quotes.all().exists() %}
+  {% if book.quotes.all().exists() %}
     <h2 id="quotes">Quotes</h2>
 
-      {% if book.quotes_by_language|length > 1%}
-        {% for language, quotes in book.quotes_by_language.items() %}
-          <details><summary>{{language}}</summary>
+    {% if book.quotes_by_language|length > 1%}
+      {% for language, quotes in book.quotes_by_language.items() %}
+        <details><summary>{{language}}</summary>
           {% for quote in quotes %}
             <div class="quote">{{ quote.text | render_quotes | safe }}</div>
           {% endfor %}
-          </details>
+        </details>
+      {% endfor %}
+    {% else %}
+      {% for language, quotes in book.quotes_by_language.items() %}
+        {% for quote in quotes %}
+          <div class="quote">{{ quote.text | render_quotes | safe }}</div>
         {% endfor %}
-      {% else %}
-        {% for language, quotes in book.quotes_by_language.items() %}
-          {% for quote in quotes %}
-            <div class="quote">{{ quote.text | render_quotes | safe }}</div>
-          {% endfor %}
-        {% endfor %}
-      {% endif %}
+      {% endfor %}
     {% endif %}
+  {% endif %}
 
-    {% if book.related_books.all().exists() %}
+  {% if book.related_books.all().exists() %}
     {% set spine_border = False %}
     <h2 id="related-books">Related books
       {% if book.series and book.series_position != "1" %}
-      <small class="muted">Books related to the whole series are linked at the first part of the series.</small>
+        <small class="muted">Books related to the whole series are linked at the first part of the series.</small>
       {% endif %}
     </h2>
-      {% for related in book.related_books.all() %}
-        {% set book = related.destination %}
-        {% set review_text = related.text %}
-        {% set expand_card = True %}
-        {% include  "_book_card.html" %}
-      {% endfor %}
-    {% endif %}
+    {% for related in book.related_books.all() %}
+      {% set book = related.destination %}
+      {% set review_text = related.text %}
+      {% set expand_card = True %}
+      {% include  "_book_card.html" %}
+    {% endfor %}
+  {% endif %}
 
   <hr>
 

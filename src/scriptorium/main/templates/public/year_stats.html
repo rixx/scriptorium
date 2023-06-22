@@ -2,234 +2,234 @@
 
 {% block content %}
 
-<div class="stats-header">
-    <div>{% if not current_year %}<a href="/reviews/{{ year + 1 }}/stats/">{{ year + 1 }} stats</a>{% endif %}</div>
-    <div><a href="/reviews/{{ year }}/">Back to reviews</a></div>
-    <div><a href="/reviews/{{ year - 1 }}/stats/">{{ year - 1 }} stats</a></div>
-</div>
-<h1 id="year-stats-headline">{{ year }}</h1>
-
-<div id="year-stats-facts">
-    <div class="stats-line-wrapper">
-        <div class="stats-line">
-            <div class="stats-block">
-                <div class="stats-block-content">
-                    <div class="stats-block-big">{{ stats.total_books }}</div>
-                    <div class="stats-block-small">books</div>
-                </div>
-            </div>
-            <div class="stats-block">
-                <div class="stats-block-content">
-                    <div class="stats-block-big">{{ stats.average_rating }}</div>
-                    <div class="stats-block-small">avg rating</div>
-                </div>
-            </div>
-            <div class="stats-block">
-                <div class="stats-block-content">
-                    <div class="stats-block-big">{{ stats.total_pages }}</div>
-                    <div class="stats-block-small">pages</div>
-                </div>
-            </div>
-        </div>
-        <div class="stats-line-ps">❤️  📚 ❤️</div>
+    <div class="stats-header">
+        <div>{% if not current_year %}<a href="/reviews/{{ year + 1 }}/stats/">{{ year + 1 }} stats</a>{% endif %}</div>
+        <div><a href="/reviews/{{ year }}/">Back to reviews</a></div>
+        <div><a href="/reviews/{{ year - 1 }}/stats/">{{ year - 1 }} stats</a></div>
     </div>
-    <div class="stats-line-wrapper">
-        <div class="stats-line">
-            <div class="stats-block">
-                <div class="stats-block-content">
-                    <div class="stats-block-title">Shortest book</div>
-                    <div class="stats-block-big">{{ stats.shortest_book.pages }}</div>
-                    <div class="stats-block-small">pages</div>
+    <h1 id="year-stats-headline">{{ year }}</h1>
+
+    <div id="year-stats-facts">
+        <div class="stats-line-wrapper">
+            <div class="stats-line">
+                <div class="stats-block">
+                    <div class="stats-block-content">
+                        <div class="stats-block-big">{{ stats.total_books }}</div>
+                        <div class="stats-block-small">books</div>
+                    </div>
                 </div>
-                <div class="stats-block-cover">
-                    {% with book=stats.shortest_book %}
-                        <a class="book-cover" href="/{{ book.slug }}/">
-                            {% set spine_border = True %}
-                            {% include "_book_cover.html" %}
-                        </a>
-                    {% endwith %}
+                <div class="stats-block">
+                    <div class="stats-block-content">
+                        <div class="stats-block-big">{{ stats.average_rating }}</div>
+                        <div class="stats-block-small">avg rating</div>
+                    </div>
+                </div>
+                <div class="stats-block">
+                    <div class="stats-block-content">
+                        <div class="stats-block-big">{{ stats.total_pages }}</div>
+                        <div class="stats-block-small">pages</div>
+                    </div>
                 </div>
             </div>
-            <div class="stats-block">
-                <div class="stats-block-cover">
-                    {% with book=stats.longest_book %}
-                        <a class="book-cover" href="/{{ book.slug }}/">
-                            {% set spine_border = True %}
-                            {% include "_book_cover.html" %}
-                        </a>
-                    {% endwith %}
+            <div class="stats-line-ps">❤️  📚 ❤️</div>
+        </div>
+        <div class="stats-line-wrapper">
+            <div class="stats-line">
+                <div class="stats-block">
+                    <div class="stats-block-content">
+                        <div class="stats-block-title">Shortest book</div>
+                        <div class="stats-block-big">{{ stats.shortest_book.pages }}</div>
+                        <div class="stats-block-small">pages</div>
+                    </div>
+                    <div class="stats-block-cover">
+                        {% with book=stats.shortest_book %}
+                            <a class="book-cover" href="/{{ book.slug }}/">
+                                {% set spine_border = True %}
+                                {% include "_book_cover.html" %}
+                            </a>
+                        {% endwith %}
+                    </div>
                 </div>
-                <div class="stats-block-content">
-                    <div class="stats-block-title">Longest book</div>
-                    <div class="stats-block-big">{{ stats.longest_book.pages }}</div>
-                    <div class="stats-block-small">pages</div>
+                <div class="stats-block">
+                    <div class="stats-block-cover">
+                        {% with book=stats.longest_book %}
+                            <a class="book-cover" href="/{{ book.slug }}/">
+                                {% set spine_border = True %}
+                                {% include "_book_cover.html" %}
+                            </a>
+                        {% endwith %}
+                    </div>
+                    <div class="stats-block-content">
+                        <div class="stats-block-title">Longest book</div>
+                        <div class="stats-block-big">{{ stats.longest_book.pages }}</div>
+                        <div class="stats-block-small">pages</div>
+                    </div>
                 </div>
+            </div>
+            <div class="stats-line-ps">
+                <span class="number">{{ stats.average_pages }}</span> pages on average
             </div>
         </div>
-        <div class="stats-line-ps">
-            <span class="number">{{ stats.average_pages }}</span> pages on average
+
+        <div class="stats-line-wrapper">
+            <div class="stats-line">
+                <div class="stats-block">
+                    <div class="stats-block-content">
+                        <div class="stats-block-title">First book</div>
+                        <div class="stats-block-big">{{ stats.first_book.review.date_read_lookup[year].strftime('%d.%m.') }}</div>
+                    </div>
+                    <div class="stats-block-cover">
+                        {% with book=stats.first_book %}
+                            <a class="book-cover" href="/{{ book.slug }}/">
+                                {% set spine_border = True %}
+                                {% include "_book_cover.html" %}
+                            </a>
+                        {% endwith %}
+                    </div>
+                </div>
+                <div class="stats-block">
+                    <div class="stats-block-cover">
+                        {% with book=stats.last_book %}
+                            <a class="book-cover" href="/{{ book.slug }}/">
+                                {% set spine_border = True %}
+                                {% include "_book_cover.html" %}
+                            </a>
+                        {% endwith %}
+                    </div>
+                    <div class="stats-block-content">
+                        <div class="stats-block-title">Last book</div>
+                        <div class="stats-block-big">{{ stats.last_book.review.date_read_lookup[year].strftime('%d.%m.') }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-line-ps">
+                busiest month: <span class="number">{{ stats.busiest_month[0] }} ({{ stats.busiest_month[1] }})</span>
+            </div>
+        </div>
+
+        <div class="stats-line-wrapper">
+            <div class="stats-line">
+                <div class="stats-block">
+                    <div class="stats-block-content">
+                        <div class="stats-block-title">Shortest review</div>
+                        <div class="stats-block-big">{{ stats.shortest_review.review.word_count }}</div>
+                        <div class="stats-block-small">words</div>
+                    </div>
+                    <div class="stats-block-cover">
+                        {% with book=stats.shortest_review %}
+                            <a class="book-cover" href="/{{ book.slug }}/">
+                                {% set spine_border = True %}
+                                {% include "_book_cover.html" %}
+                            </a>
+                        {% endwith %}
+                    </div>
+                </div>
+                <div class="stats-block">
+                    <div class="stats-block-cover">
+                        {% with book=stats.longest_review %}
+                            <a class="book-cover" href="/{{ book.slug }}/">
+                                {% set spine_border = True %}
+                                {% include "_book_cover.html" %}
+                            </a>
+                        {% endwith %}
+                    </div>
+                    <div class="stats-block-content">
+                        <div class="stats-block-title">Longest review</div>
+                        <div class="stats-block-big">{{ stats.longest_review.review.word_count }}</div>
+                        <div class="stats-block-small">words</div>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-line-ps">
+                <span class="number">{{ stats.average_review }}</span> words in the average review
+            </div>
+            <div class="stats-line-ps">
+                More detailed stats and numbers <a href="#details">below</a>.
+            </div>
         </div>
     </div>
 
-    <div class="stats-line-wrapper">
-        <div class="stats-line">
-            <div class="stats-block">
-                <div class="stats-block-content">
-                    <div class="stats-block-title">First book</div>
-                    <div class="stats-block-big">{{ stats.first_book.review.date_read_lookup[year].strftime('%d.%m.') }}</div>
-                </div>
-                <div class="stats-block-cover">
-                    {% with book=stats.first_book %}
-                        <a class="book-cover" href="/{{ book.slug }}/">
-                            {% set spine_border = True %}
-                            {% include "_book_cover.html" %}
-                        </a>
-                    {% endwith %}
-                </div>
-            </div>
-            <div class="stats-block">
-                <div class="stats-block-cover">
-                    {% with book=stats.last_book %}
-                        <a class="book-cover" href="/{{ book.slug }}/">
-                            {% set spine_border = True %}
-                            {% include "_book_cover.html" %}
-                        </a>
-                    {% endwith %}
-                </div>
-                <div class="stats-block-content">
-                    <div class="stats-block-title">Last book</div>
-                    <div class="stats-block-big">{{ stats.last_book.review.date_read_lookup[year].strftime('%d.%m.') }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="stats-line-ps">
-            busiest month: <span class="number">{{ stats.busiest_month[0] }} ({{ stats.busiest_month[1] }})</span>
-        </div>
+    <div id="year-stats-covers">
+        {% for review in reviews[::-1] %}
+            <a class="book-cover{% if review.rating == 5 %} big-grid{% endif %}" href="/{{ review.book.slug }}/">
+                {% set spine_border = True %}
+                {% set book = review.book %}
+                {% if review.rating == 5 %}{% set full_size = True %} {% else %}{% set full_size = False %}{% endif %}
+                {% include "_book_cover.html" %}
+                {% if review.rating == 5 %}
+                    <div class="rating"> ★ ★ ★ ★ ★</div>
+                {% endif %}
+            </a>
+        {% endfor %}
+
     </div>
 
-    <div class="stats-line-wrapper">
-        <div class="stats-line">
-            <div class="stats-block">
-                <div class="stats-block-content">
-                    <div class="stats-block-title">Shortest review</div>
-                    <div class="stats-block-big">{{ stats.shortest_review.review.word_count }}</div>
-                    <div class="stats-block-small">words</div>
-                </div>
-                <div class="stats-block-cover">
-                    {% with book=stats.shortest_review %}
-                        <a class="book-cover" href="/{{ book.slug }}/">
-                            {% set spine_border = True %}
-                            {% include "_book_cover.html" %}
-                        </a>
-                    {% endwith %}
-                </div>
-            </div>
-            <div class="stats-block">
-                <div class="stats-block-cover">
-                    {% with book=stats.longest_review %}
-                        <a class="book-cover" href="/{{ book.slug }}/">
-                            {% set spine_border = True %}
-                            {% include "_book_cover.html" %}
-                        </a>
-                    {% endwith %}
-                </div>
-                <div class="stats-block-content">
-                    <div class="stats-block-title">Longest review</div>
-                    <div class="stats-block-big">{{ stats.longest_review.review.word_count }}</div>
-                    <div class="stats-block-small">words</div>
-                </div>
-            </div>
-        </div>
-        <div class="stats-line-ps">
-            <span class="number">{{ stats.average_review }}</span> words in the average review
-        </div>
-        <div class="stats-line-ps">
-            More detailed stats and numbers <a href="#details">below</a>.
-        </div>
-    </div>
-</div>
+    <div>
+        <h2 id="details">Stats and numbers</h2>
 
-<div id="year-stats-covers">
-    {% for review in reviews[::-1] %}
-    <a class="book-cover{% if review.rating == 5 %} big-grid{% endif %}" href="/{{ review.book.slug }}/">
-        {% set spine_border = True %}
-        {% set book = review.book %}
-        {% if review.rating == 5 %}{% set full_size = True %} {% else %}{% set full_size = False %}{% endif %}
-        {% include "_book_cover.html" %}
-        {% if review.rating == 5 %}
-        <div class="rating"> ★ ★ ★ ★ ★</div>
-        {% endif %}
-    </a>
-    {% endfor %}
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>{{ year - 1 }}</th>
+                    <th class="highlight">{{ year }}</th>
+                    {% if stats.next %}<th>{{ year + 1 }}</th>{% endif %}
+                    <th>all time</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>books read</td>
+                    <td>{{ stats.previous.total_books }}</td>
+                    <td class="highlight">{{ stats.total_books }}</td>
+                    {% if stats.next %}<td>{{ stats.next.total_books }}</td>{% endif %}
+                    <td>{{ stats.all_time['Total books'] }}</td>
+                </tr>
+                <tr>
+                    <td>pages read</td>
+                    <td>{{ stats.previous.total_pages| thousands  }}</td>
+                    <td class="highlight">{{ stats.total_pages | thousands }}</td>
+                    {% if stats.next %}<td>{{ stats.next.total_pages| thousands  }}</td>{% endif %}
+                    <td>{{ stats.all_time['Total pages'] | thousands }}</td>
+                </tr>
+                <tr>
+                    <td>books per week</td>
+                    <td>{{ (stats.previous.total_books / 52) | round(1) }}</td>
+                    <td class="highlight">{{ (stats.total_books / 52) | round(1) }}</td>
+                    {% if stats.next %}<td>{{ (stats.next.total_books / 52) | round(1) }}</td>{% endif %}
+                    <td>{{ stats.all_time['Books per week'] }}</td>
+                </tr>
+                <tr>
+                    <td>median length</td>
+                    <td>{{ stats.previous.median_length | round(0) }}</td>
+                    <td class="highlight">{{ stats.median_length | round(0) }}</td>
+                    {% if stats.next %}<td>{{ stats.next.median_length | round(0) }}</td>{% endif %}
+                    <td>{{ stats.all_time['Median length'] }}</td>
+                </tr>
+                <tr>
+                    <td>median publication year</td>
+                    <td>{{ stats.previous.median_year | int }}</td>
+                    <td class="highlight">{{ stats.median_year | int }}</td>
+                    {% if stats.next %}<td>{{ stats.next.median_year | int }}</td>{% endif %}
+                    <td>{{ stats.all_time['Median publication year'] | int }}</td>
+                </tr>
+                <tr>
+                    <td>average rating</td>
+                    <td>{{ stats.previous.average_rating | round(1) }}</td>
+                    <td class="highlight">{{ stats.average_rating | round(1) }}</td>
+                    {% if stats.next %}<td>{{ stats.next.average_rating | round(1) }}</td>{% endif %}
+                    <td>{{ stats.all_time['Average rating'] }}</td>
+                </tr>
+                <tr>
+                    <td>% female / % male authors</td>
+                    <td>{{ (stats.previous.gender.female * 100 / stats.previous.total_books) | round(1) }}% / {{ (stats.previous.gender.male * 100 / stats.previous.total_books) | round(1) }}% </td>
+                    <td class="highlight">{{ (stats.gender.female * 100 / stats.total_books) | round(1) }}% / {{ (stats.gender.male * 100 / stats.total_books) | round(1) }}% </td>
+                    {% if stats.next %}<td>{{ (stats.next.gender.female * 100 / stats.next.total_books) | round(1) }}% / {{ (stats.next.gender.male * 100 / stats.next.total_books) | round(1) }}% </td>{% endif %}
+                    <td>{{ stats.all_time['Percent female/male authors'] }}</td>
+                </tr>
 
-</div>
-
-<div>
-    <h2 id="details">Stats and numbers</h2>
-
-    <table class="stats-table">
-        <thead>
-            <tr>
-                <th></th>
-                <th>{{ year - 1 }}</th>
-                <th class="highlight">{{ year }}</th>
-                {% if stats.next %}<th>{{ year + 1 }}</th>{% endif %}
-                <th>all time</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>books read</td>
-                <td>{{ stats.previous.total_books }}</td>
-                <td class="highlight">{{ stats.total_books }}</td>
-                {% if stats.next %}<td>{{ stats.next.total_books }}</td>{% endif %}
-                <td>{{ stats.all_time['Total books'] }}</td>
-            </tr>
-            <tr>
-                <td>pages read</td>
-                <td>{{ stats.previous.total_pages| thousands  }}</td>
-                <td class="highlight">{{ stats.total_pages | thousands }}</td>
-                {% if stats.next %}<td>{{ stats.next.total_pages| thousands  }}</td>{% endif %}
-                <td>{{ stats.all_time['Total pages'] | thousands }}</td>
-            </tr>
-            <tr>
-                <td>books per week</td>
-                <td>{{ (stats.previous.total_books / 52) | round(1) }}</td>
-                <td class="highlight">{{ (stats.total_books / 52) | round(1) }}</td>
-                {% if stats.next %}<td>{{ (stats.next.total_books / 52) | round(1) }}</td>{% endif %}
-                <td>{{ stats.all_time['Books per week'] }}</td>
-            </tr>
-            <tr>
-                <td>median length</td>
-                <td>{{ stats.previous.median_length | round(0) }}</td>
-                <td class="highlight">{{ stats.median_length | round(0) }}</td>
-                {% if stats.next %}<td>{{ stats.next.median_length | round(0) }}</td>{% endif %}
-                <td>{{ stats.all_time['Median length'] }}</td>
-            </tr>
-            <tr>
-                <td>median publication year</td>
-                <td>{{ stats.previous.median_year | int }}</td>
-                <td class="highlight">{{ stats.median_year | int }}</td>
-                {% if stats.next %}<td>{{ stats.next.median_year | int }}</td>{% endif %}
-                <td>{{ stats.all_time['Median publication year'] | int }}</td>
-            </tr>
-            <tr>
-                <td>average rating</td>
-                <td>{{ stats.previous.average_rating | round(1) }}</td>
-                <td class="highlight">{{ stats.average_rating | round(1) }}</td>
-                {% if stats.next %}<td>{{ stats.next.average_rating | round(1) }}</td>{% endif %}
-                <td>{{ stats.all_time['Average rating'] }}</td>
-            </tr>
-            <tr>
-                <td>% female / % male authors</td>
-                <td>{{ (stats.previous.gender.female * 100 / stats.previous.total_books) | round(1) }}% / {{ (stats.previous.gender.male * 100 / stats.previous.total_books) | round(1) }}% </td>
-                <td class="highlight">{{ (stats.gender.female * 100 / stats.total_books) | round(1) }}% / {{ (stats.gender.male * 100 / stats.total_books) | round(1) }}% </td>
-                {% if stats.next %}<td>{{ (stats.next.gender.female * 100 / stats.next.total_books) | round(1) }}% / {{ (stats.next.gender.male * 100 / stats.next.total_books) | round(1) }}% </td>{% endif %}
-                <td>{{ stats.all_time['Percent female/male authors'] }}</td>
-            </tr>
-
-        </tbody>
-    </table>
+            </tbody>
+        </table>
 
 
 {% endblock %}

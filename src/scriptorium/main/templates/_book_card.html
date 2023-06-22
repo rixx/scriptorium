@@ -6,21 +6,21 @@
   {% else %}
     <div>
   {% endif %}
-    <div class="book-metadata">
-      <div class="book_thumbnail">
-        {% include "_book_cover.html" %}
-      </div>
-      <p class="title">
-        {{ book.title | smartypants | safe }}
-      </p>
-      <small>
-        by 
-        {%- if not is_link %}
-          {{ book.authors | render_authors }}
-        {%- else %}
-          {{ book.author_string }}
-        {%- endif %}
-        <span class="muted">
+  <div class="book-metadata">
+    <div class="book_thumbnail">
+      {% include "_book_cover.html" %}
+    </div>
+    <p class="title">
+      {{ book.title | smartypants | safe }}
+    </p>
+    <small>
+      by
+      {%- if not is_link %}
+        {{ book.authors | render_authors }}
+      {%- else %}
+        {{ book.author_string }}
+      {%- endif %}
+      <span class="muted">
         {% if book.publication_year %}· published {{ book.publication_year }}{% endif %}
         {% if book.review.dates_read %}
           ·
@@ -28,21 +28,21 @@
         {% else -%}
           · added on {{ book.date_added | render_date(not is_link) }}
         {% endif %}
-        </span>
-      </small>
-      {% if book.review.rating %}
-        <div class="rating">
-            {% include "_rating.html" %}
-        </div>
-      {% endif %}
-      {% if not review_text and book.review.text %}
-        {% set review_text = book.review.first_paragraph %}
-      {% endif %}
-      {% if review_text %}
+      </span>
+    </small>
+    {% if book.review.rating %}
+      <div class="rating">
+        {% include "_rating.html" %}
+      </div>
+    {% endif %}
+    {% if not review_text and book.review.text %}
+      {% set review_text = book.review.first_paragraph %}
+    {% endif %}
+    {% if review_text %}
       <div class="book-review{% if not book.review.rating %} book-review-padded{% endif %}">
         {% if is_link %} {{ review_text | strip_markdown | safe }}{% else %}{{ review_text | render_markdown | safe }}{% endif %}
-        </div>
-      {% endif %}
+      </div>
+    {% endif %}
   </div>
   {%- if is_link %}
     </a>

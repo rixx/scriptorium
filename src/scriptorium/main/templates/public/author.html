@@ -11,9 +11,9 @@
   {% include "_shelf.html" %}
 
   {% if author_obj.text %}
-  <p>
-    {{ author_obj.text | render_markdown | safe }}
-  </p>
+    <p>
+      {{ author_obj.text | render_markdown | safe }}
+    </p>
   {% endif %}
 
   {% for book in books %}

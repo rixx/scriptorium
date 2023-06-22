@@ -2,24 +2,24 @@
 
 {% block content %}
 
-<h1>Book Lists</h1>
+  <h1>Book Lists</h1>
 
-<section>
+  <section>
 
-  <p>
-  This is where I group my books into lists – some boring ones, like <a
-  href="/lists/scifi/">Sci-Fi</a>, and some more interesting ones like <a
-  href="/lists/space-monks/">Space Monks</a>. I hope there's a list for you here, too:
-  </p>
+    <p>
+      This is where I group my books into lists – some boring ones, like <a
+        href="/lists/scifi/">Sci-Fi</a>, and some more interesting ones like <a
+          href="/lists/space-monks/">Space Monks</a>. I hope there's a list for you here, too:
+    </p>
 
-</section>
-<hr>
+  </section>
+  <hr>
 
-<section>
-  {% for category, c_tags in tags.items() %}
-    <h2>{{ category }}</h2>
-    {% for tag in c_tags %} <a href="/lists/{{ tag.name_slug }}">{{ tag.name_slug }} ({{ tag.book_count }} books, {{ tag.rating | round(1) }} avg. rating)</a>{% if not loop.last %}, {% endif %}
+  <section>
+    {% for category, c_tags in tags.items() %}
+      <h2>{{ category }}</h2>
+      {% for tag in c_tags %} <a href="/lists/{{ tag.name_slug }}">{{ tag.name_slug }} ({{ tag.book_count }} books, {{ tag.rating | round(1) }} avg. rating)</a>{% if not loop.last %}, {% endif %}
+      {% endfor %}
     {% endfor %}
-  {% endfor %}
-</section>
+  </section>
 {% endblock %}

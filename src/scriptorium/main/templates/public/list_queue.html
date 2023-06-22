@@ -16,18 +16,18 @@
   <p>… if I don't add any new books in the meantime.</p>
 
   {% for shelf in shelves %}
-  <h3>{{ shelf.name }}</h3>
-  <details>
-    <summary>Show all {{ shelf.books.count() }} books ({{ shelf.page_count|thousands }} pages)</summary>
-    <ul>
-    {% for book in shelf.books %}
-      <li>
-        <b>{{ book.title }}</b> by
-        <i>{{ book.author }}</i>
-        {% if book.pages %}({{ book.pages }} pages){% endif %}
-      </li>
-    {% endfor %}
-    </ul>
-  </details>
+    <h3>{{ shelf.name }}</h3>
+    <details>
+      <summary>Show all {{ shelf.books.count() }} books ({{ shelf.page_count|thousands }} pages)</summary>
+      <ul>
+        {% for book in shelf.books %}
+          <li>
+            <b>{{ book.title }}</b> by
+            <i>{{ book.author }}</i>
+            {% if book.pages %}({{ book.pages }} pages){% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </details>
   {% endfor %}
 {% endblock %}

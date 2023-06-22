@@ -1,11 +1,11 @@
 <div class="external-link">
   {%- if book.goodreads_id %}
-  <a href="https://www.goodreads.com/book/show/{{ book.goodreads_id }}"><img src="{{ static('/goodreads.png') }}"></a>
+    <a href="https://www.goodreads.com/book/show/{{ book.goodreads_id }}"><img src="{{ static('/goodreads.png') }}"></a>
   {%- elif book.isbn %}
-  <a href="https://www.goodreads.com/search?q={{ book.isbn }}&search_type=books"><img src="{{ static('/goodreads.png') }}"></a>
+    <a href="https://www.goodreads.com/search?q={{ book.isbn }}&search_type=books"><img src="{{ static('/goodreads.png') }}"></a>
   {%- endif %}
   {%- if book.isbn %}
-  <a href="https://www.librarything.com/isbn/{{ book.isbn }}"><img src="{{ static('/librarything.png') }}"></a>
-  <a href="https://www.amazon.com/s?k=isbn+{{ book.isbn }}&ref=nb_sb_noss"><img class="amazon" src="{{ static('/amazon.png') }}"></a>
+    <a href="https://www.librarything.com/isbn/{{ book.isbn }}"><img src="{{ static('/librarything.png') }}"></a>
+    <a href="https://www.amazon.com/s?k=isbn+{{ book.isbn }}&ref=nb_sb_noss"><img class="amazon" src="{{ static('/amazon.png') }}"></a>
   {%- endif %}
 </div>

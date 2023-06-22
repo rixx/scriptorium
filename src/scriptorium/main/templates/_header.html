@@ -4,11 +4,11 @@
   </div>
   <nav id="nav-links">
     <a href="/reviews"{% if active == "read" %} class="active"{% endif %}>Log</a>
-      <span class="sep"> · </span>
-      <span class="sep"> · </span>
+    <span class="sep"> · </span>
+    <span class="sep"> · </span>
     <a href="/queue"{% if active == "queue" %} class="active"{% endif %}>Queue</a>
     <a href="/catalogue/"{% if active == "list" or active == "catalogue" %} class="active"{% endif %}>🔍 Catalogue</a>
-      <span class="sep"> · </span>
+    <span class="sep"> · </span>
     <a href="/graph" id="graph-nav"{% if active == "graph" %} class="active"{% endif %}>Graph</a>
     <a href="/stats"{% if active == "stats" %} class="active"{% endif %}>Stats</a>
   </nav>
