@@ -275,19 +275,6 @@ def graph_data(request):
     return JsonResponse({"nodes": get_nodes(graph), "links": get_edges(graph)})
 
 
-def search_data(request):
-    # TODO tag search
-    # search_tags = [
-    # {
-    #     "slug": tag.slug,
-    #     "name": tag.metadata.get("title") or tag.slug,
-    #     "search": (tag.metadata.get("title") or tag.slug).lower().split(),
-    # }
-    # for tag in tags.keys()
-    # ]
-    return JsonResponse({"books": get_nodes(), "tags": []})
-
-
 class ReviewMixin:
     @context
     @cached_property
