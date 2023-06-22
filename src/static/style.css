@@ -381,7 +381,7 @@ header a {
   font-variant: bold;
   margin: auto;
 }
-#nav-links .sep {
+.hidden, #nav-links .sep {
   display: none;
 }
 #nav-links a {
@@ -1193,6 +1193,46 @@ progress::-moz-progress-bar {
   margin-top: 40px;
   font-size: 28px;
   margin-bottom: 0;
+}
+
+.catalogue-form form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: top;
+  margin: 30px 0 40px 0;
+  border: 1px solid #d0d0d0;
+  padding: 20px;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+.catalogue-form form .form-group {
+  display: flex;
+  flex-direction: column;
+  margin-right: 20px;
+}
+.catalogue-form form .form-group.ml-auto {
+  margin-left: auto;
+}
+.catalogue-form form input[type=text] {
+  padding: 6px 8px 3px;
+  border: 1px solid #d0d0d0;
+  border-radius: 3px;
+  height: 24px;
+}
+.catalogue-form form button {
+  height: 36px;
+}
+.catalogue-form form select {
+  -webkit-appearance: menulist-button;
+  border: 1px solid #d0d0d0;
+  border-radius: 3px;
+  height: 36px;
+  padding: 0 12px;
+  background: white;
+}
+.catalogue-form form .help-text {
+  font-size: 16px;
+  margin-top: 4px;
+  color: #666;
 }
 
 @media (max-width: 480px) {

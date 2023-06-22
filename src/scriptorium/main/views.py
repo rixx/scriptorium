@@ -11,7 +11,13 @@ from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonRe
 from django.shortcuts import redirect
 from django.utils.functional import cached_property
 from django.utils.timezone import now
-from django.views.generic import CreateView, FormView, TemplateView, UpdateView
+from django.views.generic import (
+    CreateView,
+    FormView,
+    ListView,
+    TemplateView,
+    UpdateView,
+)
 from django_context_decorator import context
 from formtools.wizard.views import SessionWizardView
 
@@ -21,6 +27,7 @@ from scriptorium.main.forms import (
     BookSearchForm,
     BookSelectForm,
     BookWizardForm,
+    CatalogueForm,
     EditionSelectForm,
     LoginForm,
     PageForm,
@@ -376,7 +383,7 @@ class QueueView(ActiveTemplateView):
         return context
 
 
-class ListView(ActiveTemplateView):
+class TagView(ActiveTemplateView):
     template_name = "public/tags.html"
     active = "list"
 
@@ -668,3 +675,23 @@ class PageView(TemplateView):
         page = Page.objects.get(slug=self.kwargs["slug"])
         context["page"] = page
         return context
+
+
+class CatalogueView(ListView):
+    template_name = "public/catalogue.html"
+    paginate_by = 100
+    model = Book
+    context_object_name = "books"
+    active = "catalogue"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["form"] = CatalogueForm(self.request.GET)
+        context["active"] = self.active
+        return context
+
+    def get_queryset(self):
+        form = CatalogueForm(self.request.GET)
+        if form.is_valid():
+            return form.get_queryset()
+        return Book.objects.none()

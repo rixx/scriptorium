@@ -1,6 +1,7 @@
 from django import forms
+from django.db.models import Q
 
-from scriptorium.main.models import Author, Book, Page, Review
+from scriptorium.main.models import Author, Book, Page, Review, Tag
 from scriptorium.main.utils import slugify
 
 
@@ -13,6 +14,84 @@ class AuthorForm(forms.ModelForm):
     class Meta:
         model = Author
         fields = ("name", "name_slug", "text")
+
+
+class CatalogueForm(forms.Form):
+    search_input = forms.CharField(
+        label="Search for a book",
+        widget=forms.TextInput(attrs={"autofocus": True}),
+        required=False,
+    )
+    fulltext = forms.BooleanField(required=False)
+    tags = forms.ModelMultipleChoiceField(queryset=Tag.objects.none(), required=False)
+
+    # Allow to search by author and series, but only via links
+    author = forms.ModelChoiceField(
+        queryset=Author.objects.all(), required=False, widget=forms.HiddenInput
+    )
+    series = forms.CharField(required=False, widget=forms.HiddenInput)
+
+    order_by = forms.ChoiceField(
+        choices=(
+            ("review__rating", "Rating"),
+            ("title", "Title"),
+            ("primary_author__name", "Author"),
+            ("publication_year", "Publication year"),
+            ("pages", "Pages"),
+        ),
+        required=False,
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["tags"].queryset = Tag.objects.filter(book__isnull=False).distinct()
+
+    def get_queryset(self):
+        if not self.is_valid():
+            return Book.objects.none()
+        data = self.cleaned_data
+        qs = (
+            Book.objects.all()
+            .select_related("primary_author", "review")
+            .prefetch_related(
+                "additional_authors",
+                "tags",
+            )
+        )
+
+        if tags := data.get("tags"):
+            for tag in tags:
+                qs = qs.filter(tags__in=[tag])
+        if author := data.get("author"):
+            qs = qs.filter(
+                Q(primary_author=author) | Q(additional_authors__in=[author])
+            )
+        if series := data.get("series"):
+            qs = qs.filter(series=series)
+        if search := data.get("search_input"):
+            text_search = (
+                Q(title__icontains=search)
+                | Q(title_slug__icontains=search)
+                | Q(primary_author__name__icontains=search)
+                | Q(additional_authors__name__icontains=search)
+                | Q(series__icontains=search)
+                | Q(isbn10=search)
+                | Q(isbn13=search)
+            )
+            if data.get("fulltext"):
+                text_search = (
+                    text_search
+                    | Q(review__text__icontains=search)
+                    | Q(plot__icontains=search)
+                )
+            qs = qs.filter(text_search)
+        if order_by := data.get("order_by"):
+            if order_by in ("review__rating", "publication_year", "pages"):
+                order_by = f"-{order_by}"
+            qs = qs.order_by(order_by)
+        else:
+            qs = qs.order_by("primary_author__name")
+        return qs
 
 
 class BookSearchForm(forms.Form):
