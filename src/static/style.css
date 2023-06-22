@@ -1209,6 +1209,9 @@ progress::-moz-progress-bar {
   flex-direction: column;
   margin-right: 20px;
 }
+.catalogue-form form .form-group-wide {
+  width: 200px;
+}
 .catalogue-form form .form-group.ml-auto {
   margin-left: auto;
 }
