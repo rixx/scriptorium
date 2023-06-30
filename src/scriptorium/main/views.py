@@ -630,6 +630,7 @@ class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):
             messages.error(self.request, self.review_form.errors)
             raise Exception(self.review_form.errors)
         form.save()
+        review_form.save()
         new_tags = form.cleaned_data.pop("new_tags")
         if new_tags:
             for tag in new_tags:
