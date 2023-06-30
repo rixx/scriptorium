@@ -19,8 +19,6 @@
   <link rel="canonical" href="https://books.rixx.de/{{ review.book.slug }}/"/>
 {% endblock %}
 
-{% block title %}{{ book.title }} by {{ book.author_string }}{% endblock %}
-
 {% block content %}
   <div class="messages">
   {% for message in get_messages(request) %}

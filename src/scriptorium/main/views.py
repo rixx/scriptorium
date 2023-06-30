@@ -308,6 +308,11 @@ class ReviewMixin:
     def review(self):
         return self.book.review
 
+    @context
+    @cached_property
+    def title(self):
+        return f"{self.book.title} by {self.book.author_string}"
+
 
 class ReviewView(ReviewMixin, ActiveTemplateView):
     template_name = "public/review.html"
