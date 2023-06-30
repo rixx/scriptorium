@@ -11,9 +11,9 @@
   {% if review.tldr %}
     <meta name="og:description" content="Review: {{ review.tldr }}" />
   {% endif %}
-  {% if review.book_cover_path %}
-    <meta name="twitter:image" content="https://books.rixx.de/{{ review.book.slug }}/square.png"/>
-    <meta property="og:image" content="https://books.rixx.de/{{ review.book.slug }}/square.png"/>
+  {% if review.book.cover_square %}
+    <meta name="twitter:image" content="https://books.rixx.de{{ review.book.cover_thumbnail.thumb.url }}"/>
+    <meta property="og:image" content="https://books.rixx.de{{ review.book.cover_thumbnail.thumb.url }}"/>
   {% endif %}
 
   <link rel="canonical" href="https://books.rixx.de/{{ review.book.slug }}/"/>
