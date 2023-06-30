@@ -3,20 +3,20 @@
 {% block head_content %}
   <meta name="twitter:card" content="summary">
   <meta name="twitter:site" content="@rixxtr"/>
-  <meta name="twitter:title" content="{{ book.title }} by {{ book.author_string }}"/>
+  <meta name="twitter:title" content="{{ review.book.title }} by {{ review.book.author_string }}"/>
 
   <meta property="og:type" content="article" />
-  <meta property="og:url" content="https://books.rixx.de/{{ book.slug }}/">
-  <meta property="og:title" content="{{ book.title }} by {{ book.author_string }}"/>
+  <meta property="og:url" content="https://books.rixx.de/{{ review.book.slug }}/">
+  <meta property="og:title" content="{{ review.book.title }} by {{ review.book.author_string }}"/>
   {% if review.tldr %}
     <meta name="og:description" content="Review: {{ review.tldr }}" />
   {% endif %}
   {% if review.book_cover_path %}
-    <meta name="twitter:image" content="https://books.rixx.de/{{ book.slug }}/square.png"/>
-    <meta property="og:image" content="https://books.rixx.de/{{ book.slug }}/square.png"/>
+    <meta name="twitter:image" content="https://books.rixx.de/{{ review.book.slug }}/square.png"/>
+    <meta property="og:image" content="https://books.rixx.de/{{ review.book.slug }}/square.png"/>
   {% endif %}
 
-  <link rel="canonical" href="https://books.rixx.de/{{ book.slug }}/"/>
+  <link rel="canonical" href="https://books.rixx.de/{{ review.book.slug }}/"/>
 {% endblock %}
 
 {% block title %}{{ book.title }} by {{ book.author_string }}{% endblock %}
