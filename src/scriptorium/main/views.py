@@ -621,8 +621,13 @@ class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):
             return ReviewEditForm(self.request.POST, instance=self.book.review)
         return ReviewEditForm(instance=self.book.review)
 
+    def form_invalid(self, form):
+        messages.error(self.request, form.errors)
+        return super().form_invalid(form)
+
     def form_valid(self, form):
         if not self.review_form.is_valid():
+            messages.error(self.request, self.review_form.errors)
             raise Exception(self.review_form.errors)
         form.save()
         new_tags = form.cleaned_data.pop("new_tags")
