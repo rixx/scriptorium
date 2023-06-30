@@ -4,6 +4,7 @@ from io import StringIO
 
 import markdown
 import smartypants
+from django.contrib import messages
 from django.contrib.staticfiles.storage import staticfiles_storage
 from jinja2 import Environment, FileSystemLoader, Markup, select_autoescape
 from markdown.extensions.smarty import SmartyExtension
@@ -91,4 +92,5 @@ def environment(**options):
     env.filters["smartypants"] = smartypants.smartypants
     env.filters["render_authors"] = render_authors
     env.filters["thousands"] = thousands
+    env.globals.update({"get_messages": messages.get_messages})
     return env
