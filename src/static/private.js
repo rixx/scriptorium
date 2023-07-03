@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
         new TomSelect(select, {
             // allow empty option when original element is not required
             allowEmptyOption: !select.hasAttribute('required'),
+            closeAfterSelect: true,
         });
     })
     // if #wizard-select exists, add images

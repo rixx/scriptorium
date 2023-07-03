@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll(`select#id_${name}`).forEach(select => {
             new TomSelect(select, {
                 allowEmptyOption: true,
+                closeAfterSelect: true,
             });
         })
     }
