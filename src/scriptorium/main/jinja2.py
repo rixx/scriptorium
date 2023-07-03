@@ -78,6 +78,15 @@ def thousands(number):
     return "{:,}".format(number)
 
 
+def replace_url(request, key, new_value):
+    dict_ = request.GET.copy()
+    if not new_value:
+        del dict_[key]
+    else:
+        dict_[key] = str(new_value)
+    return dict_.urlencode(safe="[]")
+
+
 def environment(**options):
     options["loader"] = FileSystemLoader(pathlib.Path(__file__).parent / "templates")
     options["autoescape"] = select_autoescape(["html", "xml"])
@@ -92,5 +101,6 @@ def environment(**options):
     env.filters["smartypants"] = smartypants.smartypants
     env.filters["render_authors"] = render_authors
     env.filters["thousands"] = thousands
+    env.filters["url_replace"] = replace_url
     env.globals.update({"get_messages": messages.get_messages})
     return env
