@@ -1,4 +1,5 @@
 import datetime as dt
+import textwrap
 import hashlib
 import math
 import random
@@ -274,6 +275,15 @@ class Quote(models.Model):
 
     class Meta:
         ordering = ("source_author", "source_book", "order", "id")
+
+    @property
+    def short_string(self):
+        short_quote = textwrap.shorten(self.text, width=70, placeholder="…")
+        if self.source_book:
+            return f"“{short_quote}” — {self.source_book.title}"
+        elif self.source_author:
+            return f"“{short_quote}” — {self.source_author.name}"
+        return f"“{short_quote}”"
 
 
 class ReviewManager(models.Manager):

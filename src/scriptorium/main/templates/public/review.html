@@ -142,10 +142,13 @@
           {% for quote in quotes %}
             <div class="quote">
               {{ quote.text | render_quotes | safe }}
-              {% if not request.user.is_anonymous %}
-                <small><a href="/b/quotes/{{ quote.id }}/">edit</a></small>
-                <small><a href="/b/quotes/{{ quote.id }}/delete">delete</a></small>
-              {% endif %}
+              <p style="text-align:right">
+                <small><a href="/q/{{ quote.id }}/">permalink</a></small>
+                {% if not request.user.is_anonymous %}
+                  <small><a href="/b/quotes/{{ quote.id }}/">edit</a></small>
+                  <small><a href="/b/quotes/{{ quote.id }}/delete">delete</a></small>
+                {% endif %}
+              </p>
             </div>
           {% endfor %}
         </details>

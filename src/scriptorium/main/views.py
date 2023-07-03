@@ -261,10 +261,20 @@ class StatsView(ActiveTemplateView):
     def charts(self):
         return get_charts()
 
+    @context
+    @cached_property
+    def title(self):
+        return "Reading stats"
+
 
 class GraphView(ActiveTemplateView):
     template_name = "public/graph.html"
     active = "graph"
+
+    @context
+    @cached_property
+    def title(self):
+        return "Book graph"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -389,10 +399,20 @@ class QueueView(ActiveTemplateView):
         )
         return context
 
+    @context
+    @cached_property
+    def title(self):
+        return "Reading queue"
+
 
 class TagView(ActiveTemplateView):
     template_name = "public/tags.html"
     active = "list"
+
+    @context
+    @cached_property
+    def title(self):
+        return "Tags"
 
     @context
     def tags(self):
@@ -418,6 +438,11 @@ class ListDetail(ActiveTemplateView):
 
     @context
     @cached_property
+    def title(self):
+        return str(self.tag_obj)
+
+    @context
+    @cached_property
     def tag_obj(self):
         return Tag.objects.prefetch_related("book_set", "book_set__review").get(
             name_slug=self.kwargs["tag"]
@@ -429,6 +454,12 @@ class ListDetail(ActiveTemplateView):
 
 
 class AuthorMixin:
+
+    @context
+    @cached_property
+    def title(self):
+        return str(self.author_obj)
+
     @context
     @cached_property
     def author_obj(self):
@@ -683,11 +714,15 @@ class PageList(LoginRequiredMixin, TemplateView):
 class PageView(TemplateView):
     template_name = "public/page.html"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        page = Page.objects.get(slug=self.kwargs["slug"])
-        context["page"] = page
-        return context
+    @context
+    @cached_property
+    def title(self):
+        return str(self.page)
+
+    @context
+    @cached_property
+    def page(self):
+        return Page.objects.get(slug=self.kwargs["slug"])
 
 
 class CatalogueView(ListView):
@@ -696,6 +731,11 @@ class CatalogueView(ListView):
     model = Book
     context_object_name = "books"
     active = "catalogue"
+
+    @context
+    @cached_property
+    def title(self):
+        return "Catalogue"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -748,3 +788,9 @@ class QuoteDelete(LoginRequiredMixin, DetailView):
 class QuoteView(DetailView):
     model = Quote
     template_name = "public/quote.html"
+    context_object_name = "quote"
+
+    @context
+    @cached_property
+    def title(self):
+        return self.get_object().short_string

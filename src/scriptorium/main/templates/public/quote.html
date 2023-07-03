@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  <section id="primary-quote" class="quote">
+
+    {{ quote.text | render_quotes | safe }}
+
+  </section>
+
+  <hr>
+
+  <div id="quote-attribution">
+    {% if quote.source_book %}
+      {% set book = quote.source_book %}
+      {% include "_book_card.html" %}
+    {% elif quote.source_author %}
+      quote from <a href="/a/{{ quote.source_author.name_slug }}">{{ quote.source_author.name }}</a>
+    {% endif %}
+  </div>
+
+{% endblock %}
