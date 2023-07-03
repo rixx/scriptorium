@@ -129,14 +129,24 @@
     </div>
   </article>
 
-  {% if book.quotes.all().exists() %}
+  {% if book.quotes.all().exists() or not request.user.is_anonymous %}
     <h2 id="quotes">Quotes</h2>
+
+    {% if not request.user.is_anonymous %}
+      <p><a href="/quotes/new/?book={{ book.id }}">Add a quote</a></p>
+    {% endif %}
 
     {% if book.quotes_by_language|length > 1%}
       {% for language, quotes in book.quotes_by_language.items() %}
         <details><summary>{{language}}</summary>
           {% for quote in quotes %}
-            <div class="quote">{{ quote.text | render_quotes | safe }}</div>
+            <div class="quote">
+              {{ quote.text | render_quotes | safe }}
+              {% if not request.user.is_anonymous %}
+                <small><a href="/b/quotes/{{ quote.id }}/">edit</a></small>
+                <small><a href="/b/quotes/{{ quote.id }}/delete">delete</a></small>
+              {% endif %}
+            </div>
           {% endfor %}
         </details>
       {% endfor %}

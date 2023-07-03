@@ -253,10 +253,18 @@ class QuoteManager(models.Manager):
 
 class Quote(models.Model):
     source_book = models.ForeignKey(
-        to=Book, on_delete=models.CASCADE, related_name="quotes", null=True
+        to=Book,
+        on_delete=models.CASCADE,
+        related_name="quotes",
+        null=True,
+        blank=True,
     )
     source_author = models.ForeignKey(
-        to=Author, on_delete=models.CASCADE, related_name="quotes", null=True
+        to=Author,
+        on_delete=models.CASCADE,
+        related_name="quotes",
+        null=True,
+        blank=True,
     )
     text = models.TextField()
     language = models.CharField(max_length=2, default="en")

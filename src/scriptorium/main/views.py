@@ -13,6 +13,7 @@ from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.views.generic import (
     CreateView,
+    DetailView,
     FormView,
     ListView,
     TemplateView,
@@ -31,10 +32,11 @@ from scriptorium.main.forms import (
     EditionSelectForm,
     LoginForm,
     PageForm,
+    QuoteForm,
     ReviewEditForm,
     ReviewWizardForm,
 )
-from scriptorium.main.models import Author, Book, Page, Review, Tag, ToRead
+from scriptorium.main.models import Author, Book, Page, Quote, Review, Tag, ToRead
 from scriptorium.main.stats import (
     get_all_years,
     get_charts,
@@ -706,3 +708,43 @@ class CatalogueView(ListView):
         if form.is_valid():
             return form.get_queryset()
         return Book.objects.none()
+
+
+class QuoteCreate(LoginRequiredMixin, CreateView):
+    model = Quote
+    form_class = QuoteForm
+    template_name = "private/quote_create.html"
+
+    def form_valid(self, form):
+        form.save()
+        return redirect(f"/q/{form.instance.id}/")
+
+
+class QuoteEdit(LoginRequiredMixin, UpdateView):
+    model = Quote
+    form_class = QuoteForm
+    template_name = "private/quote_edit.html"
+
+    def form_valid(self, form):
+        form.save()
+        return redirect(f"/q/{form.instance.id}/")
+
+
+class QuoteDelete(LoginRequiredMixin, DetailView):
+    model = Quote
+
+    def dispatch(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        book = self.object.source.book
+        author = self.object.source.author
+        self.object.delete()
+        if book:
+            return redirect(f"/{book.slug}/")
+        if author:
+            return redirect(f"/a/{author.name_slug}/")
+        return redirect("/q")
+
+
+class QuoteView(DetailView):
+    model = Quote
+    template_name = "public/quote.html"
