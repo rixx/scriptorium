@@ -7,7 +7,8 @@
   <form method="POST">
     {{ csrf_input }}
     {{ form.as_p() }}
-    <input type="submit">
+    <button name="action" value="save" type="submit">Save</button>
+    <button name="action" value="more" type="submit">Save and add another</button>
   </form>
 
 {% endblock %}

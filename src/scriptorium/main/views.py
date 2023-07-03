@@ -755,9 +755,29 @@ class QuoteCreate(LoginRequiredMixin, CreateView):
     form_class = QuoteForm
     template_name = "private/quote_create.html"
 
+    def get_initial(self):
+        initial = super().get_initial()
+        if "book" in self.request.GET:
+            book = Book.objects.filter(pk=self.request.GET["book"]).first()
+            if book:
+                initial["source_book"] = book
+        elif "author" in self.request.GET:
+            author = Author.objects.filter(pk=self.request.GET["author"]).first()
+            if author:
+                initial["source_author"] = author
+        return initial
+
     def form_valid(self, form):
         form.save()
+        action = self.request.POST.get("action")
+        if action == "more":
+            if form.instance.source_book:
+                return redirect(f"/b/quotes/new/?book={form.instance.source_book_id}")
+            if form.instance.source_author:
+                return redirect(f"/b/quotes/new/?author={form.instance.source_author_id}")
+            return redirect("/b/quotes/new/")
         return redirect(f"/q/{form.instance.id}/")
+
 
 
 class QuoteEdit(LoginRequiredMixin, UpdateView):
@@ -767,6 +787,13 @@ class QuoteEdit(LoginRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         form.save()
+        action = self.request.POST.get("action")
+        if action == "more":
+            if form.instance.source_book:
+                return redirect(f"/b/quotes/new/?book={form.instance.source_book_id}")
+            if form.instance.source_author:
+                return redirect(f"/b/quotes/new/?author={form.instance.source_author_id}")
+            return redirect("/b/quotes/new/")
         return redirect(f"/q/{form.instance.id}/")
 
 

@@ -12,7 +12,7 @@ urlpatterns = [
     path("b/pages/new", views.PageCreate.as_view()),
     path("b/pages/", views.PageList.as_view()),
     path("b/pages/<slug:slug>/", views.PageEdit.as_view()),
-    path("b/quotes/new", views.QuoteCreate.as_view()),
+    path("b/quotes/new/", views.QuoteCreate.as_view()),
     path("b/quotes/<int:pk>/", views.QuoteEdit.as_view()),
     path("b/quotes/<int:pk>/delete", views.QuoteDelete.as_view()),
     path("b/<slug:author>/", views.AuthorEdit.as_view()),
