@@ -14,7 +14,7 @@ setup(
         "bs4",
         "django==4.1.*",
         "django_context_decorator==1.6.0",
-        "django-formtools==2.4",
+        "django-formtools==2.3",
         "inquirer==2.6.*",
         "jinja2==2.11.*",
         "markdown==3.1.*",
