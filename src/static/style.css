@@ -364,6 +364,7 @@ header {
   background-color: white;
   margin: 0;
   padding: 0;
+  height: 46px;
   position: sticky;
   top: 0px;
   z-index: 9000;
@@ -373,7 +374,7 @@ header {
 header a {
   font-weight: normal;
 }
-#nav-links {
+#nav-links, #catalogue-form {
   display: flex;
   padding: 0;
   justify-content: space-around;
@@ -382,7 +383,7 @@ header a {
   margin: auto;
 }
 .hidden, #nav-links .sep {
-  display: none;
+  display: none !important;
 }
 #nav-links a {
   margin: 8px 0;
