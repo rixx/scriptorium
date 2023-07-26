@@ -88,8 +88,9 @@ def replace_url(request, key, new_value):
 
 
 def environment(**options):
-    options["loader"] = FileSystemLoader(pathlib.Path(__file__).parent / "templates")
     options["autoescape"] = select_autoescape(["html", "xml"])
+    options["loader"] = FileSystemLoader(pathlib.Path(__file__).parent / "templates")
+    options["cache_size"] = 0
 
     env = Environment(**options)
     env.globals.update({"static": staticfiles_storage.url})
