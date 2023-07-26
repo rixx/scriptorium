@@ -552,8 +552,9 @@ def get_charts():
     )
 
     default_chart_config = {
-        "range": (2.5, 4.5),
-        "secondary_range": (10, 190),
+        # Select an explicit range rather than doing range: (2.8, 4.2) and hoping for the best
+        "y_labels": [2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2],
+        "secondary_range": (5, 215),
         "_type": "linebar",
     }
     return [
