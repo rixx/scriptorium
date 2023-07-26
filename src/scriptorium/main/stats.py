@@ -491,10 +491,10 @@ def get_charts():
         (
             f"{page_buckets[-1]}+",
             Review.objects.filter(
-                rating__isnull=False, book__pages__gte=page_buckets[-2]
+                rating__isnull=False, book__pages__gte=page_buckets[-1]
             ).aggregate(Avg("rating"))["rating__avg"],
             Review.objects.filter(
-                rating__isnull=False, book__pages__gte=page_buckets[-2]
+                rating__isnull=False, book__pages__gte=page_buckets[-1]
             ).count(),
         )
     )
@@ -538,11 +538,11 @@ def get_charts():
             f"{publication_year_buckets[-1]}+",
             Review.objects.filter(
                 rating__isnull=False,
-                book__publication_year__gte=publication_year_buckets[-2],
+                book__publication_year__gte=publication_year_buckets[-1],
             ).aggregate(Avg("rating"))["rating__avg"],
             Review.objects.filter(
                 rating__isnull=False,
-                book__publication_year__gte=publication_year_buckets[-2],
+                book__publication_year__gte=publication_year_buckets[-1],
             ).count(),
         )
     )
