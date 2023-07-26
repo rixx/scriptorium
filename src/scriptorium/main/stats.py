@@ -15,8 +15,13 @@ class LineBar(pygal.Line, pygal.Bar):
     """Class that renders primary data as line, and secondary data as bar."""
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self.secondary_range = kwargs.get("secondary_range")
+        if self.secondary_range:
+            kwargs["rescale"] = True
+        super().__init__(*args, **kwargs)
+        if self.secondary_range:
+            self._secondary_min = self.secondary_range[0]
+            self._secondary_max = self.secondary_range[1]
 
     def add(self, label, data, **kwargs):
         # We add an empty data point, because otherwise the secondary series (the bar chart)
@@ -57,20 +62,19 @@ class LineBar(pygal.Line, pygal.Bar):
         self.config.css.append("file://" + custom_css_file)
 
     def _plot(self):
-        primary_range = (self.view.box.ymin, self.view.box.ymax)
         real_order = self._order
+        real_zero = self.zero
 
-        if self.secondary_range:
-            self.view.box.ymin = self.secondary_range[0]
-            self.view.box.ymax = self.secondary_range[1]
+        # Make sure bars start at the actual bottom of the chart
+        self.zero = self._box.ymin
+        # This makes the bars wider, by discounting the amount of lines when
+        # calculating the width of the bars.
         self._order = len(self.secondary_series)
         for i, serie in enumerate(self.secondary_series, 1):
-            self.bar(serie, False)
+            self.bar(serie, True)
 
         self._order = real_order
-        self.view.box.ymin = primary_range[0]
-        self.view.box.ymax = primary_range[1]
-
+        self.zero = real_zero
         for i, serie in enumerate(self.series, 1):
             self.line(serie)
 
@@ -549,7 +553,7 @@ def get_charts():
 
     default_chart_config = {
         "range": (2.5, 4.5),
-        "secondary_range": (0, 270),
+        "secondary_range": (10, 190),
         "_type": "linebar",
     }
     return [
