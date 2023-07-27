@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100" height="20.1" version="1.1" viewBox="0 0 100 20.1" xmlns="http://www.w3.org/2000/svg">
+ <path d="m26.142 0v4.334l2e-3 -4e-3v15.77h9.2051v-10.238h-6.9609v-9.8281h6.9609v-0.0332zm9.207 0.0332v9.8281h6.9629v10.238h2.3754v-20.1h-2.3754v0.0332z" fill="{{ border_color }}"/>
+ <path d="m55.312 0v4.334l2e-3 -4e-3v15.77h9.2051v-10.238h-6.9609v-9.8281h6.9609v-0.0332zm9.207 0.0332v9.8281h6.9629v10.238h2.3754v-20.1h-2.3754v0.0332z" fill="{{ border_color }}"/>
+</svg>

@@ -33,8 +33,9 @@ main:not(.wide) {
   min-height: 83vh;
   overflow-wrap: break-word;
   background: white;
-  border: 30px solid transparent;
-  border-image: var(--border-url) 0 50% 0 50% repeat;
+  border: solid transparent;
+  border-width: 0px 60px;
+  border-image: var(--border-url) 0 50% 0 50% round;
 }
 code, pre, .code.literal-block {
   font-family: "Ubuntu Mono", "Inconsolata", monospace;
