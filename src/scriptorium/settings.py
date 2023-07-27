@@ -114,6 +114,17 @@ STATIC_ROOT = BASE_DIR / "static"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+
+# Find all files in templates/_borders, and set MAX_BORDER to the highest number
+# in the filename.
+# This is used to determine the maximum border number for the border selection
+# dropdown.
+# If you don't want to use borders, set MAX_BORDER to 0.
+border_files = list(
+    (BASE_DIR / "scriptorium" / "main" / "templates" / "_borders").glob("*.svg")
+)
+MAX_BORDER = max(int(file.stem) for file in border_files) if border_files else 0
+
 try:
     import django_extensions
 

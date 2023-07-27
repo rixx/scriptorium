@@ -3,6 +3,7 @@ from collections import defaultdict
 from itertools import groupby
 
 import networkx as nx
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -847,7 +848,7 @@ class QuoteView(DetailView):
 def border_image(request):
     number = request.GET.get("border")
     border_color = request.GET.get("color") or "990000"
-    max_border = 16
+    max_border = settings.MAX_BORDER
     if number:
         try:
             number = int(number)
