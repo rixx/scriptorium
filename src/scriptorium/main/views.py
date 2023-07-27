@@ -824,8 +824,8 @@ class QuoteDelete(LoginRequiredMixin, DetailView):
 
     def dispatch(self, request, *args, **kwargs):
         self.object = self.get_object()
-        book = self.object.source.book
-        author = self.object.source.author
+        book = self.object.source_book
+        author = self.object.source_author
         self.object.delete()
         if book:
             return redirect(f"/{book.slug}/")
