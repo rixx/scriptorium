@@ -11,7 +11,7 @@
   {% if review.tldr %}
     <meta name="og:description" content="Review: {{ review.tldr }}" />
   {% endif %}
-  {% if review.book.cover_square %}
+  {% if review.book.cover_square and review.book.cover_thumbnail.thumb %}
     <meta name="twitter:image" content="https://books.rixx.de{{ review.book.cover_thumbnail.thumb.url }}"/>
     <meta property="og:image" content="https://books.rixx.de{{ review.book.cover_thumbnail.thumb.url }}"/>
   {% endif %}
