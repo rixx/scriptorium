@@ -20,10 +20,11 @@
       <h2 class="alphabet initial">{{ letter }}</h2>
       <ul>
         {% for author in authors %}
-          <li id="{{ author.name_slug }}" class="anchor-target">{{ author.name }}
+          <li id="{{ author.name_slug }}" class="anchor-target">
+            <a href="/{{ author.name_slug }}/">{{ author.name }}</a>
             <a class="anchor" href="/reviews/by-author/#{{ author.name_slug }}">¶</a>
             <ul>
-              {% for book in author.all_books() %}
+              {% for book in author.book_list %}
                 <li>
                   {% if book.review.rating == 5 %}
                     <span class="rating rating-inline">★</span>
