@@ -863,3 +863,17 @@ def border_image(request):
     template = loader.get_template(f"_borders/{number}.svg")
     rendered = template.render({"border_color": f"#{border_color}"})
     return HttpResponse(rendered, content_type="image/svg+xml")
+
+
+class BorderImageList(TemplateView):
+    template_name = "public/border_image_list.html"
+
+    @context
+    @cached_property
+    def title(self):
+        return "Border Images"
+
+    @context
+    @cached_property
+    def max_border(self):
+        return settings.MAX_BORDER

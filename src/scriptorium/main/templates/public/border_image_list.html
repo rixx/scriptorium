@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>Border Image Tester</h2>
+
+  <section>
+    <p>
+      This is where you can see all the available border images!
+      Simply choose one from the list below to see what one looks like. If you want to see a page with a specific border for some reason, you can always
+      specify it in the URL like so: <code>?border=1</code>.
+    </p>
+    <form>
+      <div style="display: flex">
+        <button id="previous" style="margin-right: 24px; margin-left: auto; width: 100px;">Previous</button>
+        <select id="border-image">
+          {% for border in range(1, max_border) %}
+            <option value="{{ border }}" {% if border.id == border_id %}selected{% endif %}>Border {{ border }}</option>
+          {% endfor %}
+        </select>
+        <button id="next" style="margin-left: 24px; margin-right: auto; width: 100px;">Next</button>
+      </div>
+      <div style="text-align: center; margin-top: 15px">
+        <select id="border-color">
+          <option value="black">Black</option>
+          <option value="db4000">Orange</option>
+          <option value="990000">Red</option>
+          <option value="a43a76">Pink</option>
+          <option value="8548a1">Purple</option>
+          <option value="0879af">Blue</option>
+          <option value="00959c">Teal</option>
+          <option value="1f8245">Green</option>
+        </select>
+      </div>
+    </form>
+  </section>
+
+  <style>
+    .ts-wrapper {
+      display: inline-block;
+      width: 100px;
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const borderImage = document.getElementById('border-image');
+      const borderColor = document.getElementById('border-color');
+      const previous = document.getElementById('previous');
+      const next = document.getElementById('next');
+      const main = document.querySelector('main');
+
+      const updateBorder = () => {
+        const border = borderImage.value;
+        const color = borderColor.value;
+
+    // update current url
+        const url = new URL(window.location.href);
+        url.searchParams.set('border', border);
+        url.searchParams.set('color', color);
+        window.history.replaceState({}, '', url);
+
+        main.style.setProperty("--border-url", `url('/img/border/?color=${color}&border=${border}')`);
+      };
+
+      borderImage.addEventListener('change', updateBorder);
+      borderColor.addEventListener('change', updateBorder);
+
+      previous.addEventListener('click', (event) => {
+        event.preventDefault();
+        const index = borderImage.selectedIndex;
+        if (index > 0) {
+          borderImage.selectedIndex = index - 1;
+        } else {
+          borderImage.selectedIndex = borderImage.options.length - 1;
+        }
+        updateBorder();
+      });
+
+      next.addEventListener('click', (event) => {
+        event.preventDefault();
+        const index = borderImage.selectedIndex;
+        if (index < borderImage.options.length - 1) {
+          borderImage.selectedIndex = index + 1;
+        } else {
+          borderImage.selectedIndex = 0;
+        }
+        updateBorder();
+      });
+
+  // set initial border from url, fall black to 7 + green
+      const url = new URL(window.location.href);
+      const border = url.searchParams.get('border') || 7
+      const color = url.searchParams.get('color') || '1f8245'
+      borderImage.value = border;
+      borderColor.value = color;
+      updateBorder();
+    });
+  </script>
+{% endblock %}
