@@ -61,7 +61,7 @@ pre.code + p::first-letter {
   font-family: 'Kanzlei';
   padding-right: 3px;
   float: left;
-  color: #990000;
+  color: var(--book-color-darkened, #990000);
   text-indent: 0;
   line-height: .8em;
 }

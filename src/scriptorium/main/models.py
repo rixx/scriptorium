@@ -238,6 +238,23 @@ class Book(models.Model):
             self.download_cover()
         return result
 
+    @cached_property
+    def spine_color_darkened(self):
+        # Calculate brightness, then darken if necessary
+        if not self.spine_color:
+            return None
+        # Spine color is given in hex, e.g. #f0f0f0
+        r, g, b = tuple(int(self.spine_color[i : i + 2], 16) for i in (1, 3, 5))
+        brightness = (r * 299 + g * 587 + b * 114) / 1000
+        target_brightness = 100
+        if brightness > target_brightness:
+            diff = int(brightness) - target_brightness
+            r = max(0, r - diff)
+            g = max(0, g - diff)
+            b = max(0, b - diff)
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+
 
 class BookRelation(models.Model):
     source = models.ForeignKey(
