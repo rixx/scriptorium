@@ -7,7 +7,7 @@ class Command(BaseCommand):
     help = "Closes the specified poll for voting"
 
     def handle(self, *args, **options):
-        for book in Book.objects.filter(spine_color__isnull=True):
+        for book in Book.objects.filter(spine_color__isnull=True).exclude(cover=""):
             try:
                 book.update_spine_color()
                 book.update_thumbnail()
