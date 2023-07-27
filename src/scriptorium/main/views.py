@@ -156,17 +156,35 @@ class ReviewByAuthor(YearNavMixin, ActiveTemplateView):
     def authors(self):
         authors = (
             Author.objects.all()
-            .prefetch_related("books", "books__review")
+            .prefetch_related(
+                "books",
+                "books__review",
+                "books__additional_authors",
+                "books__primary_author",
+            )
             .order_by("name")
         )
+        authors = {}
+        for book in (
+            Book.objects.all()
+            .select_related("primary_author", "review")
+            .prefetch_related("additional_authors")
+        ):
+            for author in book.authors:
+                if author.pk not in authors:
+                    authors[author.pk] = author
+                    authors[author.pk].book_list = []
+                authors[author.pk].book_list.append(book)
+
+        def sort_authors(author):
+            return author.name[0].upper() if author.name[0].isalpha() else "_"
+
         return sorted(
             [
                 (letter, list(authors))
                 for letter, authors in groupby(
-                    authors,
-                    key=lambda author: (
-                        author.name[0].upper() if author.name[0].isalpha() else "_"
-                    ),
+                    list(sorted(authors.values(), key=sort_authors)),
+                    key=sort_authors,
                 )
             ],
             key=lambda x: (not x[0].isalpha(), x[0].upper()),
