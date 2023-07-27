@@ -206,7 +206,7 @@ class Book(models.Model):
         if im.width > 240 and im.height > 240:
             im.thumbnail((240, 240))
         buffer = BytesIO()
-        im.save(fp=buffer, format="JPEG", quality=95)
+        im.convert("RGB").save(fp=buffer, format="JPEG", quality=95)
         imgfile = ContentFile(buffer.getvalue())
 
         t = Thumbnail.objects.create(book=self, size="thumbnail")
