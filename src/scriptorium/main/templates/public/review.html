@@ -21,9 +21,9 @@
 
 {% block content %}
   <div class="messages">
-  {% for message in get_messages(request) %}
-  <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-  {% endfor %}
+    {% for message in get_messages(request) %}
+      <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+    {% endfor %}
   </div>
   <div class="book-meta-wrapper"><div>
     {% set book = review.book %}
