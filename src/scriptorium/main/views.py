@@ -847,7 +847,7 @@ class QuoteView(DetailView):
 def border_image(request):
     number = request.GET.get("border")
     border_color = request.GET.get("color") or "990000"
-    max_border = 11
+    max_border = 16
     if number:
         try:
             number = int(number)
