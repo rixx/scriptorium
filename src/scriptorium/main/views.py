@@ -108,7 +108,10 @@ class YearView(YearNavMixin, ActiveTemplateView):
     @cached_property
     def reviews(self):
         return sorted(
-            Review.objects.all().filter(dates_read__contains=self.year),
+            Review.objects.all()
+            .filter(dates_read__contains=self.year)
+            .select_related("book", "book__primary_author")
+            .prefetch_related("book__additional_authors"),
             key=lambda review: review.date_read_lookup[self.year],
             reverse=True,
         )
