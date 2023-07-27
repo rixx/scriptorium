@@ -8,6 +8,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         for book in Book.objects.filter(spine_color__isnull=True):
-            book.update_spine_color()
-            book.update_thumbnail()
-            book.save()
+            try:
+                book.update_spine_color()
+                book.update_thumbnail()
+                book.save()
+            except Exception as e:
+                print(e)
