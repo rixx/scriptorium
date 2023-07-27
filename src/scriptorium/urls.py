@@ -34,6 +34,7 @@ urlpatterns = [
     path("lists/", views.TagView.as_view()),
     path("lists/<tag>/", views.ListDetail.as_view()),
     path("q/<int:pk>/", views.QuoteView.as_view()),
+    path("img/border/", views.border_image),
     path("<slug:author>/", views.AuthorView.as_view()),
     path("<slug:author>/<slug:book>/", views.ReviewView.as_view()),
     path("<slug:author>/<slug:book>/cover.jpg", views.ReviewCoverView.as_view()),

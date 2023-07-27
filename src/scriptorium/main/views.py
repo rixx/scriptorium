@@ -1,3 +1,4 @@
+import random
 from collections import defaultdict
 from itertools import groupby
 
@@ -9,6 +10,7 @@ from django.db import transaction
 from django.db.models import Avg, Count, Q, Sum
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import redirect
+from django.template import loader
 from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.views.generic import (
@@ -69,8 +71,6 @@ class IndexView(ActiveTemplateView):
 
 
 def feed_view(request):
-    from django.template import loader
-
     template = loader.get_template("feed.atom")
     context = {"reviews": Review.objects.all().order_by("-latest_date")[:20]}
     headers = {
@@ -842,3 +842,23 @@ class QuoteView(DetailView):
     @cached_property
     def title(self):
         return self.get_object().short_string
+
+
+def border_image(request):
+    number = request.GET.get("border")
+    border_color = request.GET.get("color") or "990000"
+    max_border = 1
+    if number:
+        try:
+            number = int(number)
+            if number not in range(1, max_border + 1):
+                raise ValueError
+        except ValueError:
+            print("error")
+            number = None
+    if not number:
+        number = random.randint(1, max_border)
+
+    template = loader.get_template(f"_borders/{number}.svg")
+    rendered = template.render({"border_color": f"#{border_color}"})
+    return HttpResponse(rendered, content_type="image/svg+xml")
