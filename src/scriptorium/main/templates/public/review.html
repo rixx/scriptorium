@@ -100,12 +100,12 @@
     <h3>Table of Contents</h3>
     <ul class="toc">
       <li><a href="#title">Metadata</a></li>
-      {% if review.plot %}
-        <li><a href="#plot-summary">Plot summary</a></li>
-      {% endif %}
       {% if review.text %}
         <li><a href="#review-text">Review</a></li>
         {{ review.text | render_toc | safe }}
+      {% endif %}
+      {% if book.plot %}
+        <li><a href="#plot-summary">Plot summary</a></li>
       {% endif %}
     </ul>
     {% if book.quotes.all().exists() %}
@@ -117,19 +117,24 @@
   </nav>
 
   <article>
-    {% if book.plot %}
-      <details>
-        <summary><h2 class="plot-header" id="plot-summary">Plot summary <span title="Plot summaries will contain ALL the spoilers. I mostly write them to remind future!Me what was going on. Especially useful for discusisons and sequels.">❔</span></h2></summary>
-        {{ book.plot | render_markdown | safe }}
-        <hr>
-      </details>
-    {% endif %}
     <div id="review-text">
       {{ review.text | render_markdown | safe }}
     </div>
+    {% if book.plot %}
+      <hr>
+      <details>
+        <summary><h2 class="plot-header" id="plot-summary">Plot summary</h2>
+          <small>Beware: full spoilers! Also probably incomplete and possibly incomprehensible.</small>
+        </summary>
+        <p>
+        {{ book.plot | render_markdown | safe }}
+        </p>
+      </details>
+    {% endif %}
   </article>
 
   {% if book.quotes.all().exists() or not request.user.is_anonymous %}
+    <hr>
     <h2 id="quotes">Quotes</h2>
 
     {% if not request.user.is_anonymous %}
