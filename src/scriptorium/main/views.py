@@ -901,7 +901,11 @@ class PoemAuthorList(AuthorMixin, ActiveTemplateMixin, ListView):
     active = "poems"
 
     def get_queryset(self):
-        return Poem.objects.all().filter(author__name_slug=self.kwargs["author"])
+        return Poem.objects.all().filter(
+            Q(author__name_slug=self.kwargs["author"])
+            | Q(book__primary_author__name_slug=self.kwargs["author"])
+            | Q(book__additional_authors__name_slug=self.kwargs["author"])
+        )
 
 
 class PoemBookList(ReviewMixin, ActiveTemplateMixin, ListView):
