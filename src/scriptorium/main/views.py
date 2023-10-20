@@ -941,6 +941,11 @@ class PoemMixin:
     def poem(self):
         return self.get_object()
 
+    @context
+    @cached_property
+    def book(self):
+        return self.poem.book
+
 
 class PoemView(PoemMixin, ActiveTemplateMixin, DetailView):
     template_name = "public/poem_detail.html"
