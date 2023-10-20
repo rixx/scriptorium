@@ -1,7 +1,7 @@
 from django import forms
 from django.db.models import Q
 
-from scriptorium.main.models import Author, Book, Page, Quote, Review, Tag
+from scriptorium.main.models import Author, Book, Page, Poem, Quote, Review, Tag
 from scriptorium.main.utils import slugify
 
 
@@ -249,3 +249,20 @@ class QuoteForm(forms.ModelForm):
             self.fields["source_author"].initial = source_author
         self.fields["source_book"].queryset = Book.objects.order_by("title")
         self.fields["source_author"].queryset = Author.objects.order_by("name")
+
+
+class PoemForm(forms.ModelForm):
+    class Meta:
+        model = Poem
+        fields = (
+            "title",
+            "slug",
+            "book",
+            "author",
+            "author_name",
+            "url_slug",
+            "language",
+            "status",
+            "text",
+            "context",
+        )

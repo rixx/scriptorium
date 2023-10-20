@@ -9,8 +9,8 @@
     <a href="/queue"{% if active == "queue" %} class="active"{% endif %}>Queue</a>
     <a href="/catalogue/"{% if active == "list" or active == "catalogue" %} class="active"{% endif %} id="catalogue-link">🔍 Catalogue</a>
     <span class="sep"> · </span>
-    <a href="/graph" id="graph-nav"{% if active == "graph" %} class="active"{% endif %}>Graph</a>
     <a href="/stats"{% if active == "stats" %} class="active"{% endif %}>Stats</a>
+    <a href="/poems"{% if active == "poems" %} class="active"{% endif %}>Poems</a>
   </nav>
   <nav id="catalogue-form" class="hidden">
     <form action="/catalogue/" method="get">

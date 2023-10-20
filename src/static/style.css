@@ -1095,6 +1095,17 @@ table.stats-table td:first-child {
 table.stats-table .highlight {
   background-color: #ffcc004a;
 }
+table.small-stats-table {
+  margin-top: 6px;
+  line-height: 0.8;
+}
+table.small-stats-table tr td {
+  padding: 3px;
+  padding-left: 0;
+  text-align: left !important;
+}
+table.small-stats-table tr td:last-child {
+}
 a#mastodon-linkback {
   display: none;
 }

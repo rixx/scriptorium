@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  <h2>{{ poem.title }}
+    {% if not request.user.is_anonymous %}
+      <small><a href="{{ poem.get_absolute_url(private=True) }}">edit</a></small>
+    {% endif %}
+  </h2>
+
+  <p class="author">
+  {% if poem.book %}
+    from <a href="/{{ poem.book.slug }}/">{{ poem.book.title }}</a> by 
+    {{ poem.book.authors|render_authors }}
+  {% elif poem.author %}
+    by <a href="/{{ poem.author.name_slug }}/">{{ poem.author }}</a>
+  {% else %}
+    by {{ poem.author_name }}
+  {% endif %}
+  </p>
+
+  <article>
+    <p class="context">
+    {% if poem.context %}
+    {{ poem.context | render_markdown | safe }}
+    {% endif %}
+    </p>
+    <hr>
+    <div class="poem">
+    {{ poem.text | render_quotes | safe }}
+    </div>
+  </article>
+{% endblock %}

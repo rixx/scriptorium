@@ -1,0 +1,9 @@
+{% extends "private/base.html" %}
+
+{% block content %}
+
+  <h2>Poem list</h2>
+
+  <a href="/b/poems/new">Add poem</a>
+  {% include "_includes/poem_table.html" %}
+{% endblock %}

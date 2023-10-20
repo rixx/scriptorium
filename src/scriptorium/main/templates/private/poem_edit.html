@@ -1,0 +1,13 @@
+{% extends "private/base.html" %}
+
+{% block content %}
+
+  <h2>{% if form.instance.pk %}{{ poem.title }}{% else %}New poem{% endif %}</h2>
+
+  <form method="POST">
+    {{ csrf_input }}
+    {{ form.non_field_errors() }}
+    {{ form.as_p() }}
+    <input type="submit">
+  </form>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  <p></p>
+
+  <h2>Poems in {{ book.title }}</h2>
+
+  {% include "_includes/poem_table.html" %}
+
+{% endblock %}

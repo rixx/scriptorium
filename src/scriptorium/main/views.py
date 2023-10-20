@@ -35,11 +35,12 @@ from scriptorium.main.forms import (
     EditionSelectForm,
     LoginForm,
     PageForm,
+    PoemForm,
     QuoteForm,
     ReviewEditForm,
     ReviewWizardForm,
 )
-from scriptorium.main.models import Author, Book, Page, Quote, Review, Tag, ToRead
+from scriptorium.main.models import Author, Book, Page, Poem, Quote, Review, Tag, ToRead
 from scriptorium.main.stats import (
     get_all_years,
     get_charts,
@@ -53,13 +54,13 @@ from scriptorium.main.stats import (
 from scriptorium.main.utils import slugify
 
 
-class ActiveTemplateView(TemplateView):
+class ActiveTemplateMixin:
     @context
     def active(self):
         return getattr(self, "active", None)
 
 
-class IndexView(ActiveTemplateView):
+class IndexView(ActiveTemplateMixin, TemplateView):
     template_name = "public/index.html"
 
     @context
@@ -86,7 +87,7 @@ class YearNavMixin:
         return get_all_years()
 
 
-class YearView(YearNavMixin, ActiveTemplateView):
+class YearView(YearNavMixin, ActiveTemplateMixin, TemplateView):
     template_name = "public/list_reviews.html"
     active = "read"
 
@@ -138,7 +139,7 @@ class YearInBooksView(YearView):
         return get_year_stats(self.year)
 
 
-class ReviewByAuthor(YearNavMixin, ActiveTemplateView):
+class ReviewByAuthor(YearNavMixin, ActiveTemplateMixin, TemplateView):
     template_name = "public/list_by_author.html"
     active = "read"
 
@@ -192,7 +193,7 @@ class ReviewByAuthor(YearNavMixin, ActiveTemplateView):
         )
 
 
-class ReviewByTitle(YearNavMixin, ActiveTemplateView):
+class ReviewByTitle(YearNavMixin, ActiveTemplateMixin, TemplateView):
     template_name = "public/list_by_title.html"
     active = "read"
 
@@ -225,7 +226,7 @@ class ReviewByTitle(YearNavMixin, ActiveTemplateView):
         )
 
 
-class ReviewBySeries(YearNavMixin, ActiveTemplateView):
+class ReviewBySeries(YearNavMixin, ActiveTemplateMixin, TemplateView):
     template_name = "public/list_by_series.html"
     active = "read"
 
@@ -264,7 +265,7 @@ class ReviewBySeries(YearNavMixin, ActiveTemplateView):
         )
 
 
-class StatsView(ActiveTemplateView):
+class StatsView(ActiveTemplateMixin, TemplateView):
     template_name = "public/stats.html"
     active = "stats"
 
@@ -289,7 +290,7 @@ class StatsView(ActiveTemplateView):
         return "Reading stats"
 
 
-class GraphView(ActiveTemplateView):
+class GraphView(ActiveTemplateMixin, TemplateView):
     template_name = "public/graph.html"
     active = "graph"
 
@@ -348,7 +349,7 @@ class ReviewMixin:
         return f"{self.book.title} by {self.book.author_string}"
 
 
-class ReviewView(ReviewMixin, ActiveTemplateView):
+class ReviewView(ReviewMixin, ActiveTemplateMixin, TemplateView):
     template_name = "public/review.html"
     active = "review"
 
@@ -380,7 +381,7 @@ class ReviewCoverSquareView(ReviewView):
         return FileResponse(self.book.cover_square.thumb)
 
 
-class QueueView(ActiveTemplateView):
+class QueueView(ActiveTemplateMixin, TemplateView):
     template_name = "public/list_queue.html"
     active = "queue"
 
@@ -427,7 +428,7 @@ class QueueView(ActiveTemplateView):
         return "Reading queue"
 
 
-class TagView(ActiveTemplateView):
+class TagView(ActiveTemplateMixin, TemplateView):
     template_name = "public/tags.html"
     active = "list"
 
@@ -454,7 +455,7 @@ class TagView(ActiveTemplateView):
         return grouped_tags
 
 
-class ListDetail(ActiveTemplateView):
+class ListDetail(ActiveTemplateMixin, TemplateView):
     template_name = "public/tag.html"
     active = "list"
 
@@ -496,7 +497,7 @@ class AuthorMixin:
         )
 
 
-class AuthorView(AuthorMixin, ActiveTemplateView):
+class AuthorView(AuthorMixin, ActiveTemplateMixin, TemplateView):
     template_name = "public/author.html"
     active = "review"
 
@@ -877,3 +878,97 @@ class BorderImageList(TemplateView):
     @cached_property
     def max_border(self):
         return settings.MAX_BORDER
+
+
+class PoemList(ActiveTemplateMixin, ListView):
+    template_name = "public/poem_list.html"
+    model = Poem
+    context_object_name = "poems"
+    active = "poems"
+
+
+class PoemPrivateList(LoginRequiredMixin, ActiveTemplateMixin, ListView):
+    template_name = "private/poem_list.html"
+    model = Poem
+    context_object_name = "poems"
+    active = "poems"
+
+
+class PoemAuthorList(AuthorMixin, ActiveTemplateMixin, ListView):
+    template_name = "public/poem_author_list.html"
+    model = Poem
+    context_object_name = "poems"
+    active = "poems"
+
+    def get_queryset(self):
+        return Poem.objects.all().filter(author__name_slug=self.kwargs["author"])
+
+
+class PoemBookList(ReviewMixin, ActiveTemplateMixin, ListView):
+    template_name = "public/poem_book_list.html"
+    model = Poem
+    context_object_name = "poems"
+    active = "poems"
+
+    def get_queryset(self):
+        return Poem.objects.all().filter(
+            book__primary_author__name_slug=self.kwargs["author"],
+            book__title_slug=self.kwargs["book"],
+        )
+
+
+class PoemMixin:
+    active = "poems"
+
+    def get_object(self):
+        if "book" in self.kwargs:
+            return Poem.objects.get(
+                book__title_slug=self.kwargs["book"],
+                book__primary_author__name_slug=self.kwargs["author"],
+                slug=self.kwargs["slug"],
+            )
+        try:
+            return Poem.objects.get(
+                author__name_slug=self.kwargs["author"], slug=self.kwargs["slug"]
+            )
+        except Poem.DoesNotExist:
+            return Poem.objects.get(
+                url_slug=self.kwargs["author"], slug=self.kwargs["slug"]
+            )
+
+    @context
+    @cached_property
+    def poem(self):
+        return self.get_object()
+
+
+class PoemView(PoemMixin, ActiveTemplateMixin, DetailView):
+    template_name = "public/poem_detail.html"
+    model = Poem
+
+
+class PoemEdit(PoemMixin, LoginRequiredMixin, FormView):
+    template_name = "private/poem_edit.html"
+    form_class = PoemForm
+
+    def get_form_kwargs(self, **kwargs):
+        kwargs = super().get_form_kwargs(**kwargs)
+        kwargs["instance"] = self.poem
+        return kwargs
+
+    def form_valid(self, form):
+        self.form = form
+        form.save()
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return self.form.instance.get_absolute_url()
+
+
+class PoemCreate(LoginRequiredMixin, CreateView):
+    template_name = "private/poem_edit.html"
+    form_class = PoemForm
+    active = "poems"
+
+    def get_success_url(self):
+        return self.object.get_absolute_url()

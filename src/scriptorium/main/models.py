@@ -419,3 +419,69 @@ class Thumbnail(models.Model):
     def delete(self, **kwargs):
         self.thumb.delete()
         super().delete(**kwargs)
+
+
+class PoemStatus(models.TextChoices):
+    ARCHIVED = "A", "archived"
+    WAITING = "W", "waiting"
+    LEARNING = "L", "learning"
+    MEMORIZED = "M", "memorized"
+
+
+class Poem(models.Model):
+    book = models.ForeignKey(
+        Book, on_delete=models.CASCADE, related_name="poems", null=True, blank=True
+    )
+    author = models.ForeignKey(
+        Author,
+        on_delete=models.CASCADE,
+        related_name="poems",
+        null=True,
+        blank=True,
+        help_text="Use if the book is not in the database",
+    )
+    author_name = models.CharField(
+        max_length=300,
+        null=True,
+        blank=True,
+        help_text="Use if the author is not in the database",
+    )
+    url_slug = models.CharField(
+        max_length=300,
+        null=True,
+        blank=True,
+        help_text="Use if neither book nor author are in the database. Slug field!",
+    )
+
+    title = models.CharField(max_length=300)
+    slug = models.CharField(max_length=300)
+    text = models.TextField()
+    context = models.TextField(null=True, blank=True)
+    language = models.CharField(max_length=2, default="en")
+    status = models.CharField(
+        max_length=1,
+        choices=PoemStatus.choices,
+        default=PoemStatus.ARCHIVED,
+    )
+    learning_data = models.JSONField(null=True, blank=True)
+
+    date_added = models.DateField(auto_now_add=True)
+    last_studied = models.DateField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("book", "slug")
+
+    def get_absolute_url(self, private=False):
+        if self.book:
+            result = f"/{self.book.slug}/poems/{self.slug}/"
+        elif self.author:
+            result = f"/{self.author.name_slug}/poems/{self.slug}/"
+        else:
+            result = f"/poems/{self.url_slug}/{self.slug}/"
+        if private:
+            result = f"/b{result}"
+        return result
+
+    @cached_property
+    def line_count(self):
+        return len([line for line in self.text.split("\n") if line.strip()])

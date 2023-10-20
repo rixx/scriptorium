@@ -108,6 +108,9 @@
         <li><a href="#plot-summary">Plot summary</a></li>
       {% endif %}
     </ul>
+    {% if book.poems.all().exists() %}
+      <ul class="toc"><li><a href="#poems">Poems</a></li></ul>
+    {% endif %}
     {% if book.quotes.all().exists() %}
       <ul class="toc"><li><a href="#quotes">Quotes</a></li></ul>
     {% endif %}
@@ -127,11 +130,27 @@
           <small>Beware: full spoilers! Also probably incomplete and possibly incomprehensible.</small>
         </summary>
         <p>
-        {{ book.plot | render_markdown | safe }}
+          {{ book.plot | render_markdown | safe }}
         </p>
       </details>
     {% endif %}
   </article>
+  {% if book.poems.all().exists() or not request.user.is_anonymous %}
+    <hr>
+    <h2 id="poems">Poems</h2>
+
+    {% if not request.user.is_anonymous %}
+      <p><a href="/b/poems/new/?book={{ book.id }}">Add a poem</a></p>
+    {% endif %}
+
+    {% if book.poems.all().exists() %}
+      <ul>
+        {% for poem in book.poems.all() %}
+          <li><a href="{{ poem.get_absolute_url() }}">{{ poem.title }}</a></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endif %}
 
   {% if book.quotes.all().exists() or not request.user.is_anonymous %}
     <hr>
