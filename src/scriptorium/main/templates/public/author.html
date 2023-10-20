@@ -8,7 +8,7 @@
   {% endif %}
 
   {% set shelf_books = books %}
-  {% include "_shelf.html" %}
+  {% include "_includes/shelf.html" %}
 
   {% if author_obj.text %}
     <p>
@@ -17,6 +17,6 @@
   {% endif %}
 
   {% for book in books %}
-    {% include "_book_card.html" %}
+    {% include "_includes/book_card.html" %}
   {% endfor %}
 {% endblock %}

@@ -91,7 +91,7 @@
       <a class="book-cover" href="/{{ book.slug }}/cover.jpg">
         {% set spine_border = True %}
         {% set full_size = True %}
-        {% include "_book_cover.html" %}
+        {% include "_includes/book_cover.html" %}
       </a>
     {% endif %}
   </div>
@@ -187,13 +187,13 @@
       {% set book = related.destination %}
       {% set review_text = related.text %}
       {% set expand_card = True %}
-      {% include  "_book_card.html" %}
+      {% include  "_includes/book_card.html" %}
     {% endfor %}
   {% endif %}
 
   <hr>
 
-  {% include "_external_links.html" %}
+  {% include "_includes/external_links.html" %}
   <hr>
 
 {% endblock %}

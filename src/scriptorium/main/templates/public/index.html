@@ -4,7 +4,7 @@
 
   <h1>Welcome to log(book)!</h1>
 
-  {% include "_shelf.html" %}
+  {% include "_includes/shelf.html" %}
 
   This is where I valiantly try to keep track of
 
@@ -27,7 +27,7 @@
 
   <div class="books_by_year">
     {% for book in books %}
-      {% include "_book_card.html" %}
+      {% include "_includes/book_card.html" %}
     {% endfor %}
   </div>
 

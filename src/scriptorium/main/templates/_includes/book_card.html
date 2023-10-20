@@ -1,5 +1,5 @@
 <div class="book-card {% if book.review.rating == 5 %}book-card-fav{% endif %}{% if expand_card %} expand{% endif %}"{% if book.spine_color %}style="border-color: {{ book.spine_color }}{% endif %}">
-  {% include "_external_links.html" %}
+  {% include "_includes/external_links.html" %}
   {% set is_link=book.review.dates_read and book.review.text %}
   {%- if is_link %}
     <a href="/{{ book.slug }}/">
@@ -8,7 +8,7 @@
   {% endif %}
   <div class="book-metadata">
     <div class="book_thumbnail">
-      {% include "_book_cover.html" %}
+      {% include "_includes/book_cover.html" %}
     </div>
     <p class="title">
       {{ book.title | smartypants | safe }}
@@ -32,7 +32,7 @@
     </small>
     {% if book.review.rating %}
       <div class="rating">
-        {% include "_rating.html" %}
+        {% include "_includes/rating.html" %}
       </div>
     {% endif %}
     {% if not review_text and book.review.text %}

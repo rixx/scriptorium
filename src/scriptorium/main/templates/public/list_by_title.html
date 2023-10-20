@@ -2,7 +2,7 @@
 
 {% block content %}
 
-  {% include "_year_nav.html" %}
+  {% include "_includes/year_nav.html" %}
 
   {% for letter, _ in books %}
     <a href="#{{ letter }}">{{ letter }}</a>
@@ -29,6 +29,6 @@
 
   {% endif %}{% endfor %}
 
-  {% include "_year_nav.html" %}
+  {% include "_includes/year_nav.html" %}
 
 {% endblock %}

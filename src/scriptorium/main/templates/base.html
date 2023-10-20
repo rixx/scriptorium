@@ -18,7 +18,7 @@
   <body>
     <a rel="me" href="https://chaos.social/@rixx" id="mastodon-linkback"></a>
 
-    {% include "_header.html" %}
+    {% include "_includes/header.html" %}
 
     <main{% block main_class %}{% endblock %} style="--border-url: url(/img/border/?{% if review and review.book.spine_color %}color={{ review.book.spine_color_darkened[1:] }}{% elif book and book.spine_color %}color={{ book.spine_color_darkened[1:] }}{% endif %}{% if request.GET.border %}&border={{ request.GET.border }}{% endif %});{% if book and book.spine_color %}--book-color: {{ book.spine_color }}; --book-color-dark: {{ book.spine_color_darkened }};{% elif review and review.book.spine_color %}--book-color: {{ review.book.spine_color }}; --book-color-darkened: {{ review.book.spine_color_darkened }}{% endif %}">
       <div class="alert" style="padding: 10px 16px 8px 16px; margin: 8px; border: 1px solid #007171; background-color: #99000033; box-shadow: 0 1px 1px rgba(0,0,0,0.05), 0 1px 1px rgba(0,0,0,0.05), 0 1px 1px rgba(0,0,0,0.05); ">
@@ -27,6 +27,6 @@
       {% block content %}{% endblock %}
     </main>
 
-    {% include "_footer.html" %}
+    {% include "_includes/footer.html" %}
   </body>
 </html>
