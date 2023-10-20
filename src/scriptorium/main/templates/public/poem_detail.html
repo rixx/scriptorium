@@ -14,23 +14,23 @@
     {% endwith %}
   {% else %}
     <p class="author">
-    {% if poem.author %}
-      by <a href="/{{ poem.author.name_slug }}/">{{ poem.author }}</a>
-    {% else %}
-      by {{ poem.author_name }}
-    {% endif %}
+      {% if poem.author %}
+        by <a href="/{{ poem.author.name_slug }}/">{{ poem.author }}</a>
+      {% else %}
+        by {{ poem.author_name }}
+      {% endif %}
     </p>
   {% endif %}
 
   <article>
     <p class="context">
-    {% if poem.context %}
-    {{ poem.context | render_markdown | safe }}
-    {% endif %}
+      {% if poem.context %}
+        {{ poem.context | render_markdown | safe }}
+      {% endif %}
     </p>
     <hr>
     <div class="poem">
-    {{ poem.text | render_quotes | safe }}
+      {{ poem.text | render_quotes | safe }}
     </div>
   </article>
 {% endblock %}

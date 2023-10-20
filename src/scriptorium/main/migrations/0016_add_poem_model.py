@@ -60,7 +60,12 @@ class Migration(migrations.Migration):
                 (
                     "status",
                     models.CharField(
-                        choices=[("A", "archived"), ("W", "waiting"),("L", "learning"), ("M", "memorized")],
+                        choices=[
+                            ("A", "archived"),
+                            ("W", "waiting"),
+                            ("L", "learning"),
+                            ("M", "memorized"),
+                        ],
                         default="A",
                         max_length=1,
                     ),

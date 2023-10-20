@@ -1,19 +1,19 @@
 {% for poem in poems %}
   <div class="book-card" {% if poem.book and poem.book.spine_color %}style="border-color: {{ poem.book.spine_color }}"{% endif %}>
-  <a href="{{ poem.get_absolute_url() }}">
-    <div class="book-metadata">
-    <div class="book_thumbnail">
-      {% if poem.book %}
-        {% with book=poem.book %}
-          {% include "_includes/book_cover.html" %}
-        {% endwith %}
-      {% endif %}
-    </div>
-    <p class="title">
-      {{ poem.title | smartypants | safe }}
-    </p>
-    <small>
-      by
+    <a href="{{ poem.get_absolute_url() }}">
+      <div class="book-metadata">
+        <div class="book_thumbnail">
+          {% if poem.book %}
+            {% with book=poem.book %}
+              {% include "_includes/book_cover.html" %}
+            {% endwith %}
+          {% endif %}
+        </div>
+        <p class="title">
+          {{ poem.title | smartypants | safe }}
+        </p>
+        <small>
+          by
           {% if poem.author %}
             <a href="/{{ poem.author.name_slug }}/">{{ poem.author }}</a>
           {% elif poem.book.primary_author %}
@@ -21,14 +21,14 @@
           {% else %}
             {{ poem.author_name or "" }}
           {% endif %} {% if poem.book and poem.book.publication_year %}({{ poem.book.publication_year }}){% endif %}
-    <br>
-    <table class="small-stats-table">
-      <tr><td>lines:</td><td>{{ poem.line_count }}<br></td></tr>
-      <tr><td>language:</td><td>{{ poem.language }}<br></td></tr>
-      <tr><td>status:</td><td>{{ poem.get_status_display() }}</td></tr>
-    </table>
-    </small>
-      </span>
+          <br>
+          <table class="small-stats-table">
+            <tr><td>lines:</td><td>{{ poem.line_count }}<br></td></tr>
+            <tr><td>language:</td><td>{{ poem.language }}<br></td></tr>
+            <tr><td>status:</td><td>{{ poem.get_status_display() }}</td></tr>
+          </table>
+        </small>
+      </div>
     </a>
-    </div>
+  </div>
 {% endfor %}
