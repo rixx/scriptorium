@@ -8,16 +8,19 @@
     {% endif %}
   </h2>
 
-  <p class="author">
   {% if poem.book %}
-    from <a href="/{{ poem.book.slug }}/">{{ poem.book.title }}</a> by 
-    {{ poem.book.authors|render_authors }}
-  {% elif poem.author %}
-    by <a href="/{{ poem.author.name_slug }}/">{{ poem.author }}</a>
+    {% with book=poem.book %}
+      {% include "_includes/book_card.html" %}
+    {% endwith %}
   {% else %}
-    by {{ poem.author_name }}
+    <p class="author">
+    {% if poem.author %}
+      by <a href="/{{ poem.author.name_slug }}/">{{ poem.author }}</a>
+    {% else %}
+      by {{ poem.author_name }}
+    {% endif %}
+    </p>
   {% endif %}
-  </p>
 
   <article>
     <p class="context">
