@@ -70,7 +70,8 @@ pre.code + p::first-letter {
   float: right
 }
 article p.noinitial:first-child::first-letter, p.noinitial::first-letter,
-article p.more:first-child::first-letter, p.more::first-letter {
+article p.more:first-child::first-letter, p.more::first-letter,
+blockquote p::first-letter {
   font-size: inherit !important;
   font-family: inherit !important;
   padding-right: inherit !important;
