@@ -74,7 +74,17 @@ class IndexView(ActiveTemplateMixin, TemplateView):
 
 def feed_view(request):
     template = loader.get_template("feed.atom")
-    context = {"reviews": Review.objects.all().order_by("-latest_date")[:20]}
+    context = {
+        "reviews": Review.objects.all()
+        .filter(is_draft=False)
+        .annotate(
+            relevant_date=Coalesce(
+                "feed_date",
+                "latest_date",
+            )
+        )
+        .order_by("-relevant_date")[:20]
+    }
     headers = {
         "Content-Type": "application/atom+xml",
     }

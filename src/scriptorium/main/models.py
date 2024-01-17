@@ -12,6 +12,7 @@ import requests
 from django.core.files.base import ContentFile
 from django.db import models
 from django.utils.functional import cached_property
+from django.utils.timezone import now
 from PIL import Image
 
 from .utils import get_spine_color
@@ -326,6 +327,7 @@ class Review(models.Model):
     is_draft = models.BooleanField(default=False)
 
     latest_date = models.DateField()
+    feed_date = models.DateField(null=True)
     dates_read = models.CharField(max_length=300, null=True, blank=True)
 
     social = models.JSONField(null=True)
@@ -355,10 +357,25 @@ class Review(models.Model):
     @cached_property
     def feed_uuid(self):
         m = hashlib.md5()
+        feed_date = self.feed_date or self.latest_date
         m.update(
-            f"{self.book.title}:reviews:{self.latest_date.isoformat()}:{self.book.goodreads_id or ''}".encode()
+            f"{self.book.title}:reviews:{feed_date.isoformat()}:{self.book.goodreads_id or ''}".encode()
         )
         return str(uuid.UUID(m.hexdigest()))
+
+    def save(self, *args, **kwargs):
+        pre_save = Review.objects.get(pk=self.pk) if self.pk else None
+        today = now().date()
+        if pre_save:
+            # if the review is updated, the feed date should only be updated if I read the book again
+            if pre_save.latest_date < self.latest_date:
+                self.feed_date = today
+        else:
+            # new reviews always get the creation date as feed date
+            self.feed_date = today
+        if not self.dates_read:
+            self.dates_read = self.latest_date.isoformat()
+        return super().save(*args, **kwargs)
 
 
 class Spine:
