@@ -7,7 +7,8 @@ form p {
 form p label {
   font-weight: bold;
 }
-form p input, form p textarea {
+form p input,
+form p textarea {
   margin-top: 0.5em;
   padding: 0.5em;
   border: 1px solid #ccc;
@@ -15,7 +16,8 @@ form p input, form p textarea {
   font-family: inherit;
   font-size: 1em;
 }
-form button, form input[type="submit"] {
+form button,
+form input[type="submit"] {
   margin-top: 1em;
   padding: 0.6em 1em 0.4em 1em;
   border: 0;
@@ -27,7 +29,9 @@ form button, form input[type="submit"] {
   font-weight: bold;
   cursor: pointer;
 }
-p .ts-control, p .ts-control input, p .ts-dropdown {
+p .ts-control,
+p .ts-control input,
+p .ts-dropdown {
   font-size: 1em;
   line-height: inherit;
 }
