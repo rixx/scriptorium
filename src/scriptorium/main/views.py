@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
-from django.db.models import Avg, Count, Q, Sum
+from django.db.models import Avg, Coalesce, Count, Q, Sum
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import redirect
 from django.template import loader
