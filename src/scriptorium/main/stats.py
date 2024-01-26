@@ -299,10 +299,6 @@ def get_stats_table():
         ("Total books", len(reviews)),
         ("Total pages", count_pages(reviews)),
         (
-            "Books without review",
-            reviews.filter(Q(text__isnull=True) | Q(text="")).count(),
-        ),
-        (
             "Books per week",
             round(
                 review_count
