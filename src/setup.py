@@ -30,5 +30,6 @@ setup(
         "unidecode==1.1.*",
         "whitenoise==6.2.*",
         "numpy<2.0",
+        "pygal==3.0.*",
     ],
 )
