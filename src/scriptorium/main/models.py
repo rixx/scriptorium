@@ -40,6 +40,20 @@ class ToRead(models.Model):
         unique_together = (("title", "author"),)
 
 
+class ToReview(models.Model):
+    title = models.CharField(max_length=300)
+    author = models.CharField(max_length=300)
+    notes = models.TextField(null=True, blank=True)
+    date_started = models.DateField(null=True, blank=True)
+    date_finished = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.title} by {self.author}"
+
+    class Meta:
+        unique_together = (("title", "author"),)
+
+
 class Author(models.Model):
     name = models.CharField(max_length=300)
     name_slug = models.CharField(max_length=300)
