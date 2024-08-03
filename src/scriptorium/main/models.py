@@ -44,8 +44,8 @@ class ToReview(models.Model):
     title = models.CharField(max_length=300)
     author = models.CharField(max_length=300)
     notes = models.TextField(null=True, blank=True)
-    date_started = models.DateField(null=True, blank=True)
-    date_finished = models.DateField(null=True, blank=True)
+    date = models.DateField(null=True, blank=True)
+    book = models.ForeignKey(to="Book", on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
         return f"{self.title} by {self.author}"
