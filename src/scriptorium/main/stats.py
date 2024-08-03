@@ -5,7 +5,7 @@ from collections import Counter, defaultdict
 
 import networkx as nx
 import pygal
-from django.db.models import Avg, Q, Sum
+from django.db.models import Avg, Sum
 from django.utils.timezone import now
 
 from .models import Book, Review, Tag
@@ -70,12 +70,12 @@ class LineBar(pygal.Line, pygal.Bar):
         # This makes the bars wider, by discounting the amount of lines when
         # calculating the width of the bars.
         self._order = len(self.secondary_series)
-        for i, serie in enumerate(self.secondary_series, 1):
+        for serie in self.secondary_series:
             self.bar(serie, True)
 
         self._order = real_order
         self.zero = real_zero
-        for i, serie in enumerate(self.series, 1):
+        for serie in self.series:
             self.line(serie)
 
     def render(self, *args, **kwargs):

@@ -625,9 +625,9 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
             if select_data and select_data.get("search_selection") != "manual":
                 try:
                     editions = get_openlibrary_editions(select_data["search_selection"])
-                    kwargs[
-                        "editions"
-                    ] = editions  # form can use url https://covers.openlibrary.org/b/olid/{key}-L.jpg to preview the cover, and should build a select from key, title, language, whatever
+                    kwargs["editions"] = (
+                        editions  # form can use url https://covers.openlibrary.org/b/olid/{key}-L.jpg to preview the cover, and should build a select from key, title, language, whatever
+                    )
                 except Exception:
                     messages.error(
                         self.request,
