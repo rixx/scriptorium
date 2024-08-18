@@ -14,10 +14,13 @@ from .admin import (
     ReviewCreate,
     ReviewEdit,
     TohuwabohuView,
+    ToReviewCreate,
+    ToReviewDelete,
+    ToReviewEdit,
+    ToReviewList,
     logout_view,
 )
 from .book import (
-    graph_data,
     AuthorView,
     CatalogueView,
     GraphView,
@@ -36,6 +39,7 @@ from .book import (
     YearInBooksView,
     YearView,
     feed_view,
+    graph_data,
 )
 from .page import PageView
 from .poem import PoemAuthorList, PoemBookList, PoemList, PoemView
@@ -79,6 +83,10 @@ __all__ = [
     "ReviewView",
     "StatsView",
     "TagView",
+    "ToReviewCreate",
+    "ToReviewDelete",
+    "ToReviewEdit",
+    "ToReviewList",
     "TohuwabohuView",
     "YearInBooksView",
     "YearView",

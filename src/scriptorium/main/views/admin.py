@@ -29,8 +29,18 @@ from scriptorium.main.forms import (
     QuoteForm,
     ReviewEditForm,
     ReviewWizardForm,
+    ToReviewForm,
 )
-from scriptorium.main.models import Author, Book, Page, Poem, Quote, Review, Tag, ToRead
+from scriptorium.main.models import (
+    Author,
+    Book,
+    Page,
+    Poem,
+    Quote,
+    Review,
+    Tag,
+    ToReview,
+)
 from scriptorium.main.utils import slugify
 from scriptorium.main.views.mixins import (
     ActiveTemplateMixin,
@@ -366,3 +376,41 @@ class PoemCreate(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         return self.object.get_absolute_url()
+
+
+class ToReviewCreate(LoginRequiredMixin, CreateView):
+    model = ToReview
+    form_class = ToReviewForm
+    template_name = "private/toreview_edit.html"
+
+    def form_valid(self, form):
+        form.save()
+        return redirect("/b/toreview/new")
+
+
+class ToReviewList(LoginRequiredMixin, ListView):
+    model = ToReview
+    template_name = "private/toreview_list.html"
+    context_object_name = "toreviews"
+
+    def get_queryset(self):
+        return ToReview.objects.all().order_by("date")
+
+
+class ToReviewDelete(LoginRequiredMixin, DetailView):
+    model = ToReview
+
+    def dispatch(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        self.object.delete()
+        return redirect("/b/toreview")
+
+
+class ToReviewEdit(LoginRequiredMixin, UpdateView):
+    model = ToReview
+    form_class = ToReviewForm
+    template_name = "private/toreview_edit.html"
+
+    def form_valid(self, form):
+        form.save()
+        return redirect("/b/toreview")

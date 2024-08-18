@@ -280,4 +280,12 @@ class PoemForm(forms.ModelForm):
 class ToReviewForm(forms.ModelForm):
     class Meta:
         model = ToReview
-        fields = ("title", "author", "date", "series", "series_position", "notes")
+        fields = (
+            "title",
+            "author",
+            "date",
+            "series",
+            "series_position",
+            "notes",
+            "quotes_file",
+        )

@@ -1,0 +1,46 @@
+{% extends "private/base.html" %}
+
+{% block content %}
+
+  <h2>Books waiting for review</h2>
+
+  <a href="/b/toreview/new">Add book</a>
+
+  <form style="display: flex">
+    <select name="filter">
+      <option value="unreviewed"{% if request.GET.filter == 'unreviewed' or not request.GET.filter %} selected{% endif %}>Unreviewed</option>
+      <option value="reviewed"{% if request.GET.filter == 'reviewed' %} selected{% endif %}>Reviewed</option>
+    </select>
+    <input type="submit" value="Filter" style="margin-top: 0; margin-left: auto">
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        {% if request.GET.filter == 'reviewed' %}<th>Review</th>{% endif %}
+        <th>Title</th>
+        <th>Author</th>
+        <th>Series</th>
+        <th>Date</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for toreview in toreviews %}
+        <tr>
+          {% if request.GET.filter == 'reviewed' %}
+            <td><a href="/{{ toreview.book.slug }}/">Review</a></td>
+          {% endif %}
+          <td><a href="/b/toreview/{{ toreview.id }}">{{ toreview.title }}</a></td>
+          <td>{{ toreview.author }}</td>
+          <td>{{ toreview.series }} {% if toreview.series_position %}#{{ toreview.series_position }}{% endif %}</td>
+          <td>{{ toreview.date }}</td>
+          <td>
+            <a href="/b/toreview/{{ toreview.id }}/edit/">Edit</a>
+            <a href="/b/toreview/{{ toreview.id }}/delete/">Delete</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
