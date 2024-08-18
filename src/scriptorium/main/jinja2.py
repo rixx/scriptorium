@@ -23,6 +23,24 @@ def unmark_element(element, stream=None):
     return stream.getvalue()
 
 
+def get_missing_reviews_data():
+    from scriptorium.main.models import ToReview
+
+    cutoff = (2022, 1, 1)
+    all_reviews = ToReview.objects.filter(date__lt=dt.date(*cutoff))
+    missing_reviews = all_reviews.filter(book__isnull=True).count()
+    if not missing_reviews:
+        return {}
+    all_review_count = all_reviews.count()
+    return {
+        "missing_reviews": missing_reviews,
+        "missing_reviews_date": f"{cutoff[0]}-{cutoff[1]}-{cutoff[2]}",
+        "missing_reviews_reviewed": all_review_count - missing_reviews,
+        "missing_reviews_total": all_review_count,
+        "missing_reviews_percentages": f"{100 * (all_review_count - missing_reviews) / all_review_count:.1f}%",
+    }
+
+
 # patching Markdown
 markdown.Markdown.output_formats["plain"] = unmark_element
 plain_markdown = markdown.Markdown(output_format="plain")
@@ -104,4 +122,5 @@ def environment(**options):
     env.filters["thousands"] = thousands
     env.filters["url_replace"] = replace_url
     env.globals.update({"get_messages": messages.get_messages})
+    env.globals.update({"get_missing_reviews_data": get_missing_reviews_data})
     return env
