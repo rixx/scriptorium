@@ -27,7 +27,7 @@ def get_missing_reviews_data():
     from scriptorium.main.models import ToReview
 
     cutoff = (2022, 1, 1)
-    all_reviews = ToReview.objects.filter(date__lt=dt.date(*cutoff))
+    all_reviews = ToReview.objects.filter(date__gt=dt.date(*cutoff))
     missing_reviews = all_reviews.filter(book__isnull=True).count()
     if not missing_reviews:
         return {}
