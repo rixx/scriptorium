@@ -394,7 +394,12 @@ class ToReviewList(LoginRequiredMixin, ListView):
     context_object_name = "toreviews"
 
     def get_queryset(self):
-        return ToReview.objects.all().order_by("date")
+        qs = ToReview.objects.all().order_by("date")
+        if "reviewed" in request.GET:
+            qs = qs.filter(book__isnull=False)
+        else:
+            qs = qs.filter(book__isnull=True)
+        return qs
 
 
 class ToReviewDelete(LoginRequiredMixin, DetailView):
