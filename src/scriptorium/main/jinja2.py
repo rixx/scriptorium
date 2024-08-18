@@ -34,7 +34,7 @@ def get_missing_reviews_data():
     all_review_count = all_reviews.count()
     return {
         "missing_reviews": missing_reviews,
-        "missing_reviews_date": f"{cutoff[0]}-{cutoff[1]}-{cutoff[2]}",
+        "missing_reviews_date": dt.date(*cutoff).strftime("%Y-%m-%d"),
         "missing_reviews_reviewed": all_review_count - missing_reviews,
         "missing_reviews_total": all_review_count,
         "missing_reviews_percentage": f"{100 * (all_review_count - missing_reviews) / all_review_count:.1f}%",
