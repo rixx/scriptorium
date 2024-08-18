@@ -53,9 +53,6 @@ class ToReview(models.Model):
     def __str__(self):
         return f"{self.title} by {self.author}"
 
-    class Meta:
-        unique_together = (("title", "author"),)
-
 
 class Author(models.Model):
     name = models.CharField(max_length=300)
