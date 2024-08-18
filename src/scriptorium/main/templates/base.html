@@ -25,7 +25,7 @@
       {% if mr.missing_reviews %}
         <div class="alert" style="padding: 10px 16px 8px 16px; margin: 8px; border: 1px solid #007171; background-color: #99000033; box-shadow: 0 1px 1px rgba(0,0,0,0.05), 0 1px 1px rgba(0,0,0,0.05), 0 1px 1px rgba(0,0,0,0.05); ">
           There are currently {{ mr.missing_reviews }} reviews missing.<br>
-          The last time I was up to date with reviews was {{ mr.missing_reviews_date }}. Since then, {{ mr.missing_reviews_reviewed }}/{{ mr.missing_reviews_total }} books ({{ mr.missing_reviews_percentage }}%) have been reviewed. We'll get there … eventually.
+          The last time I was up to date with reviews was {{ mr.missing_reviews_date }}. Since then, {{ mr.missing_reviews_reviewed }}/{{ mr.missing_reviews_total }} books ({{ mr.missing_reviews_percentage }}) have been reviewed. We'll get there … eventually.
         </div>
       {% endif %}
       {% block content %}{% endblock %}
