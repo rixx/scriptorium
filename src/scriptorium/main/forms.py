@@ -1,7 +1,16 @@
 from django import forms
 from django.db.models import Q
 
-from scriptorium.main.models import Author, Book, Page, Poem, Quote, Review, Tag
+from scriptorium.main.models import (
+    Author,
+    Book,
+    Page,
+    Poem,
+    Quote,
+    Review,
+    Tag,
+    ToReview,
+)
 from scriptorium.main.utils import slugify
 
 
@@ -266,3 +275,9 @@ class PoemForm(forms.ModelForm):
             "text",
             "context",
         )
+
+
+class ToReviewForm(forms.ModelForm):
+    class Meta:
+        model = ToReview
+        fields = ("title", "author", "date", "series", "series_position", "notes")
