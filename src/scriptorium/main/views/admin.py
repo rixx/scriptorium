@@ -395,7 +395,7 @@ class ToReviewList(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         qs = ToReview.objects.all().order_by("date")
-        if "reviewed" in request.GET:
+        if "reviewed" in self.request.GET:
             qs = qs.filter(book__isnull=False)
         else:
             qs = qs.filter(book__isnull=True)
