@@ -33,11 +33,11 @@
           {% endif %}
           <td><a href="/b/toreview/{{ toreview.id }}">{{ toreview.title }}</a></td>
           <td>{{ toreview.author }}</td>
-          <td>{{ toreview.series }} {% if toreview.series_position %}#{{ toreview.series_position }}{% endif %}</td>
+          <td>{% if toreview.series %}{{ toreview.series }}{% endif %} {% if toreview.series_position %}#{{ toreview.series_position }}{% endif %}</td>
           <td>{{ toreview.date }}</td>
           <td>
             <a href="/b/toreview/{{ toreview.id }}/edit/">Edit</a>
-            <a href="/b/toreview/{{ toreview.id }}/delete/">Delete</a>
+            <a href="/b/toreview/{{ toreview.id }}/delete">Delete</a>
           </td>
         </tr>
       {% endfor %}
