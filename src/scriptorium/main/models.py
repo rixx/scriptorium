@@ -43,6 +43,8 @@ class ToRead(models.Model):
 class ToReview(models.Model):
     title = models.CharField(max_length=300)
     author = models.CharField(max_length=300)
+    series = models.CharField(max_length=300, null=True, blank=True)
+    series_position = models.CharField(max_length=10, null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
     date = models.DateField(null=True, blank=True)
     book = models.ForeignKey(to="Book", on_delete=models.CASCADE, null=True, blank=True)
