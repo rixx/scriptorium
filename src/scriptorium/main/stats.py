@@ -8,7 +8,7 @@ import pygal
 from django.db.models import Avg, Sum
 from django.utils.timezone import now
 
-from .models import Book, Review, Tag
+from .models import Book, Review, Tag, ToReview
 
 
 class LineBar(pygal.Line, pygal.Bar):
@@ -190,6 +190,9 @@ def get_stats_grid():
         for timestamp in review.dates_read_list:
             key = timestamp.strftime("%Y-%m")
             time_lookup[key].append(review)
+    for to_review in ToReview.objects.all().filter(book__isnull=True):
+        key = to_review.date.strftime("%Y-%m")
+        time_lookup[key].append(to_review)
 
     most_monthly_books = 0
     most_monthly_pages = 0
@@ -205,7 +208,10 @@ def get_stats_grid():
             written_date = f"{year}-{written_month}"
             reviews = time_lookup[written_date]
             book_count = len(reviews)
-            page_count = sum(int(review.book.pages or 0) for review in reviews)
+            page_count = sum(
+                int((review.book.pages if review.book else 0) or 0)
+                for review in reviews
+            )
             total_pages += page_count
             total_books += book_count
             most_monthly_books = max(most_monthly_books, book_count)
@@ -315,9 +321,10 @@ def get_stats_table():
 
 def get_year_stats(year, extra_years=True):
     reviews = Review.objects.filter(dates_read__contains=year).select_related("book")
+    to_review = ToReview.objects.filter(date__year=year, book__isnull=True)
     stats = {}
     total_books = len(reviews)
-    stats["total_books"] = total_books
+    stats["total_books"] = total_books + to_review.count()
     stats["total_pages"] = count_pages(reviews)
     stats["average_pages"] = round(stats["total_pages"] / total_books, 1)
     stats["average_rating"] = average_rating(reviews)
