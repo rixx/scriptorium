@@ -26,7 +26,7 @@ def unmark_element(element, stream=None):
 def get_missing_reviews_data():
     from scriptorium.main.models import ToReview
 
-    cutoff = (2022, 1, 1)
+    cutoff = (2022, 1, 31)
     all_reviews = ToReview.objects.filter(date__gt=dt.date(*cutoff))
     missing_reviews = all_reviews.filter(book__isnull=True).count()
     if not missing_reviews:
