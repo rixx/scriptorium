@@ -53,6 +53,17 @@ class ToReview(models.Model):
     def __str__(self):
         return f"{self.title} by {self.author}"
 
+    def match(self, title_slug=None):
+        from scriptorium.main.utils import slugify
+
+        title_slug = title_slug or slugify(self.title)
+        book = Book.objects.filter(title_slug=title_slug).first()
+        if book:
+            self.book = book
+            self.save()
+            return True
+        return False
+
 
 class Author(models.Model):
     name = models.CharField(max_length=300)
