@@ -145,7 +145,11 @@ class Book(models.Model):
 
     dimensions = models.JSONField(null=True, blank=True)
     source = models.CharField(max_length=300, null=True, blank=True)
-    pages = models.IntegerField(null=True, blank=True)
+    pages = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Assume 300 words per page if you don't know the page count",
+    )
     publication_year = models.IntegerField(null=True, blank=True)
     date_added = models.DateField(auto_now_add=True)
 

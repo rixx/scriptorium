@@ -128,6 +128,7 @@ class EditionSelectForm(forms.Form):
 class BookWizardForm(forms.ModelForm):
     new_tags = forms.CharField(required=False)
     author_name = forms.CharField()
+    title_slug = forms.CharField(required=False)
 
     def __init__(self, *args, openlibrary=None, **kwargs):
         initial = kwargs.pop("initial", {})
@@ -157,6 +158,12 @@ class BookWizardForm(forms.ModelForm):
             return [t.strip() for t in new_tags.split(",") if t.strip()]
         return []
 
+    def clean(self, *args, **kwargs):
+        result = super().clean(*args, **kwargs)
+        if not self.cleaned_data["title_slug"]:
+            self.cleaned_data["title_slug"] = slugify(self.cleaned_data["title"])
+        return result
+
     class Meta:
         model = Book
         # TODO handle authors here D:
@@ -164,13 +171,12 @@ class BookWizardForm(forms.ModelForm):
             "title",
             "title_slug",
             "author_name",
+            "source",
+            "pages",
             "cover_source",
             "goodreads_id",
             "isbn10",
             "isbn13",
-            "dimensions",
-            "source",
-            "pages",
             "publication_year",
             "series",
             "series_position",
