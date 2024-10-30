@@ -19,7 +19,7 @@ class Command(BaseCommand):
         toreview_objects = []
         qs = (
             Review.objects.with_dates_read()
-            .annotate(toreview_count=Count("toreview"))
+            .annotate(toreview_count=Count("book__toreview"))
             .filter(toreview_count__lt=F("dates_read_count"))
         )
         for review in qs:
@@ -28,10 +28,10 @@ class Command(BaseCommand):
                     ToReview(
                         book=review.book,
                         title=review.book.title,
-                        author=review.book.author.name,
+                        author=review.book.primary_author.name,
                         series=review.book.series,
                         series_position=review.book.series_position,
-                        date_read=review.dates_read_list[-i - 1],
+                        date=review.dates_read_list[-i - 1],
                     )
                 )
 
