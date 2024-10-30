@@ -11,6 +11,7 @@ from pathlib import Path
 import requests
 from django.core.files.base import ContentFile
 from django.db import models
+from django.db.models import Length, Replace, Value
 from django.utils.functional import cached_property
 from django.utils.timezone import now
 from PIL import Image
@@ -334,18 +335,30 @@ class Quote(models.Model):
 
 class ReviewManager(models.Manager):
     def get_queryset(self):
-        return (
-            super()
-            .get_queryset()
-            .select_related("book", "book__primary_author")
-            .prefetch_related("book__additional_authors")
-        ).filter(is_draft=False)
+        return self._add_prefetches(super().get_queryset()).filter(is_draft=False)
 
     def with_drafts(self):
-        return super().get_queryset()
+        return self._add_prefetches(super().get_queryset())
+
+    def _add_prefetches(self, queryset):
+        return queryset.select_related("book", "book__primary_author").prefetch_related(
+            "book__additional_authors"
+        )
+
+    def with_dates_read(self):
+        # All credit for this monster goes to https://stackoverflow.com/questions/70379732
+        # I hate it I love it, it’s perfect for a stupid side project
+        return self.get_queryset().annotate(
+            dates_read_count=Length("dates_read")
+            - Length(Replace("dates_read", Value(",")))
+            + 1
+        )
 
 
 class Review(models.Model):
+    """Use the with_dates_read manager method to be able to filter by dates_read.
+    Yes, storing them comma-separated in a CharField is dumb."""
+
     book = models.OneToOneField(Book, on_delete=models.PROTECT, related_name="review")
 
     text = models.TextField()

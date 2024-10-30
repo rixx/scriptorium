@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
+from django.db.models import Count, F
 
-from scriptorium.main.models import Book
+from scriptorium.main.models import Book, Review, ToReview
 
 
 class Command(BaseCommand):
@@ -14,3 +15,28 @@ class Command(BaseCommand):
                 book.save()
             except Exception as e:
                 print(e)
+
+        toreview_objects = []
+        qs = (
+            Review.objects.all()
+            .with_dates_read()
+            .annotate(toreview_count=Count("toreview"))
+            .filter(toreview_count__lt=F("dates_read_count"))
+        )
+        for review in qs:
+            for i in range(review.dates_read_count - review.toreview_count):
+                toreview_objects.append(
+                    ToReview(
+                        book=review.book,
+                        title=review.book.title,
+                        author=review.book.author.name,
+                        series=review.book.series,
+                        series_position=review.book.series_position,
+                        date_read=review.dates_read_list[-i - 1],
+                    )
+                )
+
+        ToReview.objects.bulk_create(toreview_objects)
+
+        for toreview in ToReview.objects.all().filter(book__isnull=True):
+            toreview.match()
