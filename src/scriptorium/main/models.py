@@ -375,6 +375,8 @@ class Review(models.Model):
 
     social = models.JSONField(null=True)
 
+    objects = ReviewManager()
+
     def __str__(self):
         return f"Review ({self.rating}/5) for {self.book}"
 
