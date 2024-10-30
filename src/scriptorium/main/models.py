@@ -11,7 +11,8 @@ from pathlib import Path
 import requests
 from django.core.files.base import ContentFile
 from django.db import models
-from django.db.models import Length, Replace, Value
+from django.db.models import Value
+from django.db.models.functions import Length, Replace
 from django.utils.functional import cached_property
 from django.utils.timezone import now
 from PIL import Image
