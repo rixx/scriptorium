@@ -18,8 +18,7 @@ class Command(BaseCommand):
 
         toreview_objects = []
         qs = (
-            Review.objects.all()
-            .with_dates_read()
+            Review.objects.with_dates_read()
             .annotate(toreview_count=Count("toreview"))
             .filter(toreview_count__lt=F("dates_read_count"))
         )
