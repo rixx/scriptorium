@@ -59,8 +59,7 @@ class ToReview(models.Model):
         min_date = self.date - dt.timedelta(days=7)
         max_date = self.date + dt.timedelta(days=7)
         return any(
-            min_date <= date <= max_date
-            for date in self.book.review.dates_read_list
+            min_date <= date <= max_date for date in self.book.review.dates_read_list
         )
 
     def match(self, title_slug=None, ignore_dates=False):
