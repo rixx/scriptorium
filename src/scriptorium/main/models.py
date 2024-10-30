@@ -55,12 +55,22 @@ class ToReview(models.Model):
     def __str__(self):
         return f"{self.title} by {self.author}"
 
-    def match(self, title_slug=None):
+    def _match_dates(self):
+        min_date = self.date - dt.timedelta(days=7)
+        max_date = self.date + dt.timedelta(days=7)
+        return any(
+            min_date <= date <= max_date
+            for date in self.book.review.dates_read_list
+        )
+
+    def match(self, title_slug=None, ignore_dates=False):
         from scriptorium.main.utils import slugify
 
         title_slug = title_slug or slugify(self.title)
         book = Book.objects.filter(title_slug=title_slug).first()
         if book:
+            if not ignore_dates and self.date and not self._match_dates():
+                return False
             self.book = book
             self.save()
             return True
