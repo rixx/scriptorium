@@ -10,7 +10,7 @@ from jinja2 import Environment, FileSystemLoader, Markup, select_autoescape
 from markdown.extensions.smarty import SmartyExtension
 from markdown.extensions.toc import TocExtension
 
-DATE_CUTOFF = (2022, 1, 31)
+DATE_CUTOFF = dt.date(2022, 1, 31)
 
 
 def unmark_element(element, stream=None):
@@ -28,14 +28,14 @@ def unmark_element(element, stream=None):
 def get_missing_reviews_data():
     from scriptorium.main.models import ToReview
 
-    all_reviews = ToReview.objects.filter(date__gt=dt.date(*DATE_CUTOFF))
+    all_reviews = ToReview.objects.filter(date__gt=DATE_CUTOFF)
     missing_reviews = all_reviews.filter(book__isnull=True).count()
     if not missing_reviews:
         return {}
     all_review_count = all_reviews.count()
     return {
         "missing_reviews": missing_reviews,
-        "missing_reviews_date": dt.date(*DATE_CUTOFF).strftime("%Y-%m-%d"),
+        "missing_reviews_date": DATE_CUTOFF.strftime("%Y-%m-%d"),
         "missing_reviews_reviewed": all_review_count - missing_reviews,
         "missing_reviews_total": all_review_count,
         "missing_reviews_percentage": f"{100 * (all_review_count - missing_reviews) / all_review_count:.1f}%",
