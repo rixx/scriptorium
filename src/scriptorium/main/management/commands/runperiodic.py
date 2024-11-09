@@ -16,6 +16,9 @@ class Command(BaseCommand):
             except Exception as e:
                 print(e)
 
+        for toreview in ToReview.objects.all().filter(book__isnull=True):
+            toreview.match()
+
         toreview_objects = []
         qs = (
             Review.objects.with_dates_read()
@@ -36,6 +39,3 @@ class Command(BaseCommand):
                 )
 
         ToReview.objects.bulk_create(toreview_objects)
-
-        for toreview in ToReview.objects.all().filter(book__isnull=True):
-            toreview.match()
