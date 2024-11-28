@@ -30,7 +30,10 @@ def search_book(search):
     query = urllib.parse.quote(search)
     url = f"https://openlibrary.org/search.json?q={query}"
     # timeout is 5 seconds
-    response = requests.get(url, timeout=5).json()
+    try:
+        response = requests.get(url, timeout=5).json()
+    except Exception:
+        return []
     result = []
     for item in response["docs"]:
         result.append(
