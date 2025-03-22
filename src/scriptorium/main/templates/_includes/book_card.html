@@ -36,7 +36,7 @@
       </div>
     {% endif %}
     {% if not review_text and book.review.text %}
-      {% set review_text = book.review.first_paragraph %}
+      {% set review_text = book.review.short_first_paragraph %}
     {% endif %}
     {% if review_text %}
       <div class="book-review{% if not book.review.rating %} book-review-padded{% endif %}">

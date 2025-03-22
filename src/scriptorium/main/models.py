@@ -58,9 +58,7 @@ class ToReview(models.Model):
     def _match_dates(self, book):
         min_date = self.date - dt.timedelta(days=7)
         max_date = self.date + dt.timedelta(days=7)
-        return any(
-            min_date <= date <= max_date for date in book.review.dates_read_list
-        )
+        return any(min_date <= date <= max_date for date in book.review.dates_read_list)
 
     def match(self, title_slug=None, ignore_dates=False):
         from scriptorium.main.utils import slugify
@@ -405,8 +403,9 @@ class Review(models.Model):
         return len(self.text.split())
 
     @cached_property
-    def first_paragraph(self):
-        return self.text.strip().split("\n\n")[0] if self.text else ""
+    def short_first_paragraph(self):
+        text = self.text.strip().split("\n\n")[0] if self.text else ""
+        return text[:240]
 
     @cached_property
     def feed_uuid(self):
