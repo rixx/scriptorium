@@ -212,7 +212,7 @@ class ReviewBySeries(YearNavMixin, ActiveTemplateMixin, TemplateView):
     @cached_property
     def books(self):
         series_reviews = [
-            (series, sorted(list(books), key=lambda book: float(book.series_position)))
+            (series, sorted(books, key=lambda book: float(book.series_position)))
             for series, books in groupby(
                 sorted(
                     Book.objects.all()

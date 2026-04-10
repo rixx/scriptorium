@@ -1,7 +1,8 @@
 import datetime as dt
-import os
 import statistics
 from collections import Counter, defaultdict
+from itertools import pairwise
+from pathlib import Path
 
 import networkx as nx
 import pygal
@@ -26,7 +27,7 @@ class LineBar(pygal.Line, pygal.Bar):
     def add(self, label, data, **kwargs):
         # We add an empty data point, because otherwise the secondary series (the bar chart)
         # would overlay the axis.
-        super().add(label, data + [None], **kwargs)
+        super().add(label, [*data, None], **kwargs)
 
     def _fix_style(self):
         # We render the plot twice, this time to find the width of a single bar
@@ -51,9 +52,9 @@ class LineBar(pygal.Line, pygal.Bar):
           """.replace("{line_offset}", line_offset).replace("{bar_offset}", bar_offset)
         # We have to create a tempfile here because pygal only does templating
         # when loading CSS from files. Sadness. Cleanup takes place in render()
-        timestamp = int(dt.datetime.now().timestamp())
-        custom_css_file = f"/tmp/pygal_custom_style_{timestamp}.css"
-        with open(custom_css_file, "w") as f:
+        timestamp = int(dt.datetime.now(tz=dt.UTC).timestamp())
+        custom_css_file = f"/tmp/pygal_custom_style_{timestamp}.css"  # noqa: S108
+        with Path(custom_css_file).open("w") as f:
             f.write(added_css)
         self.config.css.append("file://" + custom_css_file)
 
@@ -80,7 +81,7 @@ class LineBar(pygal.Line, pygal.Bar):
         # remove all the custom css files
         for css_file in self.config.css:
             if css_file.startswith("file:///tmp"):
-                os.remove(css_file[7:])
+                Path(css_file[7:]).unlink()
         return result
 
 
@@ -102,7 +103,7 @@ def xml_element(name, content, **kwargs):
 def generate_svg(
     data, key, max_month, max_year, primary_color, secondary_color, offset
 ):
-    current_year = dt.datetime.now().year
+    current_year = dt.datetime.now(tz=dt.UTC).year
     fallback_color = "#ebedf0"
     content = ""
     year_width = 45
@@ -250,12 +251,6 @@ def get_stats_grid():
         offset=1,
     )
     return stats
-    # stats["ratings"] = generate_bar_chart()  # TODO
-    # rating per decade
-    # rating per category
-    # publication year per decade
-    # books by page number
-    # books per author
 
 
 def median_year(reviews):
@@ -304,7 +299,7 @@ def get_stats_table():
             "Books per week",
             round(
                 review_count
-                / ((dt.datetime.now().date() - dt.date(1998, 1, 1)).days / 7),
+                / ((dt.datetime.now(tz=dt.UTC).date() - dt.date(1998, 1, 1)).days / 7),
                 2,
             ),
         ),
@@ -381,8 +376,7 @@ def get_nodes(graph=None):
     for node in graph.nodes:
         try:
             book = book_lookup[node]
-        except Exception:
-            print(f"ERROR! Node {node} not found")
+        except KeyError:
             continue
         nodes.append(
             {
@@ -415,7 +409,7 @@ def get_edges(graph=None):
 
 def _get_chart(data, _type="line", **kwargs):
     style = pygal.style.DefaultStyle
-    style.colors = [c for c in style.colors]
+    style.colors = list(style.colors)
     style.colors[0] = "#990000"
     style.colors[1] = "#007171"
     style.opacity = ".3"
@@ -435,8 +429,7 @@ def _get_chart(data, _type="line", **kwargs):
         "style": style,
         "x_label_rotation": 40,
     }
-    for key, value in kwargs.items():
-        config[key] = value
+    config |= kwargs
     if _type == "linebar":
         chart = LineBar(**config)
 
@@ -486,7 +479,7 @@ def get_charts():
                 rating__isnull=False, book__pages__gte=pages, book__pages__lt=next_pages
             ).count(),
         )
-        for pages, next_pages in zip(page_buckets, page_buckets[1:])
+        for pages, next_pages in pairwise(page_buckets)
     ]
     rating_book_pages.append(
         (
@@ -530,9 +523,7 @@ def get_charts():
                 book__publication_year__gte=year, book__publication_year__lt=next_year
             ).count(),
         )
-        for year, next_year in zip(
-            publication_year_buckets, publication_year_buckets[1:]
-        )
+        for year, next_year in pairwise(publication_year_buckets)
     ]
     rating_book_publication_year.append(
         (

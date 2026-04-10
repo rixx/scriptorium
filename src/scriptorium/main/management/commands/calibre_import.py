@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -13,7 +14,7 @@ class Command(BaseCommand):
         parser.add_argument("json_file")
 
     def handle(self, *args, json_file, **options):
-        with open(json_file) as f:
+        with Path(json_file).open() as f:
             result = json.load(f)
         calibre_books = {(b["title"], b["authors"]): b for b in result}
         scriptorium_books = {(b.title, b.author): b.id for b in ToRead.objects.all()}

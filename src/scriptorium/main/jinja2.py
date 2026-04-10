@@ -26,7 +26,7 @@ def unmark_element(element, stream=None):
 
 
 def get_missing_reviews_data():
-    from scriptorium.main.models import ToReview
+    from scriptorium.main.models import ToReview  # noqa: PLC0415
 
     all_reviews = ToReview.objects.filter(date__gt=DATE_CUTOFF)
     missing_reviews = all_reviews.filter(book__isnull=True).count()
@@ -111,7 +111,7 @@ def environment(**options):
     options["loader"] = FileSystemLoader(pathlib.Path(__file__).parent / "templates")
     options["cache_size"] = 0
 
-    env = Environment(**options)
+    env = Environment(**options)  # noqa: S701 – autoescape is set via options dict above
     env.globals.update({"static": staticfiles_storage.url})
     env.filters["render_markdown"] = render_markdown
     env.filters["render_quotes"] = render_quotes

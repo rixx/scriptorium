@@ -12,7 +12,7 @@ for directory in (BASE_DIR, DATA_DIR, MEDIA_ROOT):
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-z59ed4#87anp9l%$m)fv^gz_elaai7y7i7c6*guj()lumfr2xp"
+SECRET_KEY = "django-insecure-z59ed4#87anp9l%$m)fv^gz_elaai7y7i7c6*guj()lumfr2xp"  # noqa: S105
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -115,7 +115,7 @@ border_files = list(
 MAX_BORDER = max(int(file.stem) for file in border_files) if border_files else 0
 
 try:
-    import django_extensions
+    import django_extensions  # noqa: F401
 
     INSTALLED_APPS.append("django_extensions")
 except ImportError:
@@ -123,7 +123,7 @@ except ImportError:
 
 # Use debug toolbar if installed
 try:
-    import debug_toolbar
+    import debug_toolbar  # noqa: F401
 
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.append("debug_toolbar.middleware.DebugToolbarMiddleware")

@@ -16,12 +16,11 @@ def border_image(request):
         try:
             number = int(number)
             if number not in range(1, max_border + 1):
-                raise ValueError
+                number = None
         except ValueError:
-            print("error")
             number = None
     if not number:
-        number = random.randint(1, max_border)
+        number = random.randint(1, max_border)  # noqa: S311
 
     template = loader.get_template(f"_borders/{number}.svg")
     rendered = template.render({"border_color": f"#{border_color}"})

@@ -1,10 +1,14 @@
 import json
+import logging
 import re
+import time
 import urllib.parse
 from functools import cache
 
 import requests
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 # add profiling decorator
@@ -13,12 +17,10 @@ def time_taken(func):
         if not settings.DEBUG:
             return func(*args, **kwargs)
 
-        import time
-
         start = time.time()
         result = func(*args, **kwargs)
         end = time.time()
-        print(f"Time taken for {func.__name__}: {end - start:.2f}s")
+        logger.debug("Time taken for %s: %.2fs", func.__name__, end - start)
         return result
 
     return wrapper
@@ -32,17 +34,15 @@ def search_book(search):
     # timeout is 5 seconds
     try:
         response = requests.get(url, timeout=5).json()
-    except Exception:
+    except (requests.RequestException, ValueError):
         return []
-    result = []
-    for item in response["docs"]:
-        result.append(
-            (
-                item["key"].split("/")[-1],
-                f"{item['title']} by {', '.join(item.get('author_name') or [])}",
-            )
+    return [
+        (
+            item["key"].split("/")[-1],
+            f"{item['title']} by {', '.join(item.get('author_name') or [])}",
         )
-    return result
+        for item in response["docs"]
+    ]
 
 
 @time_taken
@@ -63,7 +63,7 @@ def get_openlibrary_editions(work_id):
         result.append(
             (
                 edition["key"].split("/")[-1],
-                f"{edition['title']}: {edition.get('publish_date' or '')}, {language}, {pages} pages",
+                f"{edition['title']}: {edition.get('publish_date', '')}, {language}, {pages} pages",
                 {"lang": language, "pages": pages},
             )
         )
@@ -78,14 +78,16 @@ def get_openlibrary_book(isbn=None, olid=None):
         search = f"ISBN:{isbn}"
     elif olid:
         search = f"OLID:{olid}"
-    return list(
-        requests.get(
-            f"https://openlibrary.org/api/books?bibkeys={search}&format=json&jscmd=data",
-            timeout=5,
+    return next(
+        iter(
+            requests.get(
+                f"https://openlibrary.org/api/books?bibkeys={search}&format=json&jscmd=data",
+                timeout=5,
+            )
+            .json()
+            .values()
         )
-        .json()
-        .values()
-    )[0]
+    )
 
 
 @time_taken
@@ -98,7 +100,7 @@ def get_goodreads_book(goodreads_id):
     if not response.ok:
         return {}
     # parse with beautifulsoup
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup  # noqa: PLC0415
 
     html = BeautifulSoup(response.text, "html.parser")
     # there is data in <script type="application/ld+json">
@@ -106,7 +108,7 @@ def get_goodreads_book(goodreads_id):
         json_data = json.loads(
             html.select_one("script[type='application/ld+json']").text
         )
-    except Exception:
+    except (AttributeError, KeyError, ValueError):
         return {}
     result = {
         "title": json_data["name"],
@@ -136,26 +138,26 @@ def merge_goodreads(book):
         return
     goodreads_data = get_goodreads_book(book.goodreads_id)
     if not goodreads_data:
-        raise Exception(f"Failed to get goodreads data for {book.title}")
-    print(f"Got goodreads data for {book.title}")
+        raise RuntimeError(f"Failed to get goodreads data for {book.title}")
+    logger.info("Got goodreads data for %s", book.title)
     if not book.cover and goodreads_data.get("cover_source"):
         book.cover_source = goodreads_data["cover_source"]
-        print(f"Setting cover for {book.title}")
+        logger.info("Setting cover for %s", book.title)
     if goodreads_data.get("publication_year") and (
         not book.publication_year
         or book.publication_year > goodreads_data["publication_year"]
     ):
         book.publication_year = goodreads_data["publication_year"]
-        print(f"Setting publication year for {book.title}")
+        logger.info("Setting publication year for %s", book.title)
     if goodreads_data.get("pages") and (
         not book.pages or book.pages < goodreads_data["pages"]
     ):
         book.pages = goodreads_data["pages"]
-        print(f"Setting pages for {book.title}")
+        logger.info("Setting pages for %s", book.title)
     if len(goodreads_data.get("isbn")) == 13 and not book.isbn:
         book.isbn = goodreads_data["isbn"]
-        print(f"Setting isbn for {book.title}")
+        logger.info("Setting isbn for %s", book.title)
     if len(goodreads_data.get("isbn")) == 10 and not book.isbn10:
         book.isbn10 = goodreads_data["isbn"]
-        print(f"Setting isbn10 for {book.title}")
+        logger.info("Setting isbn10 for %s", book.title)
     book.save()

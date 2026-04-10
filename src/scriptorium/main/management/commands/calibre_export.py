@@ -1,5 +1,6 @@
 import json
 import subprocess
+from pathlib import Path
 
 from django.core.management.base import BaseCommand
 
@@ -9,12 +10,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         query = '\'tags:"=on-device" tags:"to-read"\''
-        result = subprocess.check_output(
+        result = subprocess.check_output(  # noqa: S602
             f"calibredb list -s {query} --fields authors,title,*pages,*shelf --for-machine",
             shell=True,
             env={},
         ).decode()
-        with open("calibre_books.json", "w") as f:
+        with Path("calibre_books.json").open("w") as f:
             # Round-trip through json to make sure it's valid
             json.dump(json.loads(result), f)
             print("Wrote calibre_books.json")

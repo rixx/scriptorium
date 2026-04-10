@@ -15,8 +15,7 @@ def slugify(text):
     ascii_text = unidecode(text).lower()  # best ASCII substitutions, lowercased
     ascii_text = re.sub(r"[^a-z0-9 -]", "", ascii_text)  # delete any other characters
     ascii_text = ascii_text.replace(" ", "-")  # spaces to hyphens
-    ascii_text = re.sub(r"-+", "-", ascii_text)  # condense repeated hyphens
-    return ascii_text
+    return re.sub(r"-+", "-", ascii_text)  # condense repeated hyphens
 
 
 def get_dominant_colours(path, count):
@@ -46,5 +45,5 @@ def get_spine_color(cover, cluster_count=3):
     }
 
     rgb_choice, _ = max(candidates_by_brightness_diff.items(), key=lambda t: t[1])
-    hex_color = "#%02x%02x%02x" % tuple(int(v * 255) for v in rgb_choice)
-    return hex_color
+    r, g, b = (int(v * 255) for v in rgb_choice)
+    return f"#{r:02x}{g:02x}{b:02x}"

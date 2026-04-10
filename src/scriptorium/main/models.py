@@ -35,11 +35,11 @@ class ToRead(models.Model):
     pages = models.IntegerField(null=True, blank=True)
     source = models.CharField(default="calibre", max_length=300)
 
-    def __str__(self):
-        return f"{self.title} by {self.author}"
-
     class Meta:
         unique_together = (("title", "author"),)
+
+    def __str__(self):
+        return f"{self.title} by {self.author}"
 
 
 class ToReview(models.Model):
@@ -61,7 +61,7 @@ class ToReview(models.Model):
         return any(min_date <= date <= max_date for date in book.review.dates_read_list)
 
     def match(self, title_slug=None, ignore_dates=False):
-        from scriptorium.main.utils import slugify
+        from scriptorium.main.utils import slugify  # noqa: PLC0415
 
         title_slug = title_slug or slugify(self.title)
         book = Book.objects.filter(title_slug=title_slug).first()
@@ -107,11 +107,11 @@ class Tag(models.Model):
     name_slug = models.CharField(max_length=300)
     text = models.TextField(null=True, blank=True)
 
-    def __str__(self):
-        return f"{self.category}:{self.name_slug}"
-
     class Meta:
         ordering = ("category", "name_slug")
+
+    def __str__(self):
+        return f"{self.category}:{self.name_slug}"
 
 
 class BookManager(models.Manager):
@@ -173,6 +173,12 @@ class Book(models.Model):
     def __str__(self):
         return f"{self.title} by {self.author_string}"
 
+    def save(self, *args, **kwargs):
+        result = super().save(*args, **kwargs)
+        if not self.cover and self.cover_source:
+            self.download_cover()
+        return result
+
     @cached_property
     def slug(self):
         return f"{self.primary_author.name_slug}/{self.title_slug}"
@@ -183,7 +189,7 @@ class Book(models.Model):
 
     @cached_property
     def authors(self):
-        return [self.primary_author] + list(self.additional_authors.all())
+        return [self.primary_author, *self.additional_authors.all()]
 
     @cached_property
     def author_string(self):
@@ -224,7 +230,7 @@ class Book(models.Model):
         try:
             response = requests.get(self.cover_source, timeout=5)
             response.raise_for_status()
-        except Exception:
+        except (requests.RequestException, OSError):
             return
         if self.cover:
             self.cover.delete()
@@ -271,12 +277,6 @@ class Book(models.Model):
         if self.cover:
             self.spine_color = get_spine_color(self.cover)
 
-    def save(self, *args, **kwargs):
-        result = super().save(*args, **kwargs)
-        if not self.cover and self.cover_source:
-            self.download_cover()
-        return result
-
     @cached_property
     def spine_color_darkened(self):
         # Calculate brightness, then darken if necessary
@@ -300,6 +300,9 @@ class BookRelation(models.Model):
     )
     destination = models.ForeignKey(to=Book, on_delete=models.CASCADE, related_name="+")
     text = models.TextField()
+
+    def __str__(self):
+        return f"{self.source} → {self.destination}"
 
 
 class QuoteManager(models.Manager):
@@ -327,6 +330,9 @@ class Quote(models.Model):
     class Meta:
         ordering = ("source_author", "source_book", "order", "id")
 
+    def __str__(self):
+        return self.short_string
+
     @property
     def short_string(self):
         short_quote = textwrap.shorten(self.text, width=70, placeholder="…")
@@ -351,7 +357,7 @@ class ReviewManager(models.Manager):
 
     def with_dates_read(self):
         # All credit for this monster goes to https://stackoverflow.com/questions/70379732
-        # I hate it I love it, it’s perfect for a stupid side project
+        # I hate it I love it, it`s perfect for a stupid side project
         return self.get_queryset().annotate(
             dates_read_count=Length("dates_read")
             - Length(Replace("dates_read", Value(",")))
@@ -383,10 +389,24 @@ class Review(models.Model):
     def __str__(self):
         return f"Review ({self.rating}/5) for {self.book}"
 
+    def save(self, *args, **kwargs):
+        pre_save = Review.objects.get(pk=self.pk) if self.pk else None
+        today = now().date()
+        if pre_save:
+            # if the review is updated, the feed date should only be updated if I read the book again
+            if pre_save.latest_date < self.latest_date:
+                self.feed_date = today
+        else:
+            # new reviews always get the creation date as feed date
+            self.feed_date = today
+        if not self.dates_read:
+            self.dates_read = self.latest_date.isoformat()
+        return super().save(*args, **kwargs)
+
     @cached_property
     def dates_read_list(self):
         return [
-            dt.datetime.strptime(date, "%Y-%m-%d").date()
+            dt.datetime.strptime(date, "%Y-%m-%d").date()  # noqa: DTZ007
             for date in self.dates_read.split(",")
         ]
 
@@ -405,26 +425,12 @@ class Review(models.Model):
 
     @cached_property
     def feed_uuid(self):
-        m = hashlib.md5()
+        m = hashlib.md5()  # noqa: S324
         feed_date = self.feed_date or self.latest_date
         m.update(
             f"{self.book.title}:reviews:{feed_date.isoformat()}:{self.book.goodreads_id or ''}".encode()
         )
         return str(uuid.UUID(m.hexdigest()))
-
-    def save(self, *args, **kwargs):
-        pre_save = Review.objects.get(pk=self.pk) if self.pk else None
-        today = now().date()
-        if pre_save:
-            # if the review is updated, the feed date should only be updated if I read the book again
-            if pre_save.latest_date < self.latest_date:
-                self.feed_date = today
-        else:
-            # new reviews always get the creation date as feed date
-            self.feed_date = today
-        if not self.dates_read:
-            self.dates_read = self.latest_date.isoformat()
-        return super().save(*args, **kwargs)
 
 
 class Spine:
@@ -437,7 +443,7 @@ class Spine:
         self.starred = self.book.review.rating == 5
 
     def random_height(self):
-        return random.randint(16, 25)
+        return random.randint(16, 25)  # noqa: S311
 
     def normalize_height(self, height):
         return max(min(int(height * 4), 110), 50)
@@ -452,12 +458,8 @@ class Spine:
         width = self.book.dimensions.get("thickness") if self.book.dimensions else None
         if not width:
             pages = self.book.pages
-            if not pages:
-                width = random.randint(1, 4) / 2
-            else:
-                width = (
-                    int(pages) * 0.0075
-                )  # Factor taken from known thickness/page ratio
+            # Factor taken from known thickness/page ratio
+            width = random.randint(1, 4) / 2 if not pages else int(pages) * 0.0075  # noqa: S311
         return min(max(int(width * 4), 12), 32)  # Clamp between 12 and 32
 
     def get_margin(self, tilt):
@@ -481,6 +483,9 @@ class Thumbnail(models.Model):
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name="thumbnails")
     size = models.CharField(max_length=255)
     thumb = models.FileField(upload_to=get_thumbnail_path, max_length=800)
+
+    def __str__(self):
+        return f"{self.book} ({self.size})"
 
     def delete(self, **kwargs):
         self.thumb.delete()
@@ -534,6 +539,9 @@ class Poem(models.Model):
 
     class Meta:
         unique_together = ("book", "slug")
+
+    def __str__(self):
+        return self.title
 
     def get_absolute_url(self, private=False):
         if self.book:

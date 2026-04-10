@@ -13,7 +13,7 @@ class Command(BaseCommand):
                 book.update_spine_color()
                 book.update_thumbnail()
                 book.save()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(e)
 
         for toreview in ToReview.objects.all().filter(book__isnull=True):
@@ -26,16 +26,16 @@ class Command(BaseCommand):
             .filter(toreview_count__lt=F("dates_read_count"))
         )
         for review in qs:
-            for i in range(review.dates_read_count - review.toreview_count):
-                toreview_objects.append(
-                    ToReview(
-                        book=review.book,
-                        title=review.book.title,
-                        author=review.book.primary_author.name,
-                        series=review.book.series,
-                        series_position=review.book.series_position,
-                        date=review.dates_read_list[-i - 1],
-                    )
+            toreview_objects.extend(
+                ToReview(
+                    book=review.book,
+                    title=review.book.title,
+                    author=review.book.primary_author.name,
+                    series=review.book.series,
+                    series_position=review.book.series_position,
+                    date=review.dates_read_list[-i - 1],
                 )
+                for i in range(review.dates_read_count - review.toreview_count)
+            )
 
         ToReview.objects.bulk_create(toreview_objects)

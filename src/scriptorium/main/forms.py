@@ -111,7 +111,7 @@ class BookSelectForm(forms.Form):
 
     def __init__(self, *args, works, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["search_selection"].choices = works + [("manual", "Manual entry")]
+        self.fields["search_selection"].choices = [*works, ("manual", "Manual entry")]
 
 
 class EditionSelectForm(forms.Form):

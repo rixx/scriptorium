@@ -127,17 +127,13 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
         ("edition", EditionSelectForm),
         ("book", BookWizardForm),
         ("review", ReviewWizardForm),
-        # ("quotes", QuoteWizardForm),
     ]
     condition_dict = {"edition": show_edition_step}
     template_name = "private/review_create.html"
 
-    #     def get_template_names(self):
-    #         return f"new_review_{self.steps.current}.html"
-
     def get_form_kwargs(self, step=None):
         kwargs = {}
-        from scriptorium.main.metadata import (
+        from scriptorium.main.metadata import (  # noqa: PLC0415
             get_openlibrary_book,
             get_openlibrary_editions,
             search_book,
@@ -148,7 +144,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
                 kwargs["works"] = search_book(
                     self.get_cleaned_data_for_step("search")["search_input"]
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001
                 messages.error(
                     self.request,
                     "Something went wrong while searching for books. Please try again or enter the data yourself.",
@@ -163,7 +159,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
                     kwargs["editions"] = (
                         editions  # form can use url https://covers.openlibrary.org/b/olid/{key}-L.jpg to preview the cover, and should build a select from key, title, language, whatever
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001
                     messages.error(
                         self.request,
                         "Something went wrong while searching for books. Please try again or enter the data yourself.",
@@ -175,7 +171,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
                 try:
                     book = get_openlibrary_book(olid=olid)
                     kwargs["openlibrary"] = book
-                except Exception:
+                except Exception:  # noqa: BLE001
                     kwargs["openlibrary"] = {}
             # kwargs = {# TODO pre-fill fields here!}
         elif step == "review":
@@ -185,8 +181,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
     @transaction.atomic()
     def done(self, form_list, *args, **kwargs):
         steps = {
-            step: self.get_cleaned_data_for_step(step)
-            for step in self.get_form_list().keys()
+            step: self.get_cleaned_data_for_step(step) for step in self.get_form_list()
         }
         author_name = steps["book"].pop("author_name")
         author, _ = Author.objects.get_or_create(
@@ -232,7 +227,7 @@ class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):
     def form_valid(self, form):
         if not self.review_form.is_valid():
             messages.error(self.request, self.review_form.errors)
-            raise Exception(self.review_form.errors)
+            raise ValueError(self.review_form.errors)
         form.save()
         self.review_form.save()
         new_tags = form.cleaned_data.pop("new_tags")
