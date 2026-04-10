@@ -25,6 +25,6 @@ class Migration(migrations.Migration):
                 ("date_started", models.DateField(blank=True, null=True)),
                 ("date_finished", models.DateField(blank=True, null=True)),
             ],
-            options={"unique_together": {("title", "author")}},
+            options={},
         )
     ]

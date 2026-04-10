@@ -6,7 +6,8 @@ import markdown
 import smartypants
 from django.contrib import messages
 from django.contrib.staticfiles.storage import staticfiles_storage
-from jinja2 import Environment, FileSystemLoader, Markup, select_autoescape
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+from markupsafe import Markup
 from markdown.extensions.smarty import SmartyExtension
 from markdown.extensions.toc import TocExtension
 
