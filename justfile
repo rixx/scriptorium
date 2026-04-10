@@ -46,6 +46,37 @@ fmt: format (check "--fix")
 [group('linting')]
 fmt-check: (format "--check") check
 
+# Check for outdated dependencies
+[group('development')]
+[script('python3')]
+deps-outdated:
+    import json, subprocess, tomllib
+    from packaging.requirements import Requirement
+
+    result = subprocess.run(['uv', 'pip', 'list', '--outdated', '--format=json'], capture_output=True, text=True)
+    outdated = {p['name'].lower(): p for p in json.loads(result.stdout)}
+    deps = tomllib.load(open('pyproject.toml', 'rb')).get('project', {}).get('dependencies', [])
+    direct = {Requirement(d).name.lower() for d in deps}
+
+    for name in sorted(outdated.keys() & direct):
+        p = outdated[name]
+        print(f"{p['name']}: {p['version']} → {p['latest_version']}")
+
+# Bump a dependency version
+[group('development')]
+[script('python3')]
+deps-bump package version:
+    import subprocess, tomllib
+    from pathlib import Path
+    from packaging.requirements import Requirement
+
+    p = Path('pyproject.toml')
+    deps = tomllib.load(open('pyproject.toml', 'rb')).get('project', {}).get('dependencies', [])
+    old = next((d for d in deps if Requirement(d).name.lower() == '{{ package }}'.lower()), None)
+    if old:
+        p.write_text(p.read_text().replace(old, f'{Requirement(old).name}~={{ version }}'))
+    subprocess.run(['uv', 'lock', '--upgrade-package', '{{ package }}'])
+
 # Remove Python caches, build artifacts, and coverage reports
 [group('development')]
 clean:
