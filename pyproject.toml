@@ -1,0 +1,99 @@
+[project]
+name = "scriptorium"
+version = "0.1.0"
+description = "Personal book tracking and review application"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+  {name = "Tobias Kunze", email = "r@rixx.de"},
+]
+
+dependencies = [
+  "beautifulsoup4",
+  "Django~=4.1.0",
+  "django-context-decorator==1.6.0",
+  "django-formtools==2.3",
+  "inquirer~=2.6.0",
+  "Jinja2~=2.11.0",
+  "Markdown~=3.1.0",
+  "MarkupSafe==2.0.1",
+  "networkx~=2.5.0",
+  "numpy<2.0",
+  "Pillow~=8.4.0",
+  "pygal~=3.0.0",
+  "python-dateutil",
+  "python-frontmatter~=0.5.0",
+  "requests",
+  "scikit-learn",
+  "smartypants~=2.0.0",
+  "tqdm",
+  "Unidecode~=1.1.0",
+  "whitenoise~=6.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff",
+]
+
+[project.urls]
+Homepage = "https://books.rixx.de"
+Repository = "https://github.com/rixx/scriptorium"
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools", "wheel"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["scriptorium*"]
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "ANN",     # We do not do annotations
+  "ARG",     # Unused method arguments are often ok
+  "C901",    # We do do complexity
+  "COM812",  # Trailing commas are formatter territory
+  "D",       # We do not enforce docstyles
+  "DJ001",   # We live in a state of sin
+  "E501",    # Long lines are formatter territory
+  "EM",      # Formatting strings is fine, actually
+  "FBT",     # Booleans are fine, actually
+  "FIX",     # TODO comments are fine, actually
+  "PLR",     # Refactoring: Too many branches, arguments, statements, etc
+  "RET502",  # Just returning is fine, actually
+  "RET503",  # Just not returning is fine, actually
+  "RUF012",  # Mutable default in class attribute is just how django rolls
+  "RUF100",  # Unused noqa; problematic when run in isolation
+  "TD",      # TODO formatting (author, issue link, colon) is not useful here
+  "TRY003",  # Error messages are fine, actually
+]
+allowed-confusables = ["–", "'", "×"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/manage.py" = [
+  "INP001",  # Standard Django manage.py is not in a package
+  "PLC0415", # Standard Django manage.py pattern
+]
+"src/helpers.py" = [
+  "F403",    # Star imports are fine in a helper script
+  "F405",    # Ditto
+  "INP001",  # Not in a package
+  "T201",    # print() is the primary output mechanism
+]
+"src/scriptorium/main/management/**.py" = [
+  "T201",    # print() is fine in management commands
+]
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
+
+[tool.ruff.lint.flake8-self]
+extend-ignore-names = ["_base_manager", "_default_manager", "_meta"]
