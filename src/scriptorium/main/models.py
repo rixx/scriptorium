@@ -530,7 +530,7 @@ class Poem(models.Model):
     context = models.TextField(null=True, blank=True)
     language = models.CharField(max_length=2, default="en")
     status = models.CharField(
-        max_length=1, choices=PoemStatus.choices, default=PoemStatus.ARCHIVED
+        max_length=1, choices=PoemStatus, default=PoemStatus.ARCHIVED
     )
     learning_data = models.JSONField(null=True, blank=True)
 
