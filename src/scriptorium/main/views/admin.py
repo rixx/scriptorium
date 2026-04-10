@@ -129,9 +129,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
         ("review", ReviewWizardForm),
         # ("quotes", QuoteWizardForm),
     ]
-    condition_dict = {
-        "edition": show_edition_step,
-    }
+    condition_dict = {"edition": show_edition_step}
     template_name = "private/review_create.html"
 
     #     def get_template_names(self):

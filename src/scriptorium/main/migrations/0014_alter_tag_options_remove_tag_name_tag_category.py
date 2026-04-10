@@ -4,19 +4,13 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [
-        ("main", "0013_alter_page_slug_thumbnail"),
-    ]
+    dependencies = [("main", "0013_alter_page_slug_thumbnail")]
 
     operations = [
         migrations.AlterModelOptions(
-            name="tag",
-            options={"ordering": ("category", "name_slug")},
+            name="tag", options={"ordering": ("category", "name_slug")}
         ),
-        migrations.RemoveField(
-            model_name="tag",
-            name="name",
-        ),
+        migrations.RemoveField(model_name="tag", name="name"),
         migrations.AddField(
             model_name="tag",
             name="category",

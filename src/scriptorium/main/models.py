@@ -309,11 +309,7 @@ class QuoteManager(models.Manager):
 
 class Quote(models.Model):
     source_book = models.ForeignKey(
-        to=Book,
-        on_delete=models.CASCADE,
-        related_name="quotes",
-        null=True,
-        blank=True,
+        to=Book, on_delete=models.CASCADE, related_name="quotes", null=True, blank=True
     )
     source_author = models.ForeignKey(
         to=Author,
@@ -336,7 +332,7 @@ class Quote(models.Model):
         short_quote = textwrap.shorten(self.text, width=70, placeholder="…")
         if self.source_book:
             return f"“{short_quote}” — {self.source_book.title}"
-        elif self.source_author:
+        if self.source_author:
             return f"“{short_quote}” — {self.source_author.name}"
         return f"“{short_quote}”"
 
@@ -529,9 +525,7 @@ class Poem(models.Model):
     context = models.TextField(null=True, blank=True)
     language = models.CharField(max_length=2, default="en")
     status = models.CharField(
-        max_length=1,
-        choices=PoemStatus.choices,
-        default=PoemStatus.ARCHIVED,
+        max_length=1, choices=PoemStatus.choices, default=PoemStatus.ARCHIVED
     )
     learning_data = models.JSONField(null=True, blank=True)
 

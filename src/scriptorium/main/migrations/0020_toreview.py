@@ -4,10 +4,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
-    dependencies = [
-        ("main", "0019_review_feed_date"),
-    ]
+    dependencies = [("main", "0019_review_feed_date")]
 
     operations = [
         migrations.CreateModel(
@@ -28,8 +25,6 @@ class Migration(migrations.Migration):
                 ("date_started", models.DateField(blank=True, null=True)),
                 ("date_finished", models.DateField(blank=True, null=True)),
             ],
-            options={
-                "unique_together": {("title", "author")},
-            },
-        ),
+            options={"unique_together": {("title", "author")}},
+        )
     ]

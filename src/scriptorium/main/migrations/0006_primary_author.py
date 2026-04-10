@@ -12,8 +12,6 @@ def set_primary_author(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [
-        ("main", "0005_rename_authors_book_additional_authors_and_more"),
-    ]
+    dependencies = [("main", "0005_rename_authors_book_additional_authors_and_more")]
 
     operations = [migrations.RunPython(set_primary_author, migrations.RunPython.noop)]

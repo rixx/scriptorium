@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("main", "0011_book_openlibrary_id_alter_book_additional_authors_and_more"),
+        ("main", "0011_book_openlibrary_id_alter_book_additional_authors_and_more")
     ]
 
     operations = [
@@ -25,5 +25,5 @@ class Migration(migrations.Migration):
                 ("slug", models.CharField(max_length=300)),
                 ("text", models.TextField(blank=True, null=True)),
             ],
-        ),
+        )
     ]

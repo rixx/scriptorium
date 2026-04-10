@@ -53,10 +53,8 @@ TEMPLATES = [
         "BACKEND": "django.template.backends.jinja2.Jinja2",
         "DIRS": [],
         "APP_DIRS": True,
-        "OPTIONS": {
-            "environment": "scriptorium.main.jinja2.environment",
-        },
-    },
+        "OPTIONS": {"environment": "scriptorium.main.jinja2.environment"},
+    }
 ]
 
 WSGI_APPLICATION = "scriptorium.wsgi.application"
@@ -66,10 +64,7 @@ WSGI_APPLICATION = "scriptorium.wsgi.application"
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": DATA_DIR / "db.sqlite3",
-    }
+    "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": DATA_DIR / "db.sqlite3"}
 }
 
 # Password validation
@@ -77,17 +72,11 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
     },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 
@@ -139,10 +128,7 @@ try:
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.append("debug_toolbar.middleware.DebugToolbarMiddleware")
     TEMPLATES.append(
-        {
-            "BACKEND": "django.template.backends.django.DjangoTemplates",
-            "APP_DIRS": True,
-        }
+        {"BACKEND": "django.template.backends.django.DjangoTemplates", "APP_DIRS": True}
     )
     INTERNAL_IPS = ["127.0.0.1", "localhost"]
 except ImportError:

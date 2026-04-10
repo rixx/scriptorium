@@ -4,15 +4,10 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [
-        ("main", "0016_add_poem_model"),
-    ]
+    dependencies = [("main", "0016_add_poem_model")]
 
     operations = [
-        migrations.RemoveField(
-            model_name="poem",
-            name="book_title",
-        ),
+        migrations.RemoveField(model_name="poem", name="book_title"),
         migrations.AddField(
             model_name="poem",
             name="author_name",

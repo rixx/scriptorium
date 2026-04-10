@@ -4,14 +4,10 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [
-        ("main", "0018_poem_context"),
-    ]
+    dependencies = [("main", "0018_poem_context")]
 
     operations = [
         migrations.AddField(
-            model_name="review",
-            name="feed_date",
-            field=models.DateField(null=True),
-        ),
+            model_name="review", name="feed_date", field=models.DateField(null=True)
+        )
     ]

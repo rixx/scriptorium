@@ -62,10 +62,7 @@ class CatalogueForm(forms.Form):
         qs = (
             Book.objects.all()
             .select_related("primary_author", "review")
-            .prefetch_related(
-                "additional_authors",
-                "tags",
-            )
+            .prefetch_related("additional_authors", "tags")
         )
 
         if tags := data.get("tags"):

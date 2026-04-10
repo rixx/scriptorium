@@ -4,14 +4,12 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [
-        ("main", "0009_alter_toread_unique_together"),
-    ]
+    dependencies = [("main", "0009_alter_toread_unique_together")]
 
     operations = [
         migrations.AddField(
             model_name="review",
             name="is_draft",
             field=models.BooleanField(default=False),
-        ),
+        )
     ]

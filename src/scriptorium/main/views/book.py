@@ -43,17 +43,10 @@ def feed_view(request):
     context = {
         "reviews": Review.objects.all()
         .filter(is_draft=False)
-        .annotate(
-            relevant_date=Coalesce(
-                "feed_date",
-                "latest_date",
-            )
-        )
+        .annotate(relevant_date=Coalesce("feed_date", "latest_date"))
         .order_by("-relevant_date")[:20]
     }
-    headers = {
-        "Content-Type": "application/atom+xml",
-    }
+    headers = {"Content-Type": "application/atom+xml"}
     return HttpResponse(template.render(context, request), headers=headers)
 
 
@@ -161,8 +154,7 @@ class ReviewByAuthor(YearNavMixin, ActiveTemplateMixin, TemplateView):
             [
                 (letter, list(authors))
                 for letter, authors in groupby(
-                    list(sorted(authors.values(), key=sort_authors)),
-                    key=sort_authors,
+                    sorted(authors.values(), key=sort_authors), key=sort_authors
                 )
             ],
             key=lambda x: (not x[0].isalpha(), x[0].upper()),
@@ -220,10 +212,7 @@ class ReviewBySeries(YearNavMixin, ActiveTemplateMixin, TemplateView):
     @cached_property
     def books(self):
         series_reviews = [
-            (
-                series,
-                sorted(list(books), key=lambda book: float(book.series_position)),
-            )
+            (series, sorted(list(books), key=lambda book: float(book.series_position)))
             for series, books in groupby(
                 sorted(
                     Book.objects.all()
@@ -385,10 +374,7 @@ class TagView(ActiveTemplateMixin, TemplateView):
     def tags(self):
         tags = (
             Tag.objects.all()
-            .annotate(
-                book_count=Count("book"),
-                rating=Avg("book__review__rating"),
-            )
+            .annotate(book_count=Count("book"), rating=Avg("book__review__rating"))
             .filter(book_count__gt=0)
             .order_by("-book_count")
         )

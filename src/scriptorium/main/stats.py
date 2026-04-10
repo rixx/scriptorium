@@ -48,11 +48,7 @@ class LineBar(pygal.Line, pygal.Bar):
           {{ id }} g.series .bar rect {
             transform: translate(-{bar_offset}px, 0);
           }
-          """.replace(
-            "{line_offset}", line_offset
-        ).replace(
-            "{bar_offset}", bar_offset
-        )
+          """.replace("{line_offset}", line_offset).replace("{bar_offset}", bar_offset)
         # We have to create a tempfile here because pygal only does templating
         # when loading CSS from files. Sadness. Cleanup takes place in render()
         timestamp = int(dt.datetime.now().timestamp())
@@ -487,9 +483,7 @@ def get_charts():
                 1,
             ),
             Review.objects.filter(
-                rating__isnull=False,
-                book__pages__gte=pages,
-                book__pages__lt=next_pages,
+                rating__isnull=False, book__pages__gte=pages, book__pages__lt=next_pages
             ).count(),
         )
         for pages, next_pages in zip(page_buckets, page_buckets[1:])

@@ -94,7 +94,7 @@ def render_authors(authors):
 
 
 def thousands(number):
-    return "{:,}".format(number)
+    return f"{number:,}"
 
 
 def replace_url(request, key, new_value):

@@ -92,8 +92,7 @@ def get_openlibrary_book(isbn=None, olid=None):
 @cache
 def get_goodreads_book(goodreads_id):
     response = requests.get(
-        f"https://www.goodreads.com/book/show/{goodreads_id}-placeholder",
-        timeout=5,
+        f"https://www.goodreads.com/book/show/{goodreads_id}-placeholder", timeout=5
     )
 
     if not response.ok:

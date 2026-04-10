@@ -4,10 +4,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
-    dependencies = [
-        ("main", "0021_rename_date_finished_toreview_date_and_more"),
-    ]
+    dependencies = [("main", "0021_rename_date_finished_toreview_date_and_more")]
 
     operations = [
         migrations.AddField(

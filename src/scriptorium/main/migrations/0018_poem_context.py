@@ -4,14 +4,12 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [
-        ("main", "0017_remove_poem_book_title_poem_author_name_and_more"),
-    ]
+    dependencies = [("main", "0017_remove_poem_book_title_poem_author_name_and_more")]
 
     operations = [
         migrations.AddField(
             model_name="poem",
             name="context",
             field=models.TextField(blank=True, null=True),
-        ),
+        )
     ]

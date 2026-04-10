@@ -4,14 +4,8 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
-    dependencies = [
-        ("main", "0023_toreview_quotes_file"),
-    ]
+    dependencies = [("main", "0023_toreview_quotes_file")]
 
     operations = [
-        migrations.AlterUniqueTogether(
-            name="toreview",
-            unique_together=set(),
-        ),
+        migrations.AlterUniqueTogether(name="toreview", unique_together=set())
     ]

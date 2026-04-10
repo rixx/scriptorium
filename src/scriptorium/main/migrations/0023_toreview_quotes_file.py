@@ -4,15 +4,12 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
-    dependencies = [
-        ("main", "0022_toreview_series_toreview_series_position"),
-    ]
+    dependencies = [("main", "0022_toreview_series_toreview_series_position")]
 
     operations = [
         migrations.AddField(
             model_name="toreview",
             name="quotes_file",
             field=models.FileField(blank=True, null=True, upload_to=""),
-        ),
+        )
     ]
