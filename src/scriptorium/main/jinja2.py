@@ -7,9 +7,9 @@ import smartypants
 from django.contrib import messages
 from django.contrib.staticfiles.storage import staticfiles_storage
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from markupsafe import Markup
 from markdown.extensions.smarty import SmartyExtension
 from markdown.extensions.toc import TocExtension
+from markupsafe import Markup
 
 DATE_CUTOFF = dt.date(2022, 1, 31)
 
@@ -81,7 +81,7 @@ def render_date(date_value, link=True):
     if not link:
         return date_value
     year, rest = date_value.split("-", maxsplit=1)
-    return Markup(f'<a href="/reviews/{year}">{year}</a>-{rest}')
+    return Markup(f'<a href="/reviews/{year}">{year}</a>-{rest}')  # noqa: S704
 
 
 def render_authors(authors):
@@ -89,9 +89,9 @@ def render_authors(authors):
         f'<a href="/{author.name_slug}/">{author.name}</a>' for author in authors
     ]
     if len(authors) == 1:
-        return Markup(authors[0])
+        return Markup(authors[0])  # noqa: S704
     result = ", ".join(authors[:-1])
-    return Markup(f"{result} & {authors[-1]}")
+    return Markup(f"{result} & {authors[-1]}")  # noqa: S704
 
 
 def thousands(number):

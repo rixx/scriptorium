@@ -8,4 +8,26 @@
     <li><a href=/b/poems>List of poems</a> · <a href=/b/poems/new>New poem</a></li>
     <li><a href=tohuwabohu>Tohuwabohu (broken data)</a></li>
   </ul>
+
+  {% if deploy_enabled %}
+  <h3>Deploy</h3>
+  <p style="color: #666; font-size: 0.9em;">Pull latest code, run migrations, and restart.</p>
+  <form id="deploy-form" method="POST" action="/b/deploy/">
+    {{ csrf_input }}
+    <button type="submit">Deploy</button>
+  </form>
+  <script>
+  document.getElementById('deploy-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var form = this;
+    fetch(form.action, {
+      method: 'POST',
+      body: new FormData(form),
+      credentials: 'same-origin'
+    }).then(function(r) { return r.text(); }).then(function(html) {
+      form.outerHTML = html;
+    });
+  });
+  </script>
+  {% endif %}
 {% endblock %}

@@ -1,10 +1,17 @@
+import logging
+from pathlib import Path
+
+from django.conf import settings as django_settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Q
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.utils.functional import cached_property
+from django.views.decorators.http import require_POST
 from django.views.generic import (
     CreateView,
     DetailView,
@@ -48,6 +55,8 @@ from scriptorium.main.views.mixins import (
     PoemMixin,
     ReviewMixin,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class LoginView(FormView):
@@ -98,6 +107,10 @@ class TohuwabohuView(LoginRequiredMixin, TemplateView):
 
 class Bibliothecarius(LoginRequiredMixin, TemplateView):
     template_name = "private/bibliothecarius.html"
+
+    @context
+    def deploy_enabled(self):
+        return bool(django_settings.DEPLOY_FLAG_FILE)
 
 
 class AuthorEdit(AuthorMixin, LoginRequiredMixin, UpdateView):
@@ -413,3 +426,44 @@ class ToReviewEdit(LoginRequiredMixin, UpdateView):
     def form_valid(self, form):
         form.save()
         return redirect("/b/toreview")
+
+
+@login_required
+@require_POST
+def trigger_deploy(request):
+    flag_file = django_settings.DEPLOY_FLAG_FILE
+    if not flag_file:
+        return JsonResponse({"error": "Deploy not configured"}, status=400)
+
+    Path(flag_file).touch()
+    logger.info("Deploy flag set: %s", flag_file)
+    return HttpResponse(
+        '<div id="deploy-status" style="color: #666; font-size: 0.9em;">'
+        "Deploying\u2026"
+        "<script>"
+        "(function(){"
+        "var el=document.getElementById('deploy-status');"
+        "var dots=0;"
+        "var iv=setInterval(function(){dots=(dots+1)%4;"
+        "el.textContent='Deploying'+'.'.repeat(dots);},500);"
+        "var ok=0;"
+        "function poll(){"
+        "fetch('/healthz/').then(function(r){"
+        "if(r.ok){ok++;"
+        "if(ok>=3){clearInterval(iv);"
+        "el.textContent='Deploy complete!';"
+        "el.style.color='green';"
+        "setTimeout(function(){location.reload();},1500);}"
+        "else{setTimeout(poll,1000);}}"
+        "else{ok=0;setTimeout(poll,2000);}"
+        "}).catch(function(){ok=0;setTimeout(poll,2000);});"
+        "}"
+        "setTimeout(poll,5000);"
+        "})();"
+        "</script>"
+        "</div>"
+    )
+
+
+def healthz(request):
+    return JsonResponse({"status": "ok"})

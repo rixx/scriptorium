@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
-    dependencies = [
-        ('main', '0023_toreview_quotes_file'),
-    ]
+    dependencies = [("main", "0023_toreview_quotes_file")]
 
     operations = [
         migrations.AlterField(
-            model_name='book',
-            name='pages',
-            field=models.IntegerField(blank=True, help_text="Assume 300 words per page if you don't know the page count", null=True),
-        ),
+            model_name="book",
+            name="pages",
+            field=models.IntegerField(
+                blank=True,
+                help_text="Assume 300 words per page if you don't know the page count",
+                null=True,
+            ),
+        )
     ]

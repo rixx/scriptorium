@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -95,11 +96,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
     },
 }
 STATIC_URL = "static/"
@@ -107,7 +106,6 @@ STATIC_ROOT = BASE_DIR / "static"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
-
 
 
 # Find all files in templates/_borders, and set MAX_BORDER to the highest number
@@ -119,6 +117,8 @@ border_files = list(
     (BASE_DIR / "scriptorium" / "main" / "templates" / "_borders").glob("*.svg")
 )
 MAX_BORDER = max(int(file.stem) for file in border_files) if border_files else 0
+
+DEPLOY_FLAG_FILE = os.environ.get("SCRIPTORIUM_DEPLOY_FLAG_FILE", "")
 
 try:
     import django_extensions  # noqa: F401

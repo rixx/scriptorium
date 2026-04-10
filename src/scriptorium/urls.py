@@ -7,6 +7,7 @@ urlpatterns = [
     path("b/", views.Bibliothecarius.as_view()),
     path("b/login/", views.LoginView.as_view()),
     path("b/logout", views.logout_view),
+    path("b/deploy/", views.trigger_deploy, name="trigger-deploy"),
     path("b/tohuwabohu/", views.TohuwabohuView.as_view()),
     path("b/new", views.ReviewCreate.as_view()),
     path("b/pages/new", views.PageCreate.as_view()),
@@ -59,6 +60,7 @@ urlpatterns = [
     ),
     path("<slug:author>/<slug:book>/square.png", views.ReviewCoverSquareView.as_view()),
     path("<slug:author>/<slug:book>/edit", views.ReviewEdit.as_view()),
+    path("healthz/", views.healthz, name="healthz"),
 ]
 
 try:

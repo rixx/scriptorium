@@ -18,7 +18,9 @@ from .admin import (
     ToReviewDelete,
     ToReviewEdit,
     ToReviewList,
+    healthz,
     logout_view,
+    trigger_deploy,
 )
 from .book import (
     AuthorView,
@@ -93,5 +95,7 @@ __all__ = [
     "border_image",
     "feed_view",
     "graph_data",
+    "healthz",
     "logout_view",
+    "trigger_deploy",
 ]
