@@ -118,7 +118,9 @@ border_files = list(
 )
 MAX_BORDER = max(int(file.stem) for file in border_files) if border_files else 0
 
-DEPLOY_FLAG_FILE = os.environ.get("SCRIPTORIUM_DEPLOY_FLAG_FILE", "")
+DEPLOY_FLAG_FILE = os.environ.get(
+    "SCRIPTORIUM_DEPLOY_FLAG_FILE", str(DATA_DIR / "deploy.flag")
+)
 
 try:
     import django_extensions  # noqa: F401
