@@ -304,16 +304,6 @@ class ReviewCoverThumbnailView(ReviewView):
         return FileResponse(self.book.cover_thumbnail.thumb)
 
 
-class ReviewCoverSquareView(ReviewView):
-    def dispatch(self, *args, **kwargs):
-        if not self.book.cover:
-            return HttpResponseNotFound()
-        if not self.book.cover_square or not self.book.cover_square.thumb:
-            self.book.update_thumbnail()
-            self.book.refresh_from_db()
-        return FileResponse(self.book.cover_square.thumb)
-
-
 class QueueView(ActiveTemplateMixin, TemplateView):
     template_name = "public/list_queue.html"
     active = "queue"

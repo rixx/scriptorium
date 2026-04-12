@@ -229,10 +229,6 @@ class Book(models.Model):
     def cover_thumbnail(self):
         return Thumbnail.objects.filter(book=self, size="thumbnail").first()
 
-    @cached_property
-    def cover_square(self):
-        return Thumbnail.objects.filter(book=self, size="square").first()
-
     def download_cover(self):
         if not self.cover_source:
             return
@@ -254,8 +250,6 @@ class Book(models.Model):
             return
         if self.cover_thumbnail:
             del self.cover_thumbnail
-        if self.cover_square:
-            del self.cover_square
         im = Image.open(self.cover.path)
         if im.width > 240 and im.height > 240:
             im.thumbnail((240, 240))
@@ -265,24 +259,6 @@ class Book(models.Model):
 
         t = Thumbnail.objects.create(book=self, size="thumbnail")
         t.thumb.save("thumbnail.jpg", imgfile)
-
-        im = Image.open(self.cover.path)
-        im.thumbnail((240, 240))
-        dimension = max(im.size)
-        canvas = Image.new(
-            "RGBA", size=(dimension, dimension), color=(255, 255, 255, 0)
-        )
-
-        if im.height > im.width:
-            canvas.paste(im, box=((dimension - im.width) // 2, 0))
-        else:
-            canvas.paste(im, box=(0, (dimension - im.height) // 2))
-
-        buffer = BytesIO()
-        canvas.save(fp=buffer, format="PNG", quality=95)
-        imgfile = ContentFile(buffer.getvalue())
-        t = Thumbnail.objects.create(book=self, size="square")
-        t.thumb.save("square.png", imgfile)
 
     def update_spine_color(self):
         if self.cover:

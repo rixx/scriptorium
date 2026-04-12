@@ -58,7 +58,6 @@ urlpatterns = [
         "<slug:author>/<slug:book>/thumbnail.jpg",
         views.ReviewCoverThumbnailView.as_view(),
     ),
-    path("<slug:author>/<slug:book>/square.png", views.ReviewCoverSquareView.as_view()),
     path("<slug:author>/<slug:book>/edit", views.ReviewEdit.as_view()),
     path("healthz/", views.healthz, name="healthz"),
 ]
