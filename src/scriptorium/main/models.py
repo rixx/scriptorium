@@ -76,7 +76,7 @@ class ToReview(models.Model):
 
 class Author(models.Model):
     name = models.CharField(max_length=300)
-    name_slug = models.CharField(max_length=300)
+    name_slug = models.CharField(max_length=300, unique=True)
     text = models.TextField(null=True, blank=True)
 
     def __str__(self):
@@ -104,6 +104,7 @@ class Tag(models.Model):
     category = models.CharField(
         max_length=300, choices=TagCategory.choices, default=TagCategory.GENRE
     )
+    name = models.CharField(max_length=300, blank=True)
     name_slug = models.CharField(max_length=300)
     text = models.TextField(null=True, blank=True)
 
@@ -111,7 +112,12 @@ class Tag(models.Model):
         ordering = ("category", "name_slug")
 
     def __str__(self):
-        return f"{self.category}:{self.name_slug}"
+        return f"{self.category}:{self.name or self.name_slug}"
+
+    def save(self, *args, **kwargs):
+        if not self.name:
+            self.name = self.name_slug
+        return super().save(*args, **kwargs)
 
 
 class BookManager(models.Manager):
@@ -169,6 +175,9 @@ class Book(models.Model):
     plot = models.TextField(null=True, blank=True)
 
     objects = BookManager()
+
+    class Meta:
+        unique_together = (("primary_author", "title_slug"),)
 
     def __str__(self):
         return f"{self.title} by {self.author_string}"
@@ -260,15 +269,17 @@ class Book(models.Model):
         im = Image.open(self.cover.path)
         im.thumbnail((240, 240))
         dimension = max(im.size)
-        im = Image.new("RGBA", size=(dimension, dimension), color=(255, 255, 255, 0))
+        canvas = Image.new(
+            "RGBA", size=(dimension, dimension), color=(255, 255, 255, 0)
+        )
 
         if im.height > im.width:
-            im.paste(im, box=((dimension - im.width) // 2, 0))
+            canvas.paste(im, box=((dimension - im.width) // 2, 0))
         else:
-            im.paste(im, box=(0, (dimension - im.height) // 2))
+            canvas.paste(im, box=(0, (dimension - im.height) // 2))
 
         buffer = BytesIO()
-        im.save(fp=buffer, format="PNG", quality=95)
+        canvas.save(fp=buffer, format="PNG", quality=95)
         imgfile = ContentFile(buffer.getvalue())
         t = Thumbnail.objects.create(book=self, size="square")
         t.thumb.save("square.png", imgfile)
@@ -325,7 +336,7 @@ class Quote(models.Model):
     language = models.CharField(max_length=2, default="en")
     order = models.IntegerField(null=True, blank=True)
 
-    objects = QuoteManager
+    objects = QuoteManager()
 
     class Meta:
         ordering = ("source_author", "source_book", "order", "id")

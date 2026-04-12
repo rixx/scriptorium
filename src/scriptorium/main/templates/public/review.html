@@ -67,7 +67,7 @@
           <td>{{ category }}:</td>
           <th>
             {% for tag in tags %}
-              <a href="/lists/{{ tag.name_slug }}/">{{ tag.name_slug }}</a>{{ ", " if not loop.last }}
+              <a href="/lists/{{ tag.name_slug }}/">{{ tag.name }}</a>{{ ", " if not loop.last }}
             {% endfor %}
           </th>
         </tr>
