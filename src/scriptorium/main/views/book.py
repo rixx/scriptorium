@@ -300,7 +300,7 @@ class ReviewCoverThumbnailView(ReviewView):
             return HttpResponseNotFound()
         if not self.book.cover_thumbnail or not self.book.cover_thumbnail.thumb:
             self.book.update_thumbnail()
-            self.book.refresh_from_db()
+            self.book.__dict__.pop("cover_thumbnail", None)
         return FileResponse(self.book.cover_thumbnail.thumb)
 
 

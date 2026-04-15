@@ -439,10 +439,7 @@ def _get_chart(data, _type="line", **kwargs):
         chart.add(None, [x[1] for x in data])
         chart.add(None, [x[2] for x in data], secondary=True)
     else:
-        if _type == "line":
-            chart = pygal.Line(**config)
-        elif _type == "bar":
-            chart = pygal.Bar(**config)
+        chart = pygal.Line(**config) if _type == "line" else pygal.Bar(**config)
         chart.add(None, [y for _, y in data])
         chart.x_labels = [x for x, _ in data]
     return chart.render(is_unicode=True)
