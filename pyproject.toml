@@ -92,9 +92,62 @@ allowed-confusables = ["–", "'", "×"]
 "src/scriptorium/main/management/**.py" = [
   "T201",    # print() is fine in management commands
 ]
+"src/tests/**.py" = [
+  "INP001",  # Tests are not in a package
+  "S101",    # Assertions are the whole point
+  "S106",    # Hardcoded passwords are fine in tests
+  "PT011",   # Broad pytest.raises is fine
+  "SLF001",  # Accessing private members is fine in tests
+]
 
 [tool.ruff.lint.isort]
 split-on-trailing-comma = false
 
 [tool.ruff.lint.flake8-self]
 extend-ignore-names = ["_base_manager", "_default_manager", "_meta"]
+
+[dependency-groups]
+dev = [
+    "factory-boy>=3.3.3",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "pytest-django>=4.12.0",
+    "pytest-xdist>=3.6.1",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "scriptorium.settings"
+pythonpath = ["src"]
+python_files = ["test_*.py"]
+testpaths = ["src/tests"]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+branch = true
+omit = [
+  "*/__init__.py",
+  "*/__main__.py",
+  "*/helpers.py",
+  "*/manage.py",
+  "*/management/commands/*",
+  "*/migrations/*",
+  "*/settings*",
+  "*/tests/*",
+  "*/urls.py",
+  "*/wsgi.py",
+  "*/asgi.py",
+]
+relative_files = true
+
+[tool.coverage.report]
+fail_under = 100
+exclude_also = [
+  "def __repr__",
+  "def __str__",
+  "if settings.DEBUG",
+  "NOQA",
+  "noqa",
+  "NotImplementedError",
+]
