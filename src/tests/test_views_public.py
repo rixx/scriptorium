@@ -1,7 +1,10 @@
 import datetime as dt
+import io
 import json
 
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image
 
 from scriptorium.main.models import BookRelation
 from scriptorium.main.views import GraphView, QueueView, healthz
@@ -14,6 +17,69 @@ from tests.factories import (
     ToReadFactory,
     make_reviewed_book,
 )
+
+
+def _make_image_bytes(color=(200, 100, 50)):
+    buf = io.BytesIO()
+    Image.new("RGB", (300, 400), color=color).save(buf, format="JPEG")
+    return buf.getvalue()
+
+
+def _attach_cover(book, filename="cover.jpg"):
+    book.cover.save(
+        filename, SimpleUploadedFile(filename, _make_image_bytes(), "image/jpeg")
+    )
+    return book
+
+
+@pytest.fixture
+def _media_tmp(settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    return tmp_path
+
+
+@pytest.fixture
+def _gender_tags():
+    TagFactory(category="author", name="gender:female", name_slug="gender:female")
+    TagFactory(category="author", name="gender:male", name_slug="gender:male")
+
+
+@pytest.fixture
+def stats_library(_gender_tags):
+    """Twelve reviewed books on a page-count × publication-year diagonal, so
+    that every bucket used by ``get_charts`` has at least one review and no
+    ``round(None, ...)`` call can crash."""
+    # (pages, publication_year) pairs — one per (page_bucket, pub_year_bucket) slot.
+    combos = [
+        (25, 1850),
+        (75, 1910),
+        (125, 1935),
+        (175, 1960),
+        (225, 1980),
+        (275, 1987),
+        (325, 1992),
+        (375, 1997),
+        (450, 2002),
+        (600, 2007),
+        (875, 2012),
+        (1500, 2017),
+    ]
+    books = []
+    for idx, (pages, year) in enumerate(combos):
+        read_date = dt.date(2024, 1, 1) + dt.timedelta(days=idx)
+        books.append(
+            make_reviewed_book(
+                title=f"Stats book {idx}",
+                title_slug=f"stats-book-{idx}",
+                pages=pages,
+                publication_year=year,
+                rating=4,
+                latest_date=read_date,
+                dates_read=read_date.isoformat(),
+            )
+        )
+    return books
+
 
 pytestmark = pytest.mark.django_db
 
@@ -357,3 +423,199 @@ def test_poem_view_by_author(client):
     body = response.content.decode()
     assert poem.title in body
     assert "A line of verse." in body
+
+
+def test_poem_view_by_book(client):
+    book = make_reviewed_book(
+        primary_author=AuthorFactory(name_slug="eliot", name="T. S. Eliot"),
+        title_slug="four-quartets",
+    )
+    poem = PoemFactory(
+        book=book,
+        title="Burnt Norton",
+        slug="burnt-norton",
+        text="Time present and time past.",
+    )
+
+    response = client.get(f"/{book.slug}/poems/{poem.slug}/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert poem.title in body
+    assert "Time present and time past." in body
+
+
+def test_poem_view_by_url_slug_fallback(client):
+    """A Poem with neither book nor author resolves via its url_slug."""
+    poem = PoemFactory(
+        title="Anonymous Fragment",
+        slug="fragment",
+        url_slug="anonymous",
+        text="A mystery verse.",
+    )
+
+    response = client.get(f"/poems/{poem.url_slug}/{poem.slug}/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert poem.title in body
+    assert "A mystery verse." in body
+
+
+# --- Border images ---------------------------------------------------------
+
+
+def test_border_image_returns_svg_for_requested_number(client):
+    response = client.get("/img/border/?border=1&color=123456")
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "image/svg+xml"
+    body = response.content.decode()
+    assert "#123456" in body
+    assert "<svg" in body
+
+
+def test_border_image_random_when_no_number_given(client, settings):
+    response = client.get("/img/border/")
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "image/svg+xml"
+    body = response.content.decode()
+    assert "<svg" in body
+    # Default color is used when none given.
+    assert "#990000" in body
+
+
+@pytest.mark.parametrize("border_param", ["not-a-number", "99999"])
+def test_border_image_invalid_number_falls_back_to_random(client, border_param):
+    response = client.get(f"/img/border/?border={border_param}")
+
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "image/svg+xml"
+    assert "<svg" in response.content.decode()
+
+
+def test_border_image_list_view(client, settings):
+    response = client.get("/img/border/all/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "Border Images" in body
+    # The template renders one <option> per available border via range(1, max_border).
+    option_count = body.count('<option value="')
+    assert option_count >= settings.MAX_BORDER - 1
+
+
+# --- Stats ------------------------------------------------------------------
+
+
+def test_stats_view_renders_reading_stats(client, stats_library):
+    response = client.get("/stats/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "Reading stats" in body
+    # The stats grid renders an SVG per year-month bucket.
+    assert "<svg" in body
+    # The stats table row for total book count.
+    assert "Total books" in body
+    # get_charts() renders all three labelled charts.
+    assert "Rating and books over time" in body
+    assert "Rating and books per page count" in body
+    assert "Ratings and books per publication year" in body
+
+
+def test_year_in_books_view_renders_year_stats(client, stats_library):
+    # stats_library reads all 12 books across 2024 (latest_date = 2024-01-01..12).
+    # Previous year (2023) also needs at least one review for get_year_stats'
+    # extra_years recursion.
+    make_reviewed_book(
+        title="Read in 2023",
+        title_slug="read-in-2023",
+        pages=250,
+        publication_year=2010,
+        rating=4,
+        latest_date=dt.date(2023, 6, 1),
+        dates_read="2023-06-01",
+    )
+
+    response = client.get("/reviews/2024/stats/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "2024 in books" in body
+    # First/last book slots pick from stats_library's 12 2024 reads.
+    assert stats_library[0].title in body
+    assert stats_library[-1].title in body
+
+
+# --- Cover / thumbnail ------------------------------------------------------
+
+
+@pytest.mark.usefixtures("_media_tmp")
+def test_review_cover_view_returns_file_response(client, reviewed_book):
+    _attach_cover(reviewed_book)
+
+    response = client.get(f"/{reviewed_book.slug}/cover.jpg")
+
+    assert response.status_code == 200
+    assert response.streaming is True
+    assert b"".join(response.streaming_content) == reviewed_book.cover.read()
+
+
+def test_review_cover_thumbnail_view_without_cover_returns_404(client, reviewed_book):
+    response = client.get(f"/{reviewed_book.slug}/thumbnail.jpg")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("_media_tmp")
+def test_review_cover_thumbnail_view_serves_existing_thumbnail(client, reviewed_book):
+    _attach_cover(reviewed_book)
+    # First request generates the thumbnail row…
+    client.get(f"/{reviewed_book.slug}/thumbnail.jpg")
+    assert reviewed_book.thumbnails.count() == 1
+
+    # …a second request must serve it without creating another row.
+    response = client.get(f"/{reviewed_book.slug}/thumbnail.jpg")
+
+    assert response.status_code == 200
+    assert reviewed_book.thumbnails.count() == 1
+
+
+@pytest.mark.usefixtures("_media_tmp")
+def test_review_cover_thumbnail_view_generates_and_returns_thumbnail(
+    client, reviewed_book
+):
+    _attach_cover(reviewed_book)
+    assert reviewed_book.cover_thumbnail is None
+
+    response = client.get(f"/{reviewed_book.slug}/thumbnail.jpg")
+
+    assert response.status_code == 200
+    reviewed_book.refresh_from_db()
+    del reviewed_book.cover_thumbnail  # invalidate cached_property
+    assert reviewed_book.cover_thumbnail is not None
+    # The served bytes are a valid JPEG produced by the thumbnail generator.
+    body = b"".join(response.streaming_content)
+    assert body.startswith(b"\xff\xd8")  # JPEG magic bytes
+    assert Image.open(io.BytesIO(body)).format == "JPEG"
+
+
+# --- Catalogue invalid form -------------------------------------------------
+
+
+def test_catalogue_view_invalid_form_returns_no_books(client, populated_library):
+    # `order_by` has a fixed choice list; an unknown value makes the form invalid,
+    # which must fall back to an empty queryset rather than leaking all books.
+    happy_response = client.get("/catalogue/")
+    happy_body = happy_response.content.decode()
+    assert populated_library["book_one"].title in happy_body  # sanity
+
+    response = client.get("/catalogue/?order_by=not-a-real-field")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert populated_library["book_one"].title not in body
+    assert populated_library["book_two"].title not in body
+    assert populated_library["book_three"].title not in body

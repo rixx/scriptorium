@@ -1,8 +1,14 @@
 import datetime as dt
+import io
+import re
+from pathlib import Path
 
 import pytest
+import requests
+from django.core.files.base import ContentFile
+from PIL import Image
 
-from scriptorium.main.models import Book, Review, Spine, Tag
+from scriptorium.main.models import Book, Review, Spine, Tag, Thumbnail
 from tests.factories import (
     AuthorFactory,
     BookFactory,
@@ -429,3 +435,191 @@ def test_to_review_match_returns_false_when_no_book_exists():
     to_review = ToReviewFactory(title="Unknown Title", date=dt.date(2024, 1, 1))
 
     assert to_review.match() is False
+
+
+# --- Book covers, thumbnails, spine colors ---------------------------------
+
+
+def _png_bytes(size=(300, 400), color=(120, 50, 200)):
+    buf = io.BytesIO()
+    Image.new("RGB", size, color).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+class _FakeResponse:
+    def __init__(self, content=b"", status_code=200):
+        self.content = content
+        self.status_code = status_code
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise requests.HTTPError(f"status {self.status_code}")
+
+
+def test_book_save_downloads_cover_when_source_set(settings, tmp_path, monkeypatch):
+    settings.MEDIA_ROOT = str(tmp_path)
+    content = _png_bytes()
+    monkeypatch.setattr(
+        "scriptorium.main.models.requests.get",
+        lambda url, timeout=5: _FakeResponse(content),  # noqa: ARG005
+    )
+
+    book = BookFactory(cover_source="https://example.com/cover.jpg")
+    book.refresh_from_db()
+
+    assert book.cover_source is None
+    assert book.cover.name
+    with book.cover.open("rb") as fp:
+        assert fp.read() == content
+
+
+def test_book_download_cover_noop_when_source_missing(settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    book = BookFactory(cover_source=None)
+
+    book.download_cover()
+
+    assert not book.cover
+
+
+def test_book_download_cover_swallows_request_errors(settings, tmp_path, monkeypatch):
+    settings.MEDIA_ROOT = str(tmp_path)
+
+    def boom(url, timeout=5):  # noqa: ARG001
+        raise requests.ConnectionError("nope")
+
+    monkeypatch.setattr("scriptorium.main.models.requests.get", boom)
+
+    book = BookFactory(cover_source="https://example.com/cover.jpg")
+    book.refresh_from_db()
+
+    assert not book.cover
+    assert book.cover_source == "https://example.com/cover.jpg"
+
+
+def test_book_download_cover_replaces_existing_cover(settings, tmp_path, monkeypatch):
+    settings.MEDIA_ROOT = str(tmp_path)
+    replacement = _png_bytes(color=(250, 250, 250))
+    book = BookFactory()
+    book.cover.save("old.png", ContentFile(_png_bytes(color=(10, 10, 10))), save=True)
+    old_path = book.cover.path
+
+    monkeypatch.setattr(
+        "scriptorium.main.models.requests.get",
+        lambda url, timeout=5: _FakeResponse(replacement),  # noqa: ARG005
+    )
+    book.cover_source = "https://example.com/new.jpg"
+    book.download_cover()
+    book.refresh_from_db()
+
+    assert book.cover.name
+    with book.cover.open("rb") as fp:
+        assert fp.read() == replacement
+    assert not Path(old_path).exists()
+    assert book.cover_source is None
+
+
+def test_book_spine_cached_property_returns_spine_instance():
+    book = make_reviewed_book(pages=200, dimensions=None)
+
+    first = book.spine
+    second = book.spine
+
+    assert isinstance(first, Spine)
+    assert first is second
+    assert first.book is book
+
+
+def test_book_update_thumbnail_noop_without_cover():
+    book = BookFactory()
+
+    book.update_thumbnail()
+
+    assert list(Thumbnail.objects.filter(book=book)) == []
+
+
+def test_book_update_thumbnail_resizes_large_cover(settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    book = BookFactory()
+    book.cover.save("cover.png", ContentFile(_png_bytes((500, 600))), save=True)
+
+    book.update_thumbnail()
+
+    thumb = Thumbnail.objects.get(book=book, size="thumbnail")
+    with Image.open(thumb.thumb.path) as im:
+        assert im.width <= 240
+        assert im.height <= 240
+        assert max(im.size) == 240
+
+
+def test_book_update_thumbnail_keeps_small_cover_unresized(settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    book = BookFactory()
+    book.cover.save("cover.png", ContentFile(_png_bytes((100, 100))), save=True)
+
+    book.update_thumbnail()
+
+    thumb = Thumbnail.objects.get(book=book, size="thumbnail")
+    with Image.open(thumb.thumb.path) as im:
+        assert im.size == (100, 100)
+
+
+def test_book_update_thumbnail_invalidates_cached_thumbnail(settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    book = BookFactory()
+    book.cover.save("cover.png", ContentFile(_png_bytes((300, 400))), save=True)
+    Thumbnail.objects.create(book=book, size="thumbnail")
+    # prime the cached_property so update_thumbnail must delete it
+    _ = book.cover_thumbnail
+
+    book.update_thumbnail()
+
+    assert Thumbnail.objects.filter(book=book, size="thumbnail").count() == 2
+
+
+def test_book_update_spine_color_noop_without_cover():
+    book = BookFactory(spine_color=None)
+
+    book.update_spine_color()
+
+    assert book.spine_color is None
+
+
+def test_book_update_spine_color_sets_hex_from_cover(settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    book = BookFactory(spine_color=None)
+    book.cover.save(
+        "cover.png", ContentFile(_png_bytes((100, 100), color=(220, 30, 30))), save=True
+    )
+
+    book.update_spine_color()
+
+    assert re.fullmatch(r"#[0-9a-f]{6}", book.spine_color)
+
+
+def test_spine_get_margin_zero_when_not_tilted():
+    book = make_reviewed_book(pages=200, dimensions={"height": 20, "thickness": 3})
+
+    assert Spine(book).get_margin(0) == pytest.approx(0, abs=1e-9)
+
+
+def test_spine_get_margin_symmetric_in_tilt_direction():
+    book = make_reviewed_book(pages=200, dimensions={"height": 20, "thickness": 3})
+    spine = Spine(book)
+
+    assert spine.get_margin(30) == spine.get_margin(-30)
+    assert spine.get_margin(30) > 0
+
+
+def test_thumbnail_delete_removes_file_and_row(settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    book = BookFactory()
+    thumb = Thumbnail.objects.create(book=book, size="thumbnail")
+    thumb.thumb.save("t.jpg", ContentFile(b"fake bytes"), save=True)
+    file_path = thumb.thumb.path
+    assert Path(file_path).exists()
+
+    thumb.delete()
+
+    assert not Thumbnail.objects.filter(pk=thumb.pk).exists()
+    assert not Path(file_path).exists()
