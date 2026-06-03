@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from django.db.models import Count, F
+from django.db.models import Count, F, Q
 
 from scriptorium.main.models import Book, Review, ToReview
 
@@ -8,9 +8,11 @@ class Command(BaseCommand):
     help = "Closes the specified poll for voting"
 
     def handle(self, *args, **options):
-        for book in Book.objects.filter(spine_color__isnull=True).exclude(cover=""):
+        missing_colour = Q(spine_color__isnull=True) | Q(ui_color__isnull=True)
+        for book in Book.objects.filter(missing_colour).exclude(cover=""):
             try:
                 book.update_spine_color()
+                book.update_ui_color()
                 book.update_thumbnail()
                 book.save()
             except Exception as e:  # noqa: BLE001

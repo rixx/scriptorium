@@ -155,29 +155,6 @@ def test_book_tags_by_category_groups_ordered_tags():
     }
 
 
-def test_book_spine_color_darkened_darkens_bright_colors():
-    book = BookFactory(spine_color="#ffffff")
-
-    darkened = book.spine_color_darkened
-
-    r, g, b = (int(darkened[i : i + 2], 16) for i in (1, 3, 5))
-    brightness = (r * 299 + g * 587 + b * 114) / 1000
-    assert brightness <= 100
-    assert darkened != "#ffffff"
-
-
-def test_book_spine_color_darkened_leaves_dark_colors_alone():
-    book = BookFactory(spine_color="#102030")
-
-    assert book.spine_color_darkened == "#102030"
-
-
-def test_book_spine_color_darkened_none_when_unset():
-    book = BookFactory(spine_color=None)
-
-    assert book.spine_color_darkened is None
-
-
 def test_book_quotes_by_language_groups_adjacent_quotes():
     book = make_reviewed_book()
     en_one = QuoteFactory(source_book=book, language="en", text="First", order=1)
@@ -595,6 +572,26 @@ def test_book_update_spine_color_sets_hex_from_cover(settings, tmp_path):
     book.update_spine_color()
 
     assert re.fullmatch(r"#[0-9a-f]{6}", book.spine_color)
+
+
+def test_book_update_ui_color_noop_without_cover():
+    book = BookFactory(ui_color=None)
+
+    book.update_ui_color()
+
+    assert book.ui_color is None
+
+
+def test_book_update_ui_color_sets_hex_from_cover(settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    book = BookFactory(ui_color=None)
+    book.cover.save(
+        "cover.png", ContentFile(_png_bytes((100, 100), color=(220, 30, 30))), save=True
+    )
+
+    book.update_ui_color()
+
+    assert re.fullmatch(r"#[0-9a-f]{6}", book.ui_color)
 
 
 def test_spine_get_margin_zero_when_not_tilted():

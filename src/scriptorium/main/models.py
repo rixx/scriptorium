@@ -17,7 +17,7 @@ from django.utils.functional import cached_property
 from django.utils.timezone import now
 from PIL import Image
 
-from .utils import get_spine_color
+from .utils import get_spine_color, get_ui_color
 
 
 def get_cover_path(instance, filename):
@@ -151,7 +151,10 @@ class Book(models.Model):
         null=True, blank=True, upload_to=get_cover_path, max_length=800
     )
     cover_source = models.CharField(max_length=300, null=True, blank=True)
+    # spine_color: faithful cover colour for spines/edges/card borders.
+    # ui_color: equalised accent for highlights (links, drop caps, page border).
     spine_color = models.CharField(max_length=7, null=True, blank=True)
+    ui_color = models.CharField(max_length=7, null=True, blank=True)
 
     goodreads_id = models.CharField(max_length=30, null=True, blank=True)
     openlibrary_id = models.CharField(max_length=30, null=True, blank=True)
@@ -243,6 +246,7 @@ class Book(models.Model):
         self.cover.save(f"{self.title_slug}.jpg", ContentFile(response.content))
         self.cover_source = None
         self.spine_color = None
+        self.ui_color = None
         self.save()
 
     def update_thumbnail(self):
@@ -264,21 +268,9 @@ class Book(models.Model):
         if self.cover:
             self.spine_color = get_spine_color(self.cover)
 
-    @cached_property
-    def spine_color_darkened(self):
-        # Calculate brightness, then darken if necessary
-        if not self.spine_color:
-            return None
-        # Spine color is given in hex, e.g. #f0f0f0
-        r, g, b = tuple(int(self.spine_color[i : i + 2], 16) for i in (1, 3, 5))
-        brightness = (r * 299 + g * 587 + b * 114) / 1000
-        target_brightness = 100
-        if brightness > target_brightness:
-            diff = int(brightness) - target_brightness
-            r = max(0, r - diff)
-            g = max(0, g - diff)
-            b = max(0, b - diff)
-        return f"#{r:02x}{g:02x}{b:02x}"
+    def update_ui_color(self):
+        if self.cover:
+            self.ui_color = get_ui_color(self.cover)
 
 
 class BookRelation(models.Model):
