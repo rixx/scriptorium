@@ -27,6 +27,15 @@ upgrade *args:
 run *args="runserver":
     {{ python }} manage.py {{ args }}
 
+# Deploy in production: pull, sync deps to the lock, migrate, collectstatic, restart (run as root)
+[group('deployment')]
+deploy:
+    runuser -u books -- git pull
+    runuser -u books -- uv sync --frozen
+    runuser -u books -- just run migrate
+    runuser -u books -- just run collectstatic --no-input
+    systemctl restart books
+
 # Open Django shell
 [group('development')]
 [no-exit-message]
