@@ -10,9 +10,14 @@ src_dir := "src"
 default:
     just --list
 
-# Install dependencies (use --extras to include e.g. dev)
+# Install dependencies to the locked versions (use --extras to include e.g. dev)
 [group('development')]
 install *args:
+    uv sync {{ args }}
+
+# Upgrade locked dependencies to their latest compatible versions
+[group('development')]
+upgrade *args:
     uv lock --upgrade
     uv sync {{ args }}
 
