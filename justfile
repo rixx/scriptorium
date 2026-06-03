@@ -51,37 +51,13 @@ fmt-check: (format "--check") check
 [group('tests')]
 [positional-arguments]
 test *args:
-    {{ uv_dev }} pytest "$@"
+    {{ uv_dev }} pytest --cov=src --cov-report=term-missing:skip-covered --cov-config=pyproject.toml "$@"
 
 # Run tests in parallel (requires pytest-xdist)
 [group('tests')]
 [positional-arguments]
 test-parallel n="auto" *args:
     shift; just test -n {{ n }} "$@"
-
-# Run tests with coverage report
-[group('tests')]
-[positional-arguments]
-test-coverage *args:
-    just test --cov=src --cov-report=term-missing:skip-covered --cov-config=pyproject.toml "$@"
-
-# Run tests for a given app and filter the coverage report
-[group('tests')]
-[positional-arguments]
-test-app-coverage app="" *args:
-    shift; {{ uv_dev }} pytest --cov=src --cov-report=term-missing:skip-covered --cov-config=pyproject.toml src/tests/{{ app }} "$@"
-
-# Show test coverage report in browser
-[group('tests')]
-test-coverage-report: test-coverage
-    #!/usr/bin/env sh
-    if [ -f "src/htmlcov/index.html" ]; then
-        open src/htmlcov/index.html 2>/dev/null || \
-        xdg-open src/htmlcov/index.html 2>/dev/null || \
-        echo "Coverage report: src/htmlcov/index.html"
-    else
-        echo "No coverage report found. Run just test-coverage first."
-    fi
 
 # Check for outdated dependencies
 [group('development')]
@@ -113,11 +89,3 @@ deps-bump package version:
     if old:
         p.write_text(p.read_text().replace(old, f'{Requirement(old).name}~={{ version }}'))
     subprocess.run(['uv', 'lock', '--upgrade-package', '{{ package }}'])
-
-# Remove Python caches, build artifacts, and coverage reports
-[group('development')]
-clean:
-    -find . -type d -name __pycache__ -exec rm -rf {} +
-    -find . -type f -name "*.pyc" -delete
-    -find . -type d -name "*.egg-info" -exec rm -rf {} +
-    -rm -rf .pytest_cache .coverage htmlcov dist build
