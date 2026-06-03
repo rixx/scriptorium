@@ -1,5 +1,5 @@
 {% for poem in poems %}
-  <div class="book-card" {% if poem.book and poem.book.spine_color %}style="border-color: {{ poem.book.spine_color }}"{% endif %}>
+  <div class="book-card" {% if poem.book and poem.book.ui_color %}style="border-color: {{ poem.book.ui_color }}"{% endif %}>
     <a href="{{ poem.get_absolute_url() }}">
       <div class="book-metadata">
         <div class="book_thumbnail">

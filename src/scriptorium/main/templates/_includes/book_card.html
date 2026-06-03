@@ -1,4 +1,4 @@
-<div class="book-card {% if book.review.rating == 5 %}book-card-fav{% endif %}{% if expand_card %} expand{% endif %}"{% if book.spine_color %}style="border-color: {{ book.spine_color }}{% endif %}">
+<div class="book-card {% if book.review.rating == 5 %}book-card-fav{% endif %}{% if expand_card %} expand{% endif %}"{% if book.ui_color %}style="border-color: {{ book.ui_color }}{% endif %}">
   {% include "_includes/external_links.html" %}
   {% set is_link=book.review.dates_read and book.review.text %}
   {%- if is_link %}
