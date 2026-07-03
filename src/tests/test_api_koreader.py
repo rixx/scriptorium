@@ -433,11 +433,6 @@ def test_koreader_highlights_show_up_in_queue_and_read_detail(api_client):
     ).json()
 
     assert queue[0]["reads"] == [
-        {
-            "id": read.pk,
-            "date": "2026-07-01",
-            "notes": None,
-            "highlights": [HIGHLIGHT],
-        }
+        {"id": read.pk, "date": "2026-07-01", "notes": None, "highlights": [HIGHLIGHT]}
     ]
     assert patched["highlights"] == [HIGHLIGHT]
