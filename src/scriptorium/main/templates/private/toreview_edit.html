@@ -46,55 +46,6 @@
   </form>
 
   {% if book %}
-    {% for read in book.reads.all() %}
-      {% if read.highlights %}
-        <section>
-          <h3>
-            Highlights from {{ read.finished_on }} ({{ read.highlights | length }})
-            <button type="button" data-copy-highlights="{{ read.id }}">Copy all</button>
-          </h3>
-          <script type="application/json" id="highlights-data-{{ read.id }}">{{ read.highlights | tojson }}</script>
-          <ol>
-            {% for highlight in read.highlights %}
-              <li>
-                <blockquote>{{ highlight.text }}</blockquote>
-                {% if highlight.note %}<p><em>Note: {{ highlight.note }}</em></p>{% endif %}
-                <small>
-                  {% if highlight.chapter %}{{ highlight.chapter }}{% endif %}
-                  {% if highlight.pageno %}(p. {{ highlight.pageno }}){% endif %}
-                </small>
-                <button type="button" class="copy-highlight">Copy</button>
-              </li>
-            {% endfor %}
-          </ol>
-        </section>
-      {% endif %}
-    {% endfor %}
-
-    <script>
-      const flashButton = (button, label) => {
-        button.textContent = "Copied!"
-        setTimeout(() => button.textContent = label, 2000)
-      }
-      document.querySelectorAll("[data-copy-highlights]").forEach(button => {
-        button.addEventListener("click", () => {
-          const highlights = JSON.parse(document.getElementById(`highlights-data-${button.dataset.copyHighlights}`).textContent)
-          const text = highlights.map(h => {
-            let entry = `> ${h.text}`
-            const where = [h.chapter, h.pageno ? `p. ${h.pageno}` : null].filter(Boolean).join(", ")
-            if (where) entry += `\n  — ${where}`
-            if (h.note) entry += `\n  Note: ${h.note}`
-            return entry
-          }).join("\n\n")
-          navigator.clipboard.writeText(text).then(() => flashButton(button, "Copy all"))
-        })
-      })
-      document.querySelectorAll(".copy-highlight").forEach(button => {
-        button.addEventListener("click", () => {
-          const text = button.closest("li").querySelector("blockquote").textContent.trim()
-          navigator.clipboard.writeText(text).then(() => flashButton(button, "Copy"))
-        })
-      })
-    </script>
+    {% include "private/_highlights.html" %}
   {% endif %}
 {% endblock %}

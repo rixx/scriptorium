@@ -1010,6 +1010,40 @@ def test_review_edit_get_uses_book_object_and_renders_review_fields(
     assert 'name="tldr"' in body
 
 
+def test_review_edit_shows_reread_highlights(admin_logged_in_client):
+    """A reread pushed from KOReader lands on the review edit page (the
+    to-review views reject published books), so its highlights show up
+    there, copy buttons included."""
+    book = make_reviewed_book(
+        title="The Dispossessed",
+        title_slug="the-dispossessed",
+        primary_author=AuthorFactory(
+            name="Ursula K. Le Guin", name_slug="ursula-k-le-guin"
+        ),
+    )
+    reread = ReadFactory(
+        book=book,
+        finished_on=dt.date(2026, 6, 1),
+        highlights=[
+            {
+                "text": "True journey is return.",
+                "note": None,
+                "chapter": "Chapter 13",
+                "pageno": 386,
+            }
+        ],
+    )
+
+    response = admin_logged_in_client.get("/b/ursula-k-le-guin/the-dispossessed/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "True journey is return." in body
+    assert "Chapter 13" in body
+    assert "Copy all" in body
+    assert f'id="highlights-data-{reread.pk}"' in body
+
+
 def test_review_edit_post_valid_saves_both_forms_and_adds_new_tag(
     admin_logged_in_client,
 ):
