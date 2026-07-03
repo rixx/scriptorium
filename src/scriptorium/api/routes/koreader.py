@@ -195,7 +195,7 @@ def _sync_book(payload):
 
 @router.post(
     "/sync/",
-    response={200: KoreaderSyncOut, 426: MessageOut},
+    response={200: KoreaderSyncOut, 422: KoreaderSyncOut, 426: MessageOut},
     summary="Push finished books from KOReader",
 )
 def sync(request, payload: KoreaderSyncIn):
@@ -203,8 +203,9 @@ def sync(request, payload: KoreaderSyncIn):
     each book is matched (device-file md5 -> ISBN -> title/author slug) or
     auto-created into the review queue, and its read -- finish date,
     aggregate stats, and the full highlight blob -- is idempotently upserted.
-    Books are processed independently: one bad book becomes an ``error``
-    result instead of failing the batch."""
+    The batch is all-or-nothing: if any book fails, the whole push is rolled
+    back and a 422 reports every failing book as an ``error`` result, so the
+    device can retry the entire batch after fixing the problem."""
     if _parse_version(payload.plugin_version) < MIN_PLUGIN_VERSION:
         minimum = ".".join(str(part) for part in MIN_PLUGIN_VERSION)
         return 426, {
@@ -212,17 +213,26 @@ def sync(request, payload: KoreaderSyncIn):
             f"supported anymore; please update to at least {minimum}."
         }
     results = []
-    for book_payload in payload.books:
-        try:
-            with transaction.atomic():
-                results.append(_sync_book(book_payload))
-        except Exception as exc:  # noqa: BLE001 -- one bad book must not poison the batch
-            detail = (
-                "; ".join(exc.messages)
-                if isinstance(exc, DjangoValidationError)
-                else str(exc) or exc.__class__.__name__
-            )
-            results.append(
-                {"md5": book_payload.md5, "action": "error", "detail": detail}
-            )
+    errors = []
+    with transaction.atomic():
+        for book_payload in payload.books:
+            try:
+                # Per-book savepoint: a failed book leaves the connection
+                # usable so every remaining book still gets validated and
+                # all errors are reported in one response.
+                with transaction.atomic():
+                    results.append(_sync_book(book_payload))
+            except Exception as exc:  # noqa: BLE001 -- collect per-book errors, fail the batch below
+                detail = (
+                    "; ".join(exc.messages)
+                    if isinstance(exc, DjangoValidationError)
+                    else str(exc) or exc.__class__.__name__
+                )
+                errors.append(
+                    {"md5": book_payload.md5, "action": "error", "detail": detail}
+                )
+        if errors:
+            transaction.set_rollback(True)
+    if errors:
+        return 422, {"results": errors}
     return 200, {"results": results}

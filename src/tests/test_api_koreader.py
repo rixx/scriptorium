@@ -371,27 +371,29 @@ def test_koreader_sync_rating_and_note_never_touch_book_rating(api_client):
 # --- Batching -------------------------------------------------------------------
 
 
-def test_koreader_sync_batch_isolates_bad_books(api_client):
-    """One unprocessable book (its title slugifies to nothing) becomes an
-    error result without poisoning the rest of the batch."""
+def test_koreader_sync_batch_is_all_or_nothing(api_client):
+    """One unprocessable book (its title slugifies to nothing) fails the
+    whole batch with a 422: the good book that preceded it is rolled back,
+    and every failing book is reported."""
     bad_md5 = "b" * 32
 
     response = _sync(
         api_client,
         _book_payload(),
         _book_payload(md5=bad_md5, title="!!!", identifiers=[]),
+        _book_payload(md5="c" * 32, title="???", identifiers=[]),
     )
 
-    assert response.status_code == 200
-    created, errored = response.json()["results"]
-    assert created["action"] == "created_book"
-    assert errored["md5"] == bad_md5
-    assert errored["action"] == "error"
-    assert errored["detail"]
-    assert errored["read_id"] is None
-    book = Book.all_objects.get()
-    assert book.title == "The Left Hand of Darkness"
-    assert Read.objects.count() == 1
+    assert response.status_code == 422
+    first_error, second_error = response.json()["results"]
+    assert first_error["md5"] == bad_md5
+    assert first_error["action"] == "error"
+    assert first_error["detail"]
+    assert first_error["read_id"] is None
+    assert second_error["md5"] == "c" * 32
+    assert second_error["action"] == "error"
+    assert not Book.all_objects.exists()
+    assert not Read.objects.exists()
 
 
 def test_koreader_sync_batch_updates_and_creates_in_one_push(api_client):
