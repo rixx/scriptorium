@@ -325,19 +325,25 @@ class QueueView(ActiveTemplateMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["total_books"] = self.queue.count()
-        context["total_pages"] = self.queue.aggregate(page_count=Sum("pages"))[
-            "page_count"
-        ]
+        context["total_pages"] = (
+            self.queue.aggregate(page_count=Sum("pages"))["page_count"] or 0
+        )
         past_year_books = Book.objects.read_in_year(now().year - 1)
         context["past_year_books"] = past_year_books.count()
-        context["past_year_pages"] = past_year_books.aggregate(page_count=Sum("pages"))[
-            "page_count"
-        ]
-        context["factor_books"] = round(
-            context["total_books"] / context["past_year_books"], 1
+        context["past_year_pages"] = (
+            past_year_books.aggregate(page_count=Sum("pages"))["page_count"] or 0
         )
-        context["factor_pages"] = round(
-            context["total_pages"] / context["past_year_pages"], 1
+        # A year without any reads yields no forecast (instead of a
+        # ZeroDivisionError); the template skips the projection sentence.
+        context["factor_books"] = (
+            round(context["total_books"] / context["past_year_books"], 1)
+            if context["past_year_books"]
+            else None
+        )
+        context["factor_pages"] = (
+            round(context["total_pages"] / context["past_year_pages"], 1)
+            if context["past_year_pages"]
+            else None
         )
         return context
 

@@ -389,6 +389,35 @@ def test_queue_view_shows_shelves_and_totals(rf):
     assert shelves["non-fiction"]["page_count"] == 100
 
 
+def test_queue_view_without_past_year_reads_has_no_forecast(rf):
+    """Regression: zero reads in the past year used to crash the queue page
+    with a ZeroDivisionError. The factors become None instead."""
+    BookFactory(status=BookStatus.TO_READ, shelf="fiction", pages=200)
+
+    view = QueueView()
+    view.request = rf.get("/queue/")
+    view.kwargs = {}
+    context = view.get_context_data()
+
+    assert context["total_books"] == 1
+    assert context["past_year_books"] == 0
+    assert context["past_year_pages"] == 0
+    assert context["factor_books"] is None
+    assert context["factor_pages"] is None
+
+
+def test_queue_page_without_past_year_reads_renders_without_forecast(client):
+    BookFactory(status=BookStatus.TO_READ, shelf="fiction", pages=200)
+
+    response = client.get("/queue/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "1 books" in body
+    # The projection sentence needs last year's pace and is skipped entirely.
+    assert "Going off last year" not in body
+
+
 # --- Quote ------------------------------------------------------------------
 
 
@@ -589,6 +618,29 @@ def test_year_in_books_view_renders_year_stats(client, stats_library):
     # First/last book slots pick from stats_library's 12 2024 reads.
     assert stats_library[0].title in body
     assert stats_library[-1].title in body
+
+
+def test_year_in_books_view_renders_when_previous_year_is_empty(client, stats_library):
+    """Regression: the stats page recursed into the previous year and crashed
+    on its empty queryset when that year had no reads at all."""
+    response = client.get("/reviews/2024/stats/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "2024 in books" in body
+    assert stats_library[-1].title in body
+
+
+def test_year_in_books_view_renders_empty_year(client, stats_library):
+    """Regression: a year without any reads 500ed. It now renders an
+    empty-state page (stats_library only has 2024 reads)."""
+    response = client.get("/reviews/2020/stats/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "No reviewed books for 2020" in body
+    # The comparison table still renders, with the all-time column intact.
+    assert "all time" in body
 
 
 # --- Cover / thumbnail ------------------------------------------------------

@@ -8,12 +8,16 @@
 
   <p>
     There are <b>{{ total_books|thousands }} books</b> here in total, with {{ total_pages|thousands }} pages.
-    Going off last year, when I read {{ past_year_books }} books ({{ past_year_pages|thousands }} pages),
-    it will take me just about <b>{{ factor_books }} years</b> to get through these
-    (or, more precisely going by pages, <b>{{ factor_pages }} years</b>).
+    {% if factor_books and factor_pages %}
+      Going off last year, when I read {{ past_year_books }} books ({{ past_year_pages|thousands }} pages),
+      it will take me just about <b>{{ factor_books }} years</b> to get through these
+      (or, more precisely going by pages, <b>{{ factor_pages }} years</b>).
+    {% endif %}
   </p>
 
-  <p>… if I don't add any new books in the meantime.</p>
+  {% if factor_books and factor_pages %}
+    <p>… if I don't add any new books in the meantime.</p>
+  {% endif %}
 
   {% for shelf in shelves %}
     <h3>{{ shelf.name }}</h3>

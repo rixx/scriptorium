@@ -8,6 +8,7 @@ from scriptorium.main import metadata
 from scriptorium.main.metadata import (
     get_goodreads_book,
     get_openlibrary_book,
+    get_openlibrary_book_data,
     get_openlibrary_editions,
     merge_goodreads,
     search_book,
@@ -255,6 +256,38 @@ def test_get_openlibrary_book_queries_by_olid(monkeypatch):
 
     assert result == {"title": "Olid Book"}
     assert "bibkeys=OLID:OL42M" in captured[0]
+
+
+# ---------- get_openlibrary_book_data ----------
+
+
+def test_get_openlibrary_book_data_handles_sparse_payloads(monkeypatch):
+    """OpenLibrary records without identifiers, authors, parseable dates, or
+    covers normalize to Nones (and the olid we asked for) instead of crashing.
+    The fully-populated path is covered by the API proxy tests."""
+    _install_fake_get(
+        monkeypatch,
+        [
+            (
+                "api/books",
+                FakeResponse(json_data={"OLID:OLSPARSE1M": {"publish_date": "n.d."}}),
+            )
+        ],
+    )
+
+    result = get_openlibrary_book_data("OLSPARSE1M")
+
+    assert result == {
+        "title": None,
+        "author_name": "",
+        "openlibrary_id": "OLSPARSE1M",
+        "isbn13": None,
+        "isbn10": None,
+        "goodreads_id": None,
+        "pages": None,
+        "publication_year": None,
+        "cover_source": None,
+    }
 
 
 # ---------- get_goodreads_book ----------

@@ -310,23 +310,56 @@ def get_year_stats(year, extra_years=True):
     unreviewed_reads = Read.objects.filter(
         finished_on__year=year, book__status=BookStatus.TO_REVIEW
     )
-    stats = {}
     total_books = len(books)
-    stats["total_books"] = total_books + unreviewed_reads.count()
-    stats["total_pages"] = count_pages(books)
-    stats["average_pages"] = round(stats["total_pages"] / total_books, 1)
-    stats["average_rating"] = average_rating(books)
-    page_books = books.order_by("pages")
-    stats["shortest_book"] = page_books.first()
-    stats["longest_book"] = page_books.last()
-    word_books = sorted(books, key=lambda book: book.word_count)
-    stats["shortest_review"] = word_books[0]
-    stats["longest_review"] = word_books[-1]
-    stats["average_review"] = round(
-        sum(book.word_count for book in books) / total_books, 1
+    # A year without reviewed reads renders as an empty page instead of
+    # crashing on divisions and empty querysets: numeric fields fall back to
+    # zero (the comparison table can still render maths on them), book-shaped
+    # superlatives stay None.
+    stats = dict.fromkeys(
+        (
+            "shortest_book",
+            "longest_book",
+            "shortest_review",
+            "longest_review",
+            "first_book",
+            "last_book",
+            "busiest_month",
+        )
     )
-    stats["median_year"] = median_year(books)
-    stats["median_length"] = median_length(books)
+    stats["total_books"] = total_books + unreviewed_reads.count()
+    stats["total_pages"] = 0
+    stats["average_pages"] = 0
+    stats["average_rating"] = 0
+    stats["average_review"] = 0
+    stats["median_year"] = 0
+    stats["median_length"] = 0
+    stats["gender"] = {"male": 0, "female": 0}
+    if total_books:
+        stats["total_pages"] = count_pages(books)
+        stats["average_pages"] = round(stats["total_pages"] / total_books, 1)
+        stats["average_rating"] = average_rating(books)
+        page_books = books.order_by("pages")
+        stats["shortest_book"] = page_books.first()
+        stats["longest_book"] = page_books.last()
+        word_books = sorted(books, key=lambda book: book.word_count)
+        stats["shortest_review"] = word_books[0]
+        stats["longest_review"] = word_books[-1]
+        stats["average_review"] = round(
+            sum(book.word_count for book in books) / total_books, 1
+        )
+        stats["median_year"] = median_year(books)
+        stats["median_length"] = median_length(books)
+        stats["gender"] = {
+            "male": get_tag_count(books, "author:gender:male"),
+            "female": get_tag_count(books, "author:gender:female"),
+        }
+        by_date = sorted(books, key=lambda x: x.date_read_lookup[year], reverse=True)
+        stats["first_book"] = by_date[-1]
+        stats["last_book"] = by_date[0]
+        month_counter = Counter(
+            [book.date_read_lookup[year].strftime("%B") for book in by_date]
+        )
+        stats["busiest_month"] = month_counter.most_common()[0]
     stats["all_time"] = dict(get_stats_table())
     if extra_years:
         stats["previous"] = get_year_stats(year - 1, extra_years=False)
@@ -334,17 +367,6 @@ def get_year_stats(year, extra_years=True):
             stats["next"] = get_year_stats(year + 1, extra_years=False)
         else:
             stats["next"] = None
-    stats["gender"] = {
-        "male": get_tag_count(books, "author:gender:male"),
-        "female": get_tag_count(books, "author:gender:female"),
-    }
-    books = sorted(books, key=lambda x: x.date_read_lookup[year], reverse=True)
-    stats["first_book"] = books[-1]
-    stats["last_book"] = books[0]
-    month_counter = Counter(
-        [book.date_read_lookup[year].strftime("%B") for book in books]
-    )
-    stats["busiest_month"] = month_counter.most_common()[0]
     return stats
 
 

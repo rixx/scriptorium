@@ -11,6 +11,18 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+class MetadataError(Exception):
+    """An upstream metadata service (OpenLibrary) failed: network error,
+    timeout, or a response that wasn't JSON."""
+
+
+def _fetch_json(url):
+    try:
+        return requests.get(url, timeout=5).json()
+    except (requests.RequestException, ValueError) as exc:
+        raise MetadataError(f"OpenLibrary request failed: {exc}") from exc
+
+
 # add profiling decorator
 def time_taken(func):
     def wrapper(*args, **kwargs):
@@ -28,47 +40,83 @@ def time_taken(func):
 
 @time_taken
 @cache
-def search_book(search):
+def search_openlibrary(search):
+    """Search OpenLibrary works, returning structured dicts. Raises
+    MetadataError on upstream failure -- the API proxy maps that to a 502,
+    while the wizard-facing search_book swallows it."""
     query = urllib.parse.quote(search)
-    url = f"https://openlibrary.org/search.json?q={query}"
-    # timeout is 5 seconds
-    try:
-        response = requests.get(url, timeout=5).json()
-    except (requests.RequestException, ValueError):
-        return []
+    data = _fetch_json(f"https://openlibrary.org/search.json?q={query}")
     return [
-        (
-            item["key"].split("/")[-1],
-            f"{item['title']} by {', '.join(item.get('author_name') or [])}",
-        )
-        for item in response["docs"]
+        {
+            "id": doc["key"].split("/")[-1],
+            "title": doc["title"],
+            "authors": doc.get("author_name") or [],
+            "year": doc.get("first_publish_year"),
+            "cover_url": (
+                f"https://covers.openlibrary.org/b/id/{doc['cover_i']}-M.jpg"
+                if doc.get("cover_i")
+                else None
+            ),
+        }
+        for doc in data.get("docs") or []
     ]
 
 
 @time_taken
 @cache
-def get_openlibrary_editions(work_id):
-    data = requests.get(
-        f"https://openlibrary.org/works/{work_id}/editions.json", timeout=5
-    ).json()
+def search_book(search):
+    """Works as (id, label) choice tuples for the review wizard."""
+    try:
+        works = search_openlibrary(search)
+    except MetadataError:
+        return []
+    return [
+        (work["id"], f"{work['title']} by {', '.join(work['authors'])}")
+        for work in works
+    ]
+
+
+@time_taken
+@cache
+def get_openlibrary_editions_data(work_id):
+    """A work's editions as structured dicts, filtered to languages I read
+    and sorted like the wizard shows them. Raises MetadataError upstream
+    failure."""
+    data = _fetch_json(f"https://openlibrary.org/works/{work_id}/editions.json")
     result = []
     # we don't paginate, fuckit
     known_languages = ("/languages/eng", "/languages/ger", "/languages/lat")
-    for edition in data["entries"]:
+    for edition in data.get("entries") or []:
         language = edition["languages"][0]["key"] if edition.get("languages") else ""
         if language and language not in known_languages:
             continue
         language = language.split("/")[-1] if language else language
-        pages = edition.get("number_of_pages", edition.get("pagination")) or 0
+        edition_id = edition["key"].split("/")[-1]
         result.append(
-            (
-                edition["key"].split("/")[-1],
-                f"{edition['title']}: {edition.get('publish_date', '')}, {language}, {pages} pages",
-                {"lang": language, "pages": pages},
-            )
+            {
+                "id": edition_id,
+                "title": edition["title"],
+                "publish_date": edition.get("publish_date", ""),
+                "language": language,
+                "pages": edition.get("number_of_pages", edition.get("pagination")) or 0,
+                "cover_url": f"https://covers.openlibrary.org/b/olid/{edition_id}-M.jpg",
+            }
         )
-    result = sorted(result, key=lambda x: (x[2]["lang"] or "zzz", -int(x[2]["pages"])))
-    return [(r[0], r[1]) for r in result]
+    return sorted(result, key=lambda e: (e["language"] or "zzz", -int(e["pages"])))
+
+
+@time_taken
+@cache
+def get_openlibrary_editions(work_id):
+    """Editions as (id, label) choice tuples for the review wizard."""
+    return [
+        (
+            edition["id"],
+            f"{edition['title']}: {edition['publish_date']}, "
+            f"{edition['language']}, {edition['pages']} pages",
+        )
+        for edition in get_openlibrary_editions_data(work_id)
+    ]
 
 
 @time_taken
@@ -80,14 +128,45 @@ def get_openlibrary_book(isbn=None, olid=None):
         search = f"OLID:{olid}"
     return next(
         iter(
-            requests.get(
-                f"https://openlibrary.org/api/books?bibkeys={search}&format=json&jscmd=data",
-                timeout=5,
-            )
-            .json()
-            .values()
+            _fetch_json(
+                f"https://openlibrary.org/api/books?bibkeys={search}&format=json&jscmd=data"
+            ).values()
         )
     )
+
+
+@time_taken
+@cache
+def get_openlibrary_book_data(olid):
+    """A single edition, normalized to the field names our book endpoints
+    (PATCH /api/books/, queue add, review metadata) expect. Returns None when
+    OpenLibrary has no record for the id; raises MetadataError on upstream
+    failure."""
+    try:
+        data = get_openlibrary_book(olid=olid)
+    except StopIteration:
+        # OpenLibrary returns an empty object for unknown ids.
+        return None
+    identifiers = data.get("identifiers") or {}
+
+    def first_identifier(key):
+        values = identifiers.get(key) or []
+        return values[0] if values else None
+
+    year = re.search(r"\d{4}", str(data.get("publish_date") or ""))
+    return {
+        "title": data.get("title"),
+        "author_name": " & ".join(
+            author["name"] for author in data.get("authors") or []
+        ),
+        "openlibrary_id": first_identifier("openlibrary") or olid,
+        "isbn13": first_identifier("isbn_13"),
+        "isbn10": first_identifier("isbn_10"),
+        "goodreads_id": first_identifier("goodreads"),
+        "pages": data.get("number_of_pages"),
+        "publication_year": int(year.group(0)) if year else None,
+        "cover_source": (data.get("cover") or {}).get("large"),
+    }
 
 
 @time_taken

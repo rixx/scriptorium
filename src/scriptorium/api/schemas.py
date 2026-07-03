@@ -234,3 +234,35 @@ class SeriesOut(Schema):
     name: str
     slug: str = Field(alias="name_slug")
     book_count: int
+
+
+class OpenLibraryWorkOut(Schema):
+    id: str
+    title: str
+    authors: list[str]
+    year: int | None = None
+    cover_url: str | None = None
+
+
+class OpenLibraryEditionOut(Schema):
+    id: str
+    title: str
+    publish_date: str
+    language: str
+    pages: int
+    cover_url: str
+
+
+class OpenLibraryBookOut(Schema):
+    """Edition metadata keyed like our own book fields, ready to feed into
+    the queue-add and book PATCH/review endpoints."""
+
+    title: str | None
+    author_name: str
+    openlibrary_id: str
+    isbn13: str | None = None
+    isbn10: str | None = None
+    goodreads_id: str | None = None
+    pages: int | None = None
+    publication_year: int | None = None
+    cover_source: str | None = None

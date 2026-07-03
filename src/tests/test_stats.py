@@ -126,6 +126,43 @@ def test_get_year_stats_recursively_includes_next_year():
     assert "next" not in stats["next"]
 
 
+@pytest.mark.usefixtures("_gender_tags")
+def test_get_year_stats_empty_year_returns_zeroed_defaults():
+    """Regression: a year without reviewed reads used to crash on divisions
+    and empty querysets. It now yields zeroed numbers and None superlatives
+    so the stats page can render an empty state."""
+    # An anchor review in another year keeps the all-time table computable.
+    make_reviewed_book(
+        title="Anchor",
+        title_slug="anchor",
+        pages=200,
+        publication_year=2000,
+        rating=4,
+        latest_date=dt.date(2024, 5, 1),
+    )
+
+    stats = get_year_stats(2020, extra_years=True)
+
+    assert stats["total_books"] == 0
+    assert stats["total_pages"] == 0
+    assert stats["average_pages"] == 0
+    assert stats["average_rating"] == 0
+    assert stats["average_review"] == 0
+    assert stats["median_year"] == 0
+    assert stats["median_length"] == 0
+    assert stats["gender"] == {"male": 0, "female": 0}
+    assert stats["shortest_book"] is None
+    assert stats["longest_book"] is None
+    assert stats["first_book"] is None
+    assert stats["last_book"] is None
+    assert stats["busiest_month"] is None
+    # The year navigation still works: previous is another empty year, and
+    # 2021 has no reads either, so there is no next block.
+    assert stats["previous"]["total_books"] == 0
+    assert stats["next"] is None
+    assert stats["all_time"]["Total books"] == 1
+
+
 def test_get_nodes_skips_graph_nodes_without_matching_book():
     """A BookRelation can point at a Book that the default (non-draft)
     BookManager filters out. get_nodes must skip those graph nodes instead
