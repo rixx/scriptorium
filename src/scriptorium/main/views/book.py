@@ -179,6 +179,14 @@ class ReviewByTitle(YearNavMixin, ActiveTemplateMixin, TemplateView):
         )
 
 
+def series_position_sort_key(book):
+    # series_position is free text and may hold ranges like "1-3"
+    try:
+        return (0, float(book.series_position), "")
+    except ValueError:
+        return (1, 0.0, book.series_position)
+
+
 class ReviewBySeries(YearNavMixin, ActiveTemplateMixin, TemplateView):
     template_name = "public/list_by_series.html"
     active = "read"
@@ -197,7 +205,7 @@ class ReviewBySeries(YearNavMixin, ActiveTemplateMixin, TemplateView):
     @cached_property
     def books(self):
         series_reviews = [
-            (series, sorted(books, key=lambda book: float(book.series_position)))
+            (series, sorted(books, key=series_position_sort_key))
             for series, books in groupby(
                 sorted(
                     Book.objects.all()

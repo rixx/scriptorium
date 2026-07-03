@@ -24,6 +24,7 @@ from tests.factories import (
     PoemFactory,
     QuoteFactory,
     ReadFactory,
+    SeriesFactory,
     TagFactory,
     make_reviewed_book,
 )
@@ -225,6 +226,102 @@ def test_to_review_list_shows_books_waiting_for_review(admin_logged_in_client):
     assert "2024-06-01" in body
     assert reviewed.title not in body
     assert queued.title not in body
+
+
+def test_to_review_edit_get_renders_initial_values(admin_logged_in_client):
+    author = AuthorFactory(name="Some One", name_slug="some-one")
+    book = BookFactory(
+        title="Queued",
+        title_slug="queued",
+        primary_author=author,
+        series=SeriesFactory(name="A Cycle", name_slug="a-cycle"),
+        series_position="2",
+        status=BookStatus.TO_REVIEW,
+    )
+    ReadFactory(book=book, finished_on=dt.date(2024, 5, 1), notes="Holiday read.")
+
+    response = admin_logged_in_client.get(f"/b/toreview/{book.pk}/")
+
+    assert response.status_code == 200
+    initial = response.context["form"].initial
+    assert initial["title"] == "Queued"
+    assert initial["author"] == "Some One"
+    assert initial["series"] == "A Cycle"
+    assert initial["series_position"] == "2"
+    assert initial["date"] == dt.date(2024, 5, 1)
+    assert initial["notes"] == "Holiday read."
+
+
+def test_to_review_edit_post_updates_existing_book_and_read(admin_logged_in_client):
+    author = AuthorFactory(name="Some One", name_slug="some-one")
+    book = BookFactory(
+        title="Queued",
+        title_slug="queued",
+        primary_author=author,
+        status=BookStatus.TO_REVIEW,
+    )
+    read = ReadFactory(
+        book=book, finished_on=dt.date(2024, 5, 1), notes="Holiday read."
+    )
+
+    response = admin_logged_in_client.post(
+        f"/b/toreview/{book.pk}/",
+        {
+            "title": "Queued, Corrected",
+            "author": "Some One",
+            "date": "2024-05-03",
+            "series": "A Cycle",
+            "series_position": "2",
+            "notes": "Holiday read.",
+        },
+    )
+
+    assert response.status_code == 302
+    assert response.url == "/b/toreview/"
+    book.refresh_from_db()
+    assert book.title == "Queued, Corrected"
+    assert book.title_slug == "queued-corrected"
+    assert book.series.name == "A Cycle"
+    assert book.series_position == "2"
+    read.refresh_from_db()
+    assert read.finished_on == dt.date(2024, 5, 3)
+    assert read.notes == "Holiday read."
+    assert Book.all_objects.count() == 1
+    assert Read.objects.count() == 1
+
+
+def test_to_review_edit_creates_read_when_none_recorded(admin_logged_in_client):
+    """Queue entries can exist without a Read row (e.g. from imports);
+    editing one records the read instead of crashing."""
+    book = BookFactory(
+        title="No Read Yet", title_slug="no-read-yet", status=BookStatus.TO_REVIEW
+    )
+
+    response = admin_logged_in_client.post(
+        f"/b/toreview/{book.pk}/",
+        {
+            "title": "No Read Yet",
+            "author": book.primary_author.name,
+            "date": "2024-05-03",
+            "series": "",
+            "series_position": "",
+            "notes": "",
+        },
+    )
+
+    assert response.status_code == 302
+    read = Read.objects.get(book=book)
+    assert read.finished_on == dt.date(2024, 5, 3)
+    assert read.source == "manual"
+    assert read.notes is None
+
+
+def test_to_review_edit_rejects_published_books(admin_logged_in_client):
+    book = make_reviewed_book(title="Published Already")
+
+    response = admin_logged_in_client.get(f"/b/toreview/{book.pk}/")
+
+    assert response.status_code == 404
 
 
 def test_to_review_delete_removes_book(admin_logged_in_client):
@@ -620,6 +717,113 @@ def test_review_create_done_publishes_existing_queued_book(rf):
     assert Book.all_objects.filter(primary_author=author).count() == 1
     assert queued.rating == 4
     assert queued.text == "Trees."
+
+
+def _wizard_steps(book=None, review=None):
+    """Cleaned wizard step data as done() receives it, with per-step
+    overrides for the scenarios below."""
+    book_data = {
+        "title": "The Word for World Is Forest",
+        "title_slug": "the-word-for-world-is-forest",
+        "author_name": "Ursula K. Le Guin",
+        "source": "",
+        "pages": 189,
+        "cover_source": None,
+        "goodreads_id": None,
+        "isbn10": None,
+        "isbn13": None,
+        "publication_year": 1972,
+        "series": None,
+        "series_position": "",
+        "tags": [],
+        "new_tags": [],
+        "plot": "",
+    }
+    book_data.update(book or {})
+    review_data = {
+        "dates_read": [dt.date(2024, 5, 2)],
+        "rating": 4,
+        "text": "Trees.",
+        "tldr": "Green.",
+        "did_not_finish": False,
+    }
+    review_data.update(review or {})
+    return {"book": book_data, "review": review_data}
+
+
+def test_review_create_done_refuses_to_overwrite_published_review(rf):
+    author = AuthorFactory(name="Ursula K. Le Guin", name_slug="ursula-k-le-guin")
+    book = make_reviewed_book(
+        title="The Word for World Is Forest",
+        title_slug="the-word-for-world-is-forest",
+        primary_author=author,
+        text="Original review.",
+    )
+    view = _wizard_view(rf, _wizard_steps(review={"text": "Sneaky overwrite."}))
+
+    response = view.done(form_list=[])
+
+    assert response.status_code == 302
+    assert response.url == f"/b/{book.slug}/"
+    book.refresh_from_db()
+    assert book.text == "Original review."
+    assert [m.level_tag for m in view.request._messages] == ["error"]
+
+
+def test_review_create_done_blank_fields_keep_queued_metadata(rf):
+    """The wizard's book form starts blank, so empty fields must not wipe
+    metadata that the queued book already carries (series, source, ...)."""
+    author = AuthorFactory(name="Ursula K. Le Guin", name_slug="ursula-k-le-guin")
+    series = SeriesFactory(name="Hainish Cycle", name_slug="hainish-cycle")
+    queued = BookFactory(
+        title="The Word for World Is Forest",
+        title_slug="the-word-for-world-is-forest",
+        primary_author=author,
+        series=series,
+        series_position="6",
+        source="gift",
+        status=BookStatus.TO_REVIEW,
+    )
+    view = _wizard_view(rf, _wizard_steps())
+
+    view.done(form_list=[])
+
+    queued.refresh_from_db()
+    assert queued.status == BookStatus.REVIEWED
+    assert queued.series == series
+    assert queued.series_position == "6"
+    assert queued.source == "gift"
+
+
+def test_review_create_done_does_not_duplicate_queued_read(rf):
+    author = AuthorFactory(name="Ursula K. Le Guin", name_slug="ursula-k-le-guin")
+    queued = BookFactory(
+        title="The Word for World Is Forest",
+        title_slug="the-word-for-world-is-forest",
+        primary_author=author,
+        status=BookStatus.TO_REVIEW,
+    )
+    ReadFactory(
+        book=queued, finished_on=dt.date(2024, 5, 2), notes="From the queue form."
+    )
+    view = _wizard_view(rf, _wizard_steps())
+
+    view.done(form_list=[])
+
+    read = Read.objects.get(book=queued)
+    assert read.finished_on == dt.date(2024, 5, 2)
+    assert read.notes == "From the queue form."
+
+
+def test_review_create_done_reuses_author_slug_for_casing_variant(rf):
+    existing = AuthorFactory(name="Ursula K. le Guin", name_slug="ursula-k-le-guin")
+    view = _wizard_view(rf, _wizard_steps(book={"author_name": "ursula k. le guin"}))
+
+    view.done(form_list=[])
+
+    book = Book.objects.get(title="The Word for World Is Forest")
+    assert book.primary_author == existing
+    assert list(Author.objects.all()) == [existing]
 
 
 # --- ReviewEdit -------------------------------------------------------------

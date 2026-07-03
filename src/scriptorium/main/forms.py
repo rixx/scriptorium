@@ -2,6 +2,7 @@ import datetime as dt
 
 from django import forms
 from django.db.models import Q
+from django.utils.timezone import now
 
 from scriptorium.main.models import (
     Author,
@@ -298,13 +299,23 @@ class ReviewEditForm(ReviewForm):
     def save(self, *args, **kwargs):
         instance = super().save(*args, **kwargs)
         dates = self.cleaned_data["dates_read"]
-        reads = instance.reads
-        reads.exclude(finished_on__in=dates).delete()
-        existing = set(reads.values_list("finished_on", flat=True))
-        for date in dates:
-            if date not in existing:
-                Read.objects.create(book=instance, finished_on=date)
-        reads.update(did_not_finish=self.cleaned_data["did_not_finish"])
+        old_dates = set(instance.reads.values_list("finished_on", flat=True))
+        old_feed_date = instance.feed_date
+        instance.sync_reads(dates, remove_extra=True)
+        # Only flatten the book-level checkbox onto all reads when it changed,
+        # so unrelated edits keep mixed per-read DNF flags intact.
+        did_not_finish = self.cleaned_data["did_not_finish"]
+        if did_not_finish != all(read.did_not_finish for read in instance.reads.all()):
+            instance.reads.update(did_not_finish=did_not_finish)
+        # An edit only re-enters the feed when the latest read date strictly
+        # increased (a genuine reread); corrections and removals keep the
+        # previous feed date instead of looking like a new read.
+        old_latest = max(old_dates, default=None)
+        if old_latest is None or dates[-1] > old_latest:
+            instance.feed_date = now().date()
+        else:
+            instance.feed_date = old_feed_date
+        Book.all_objects.filter(pk=instance.pk).update(feed_date=instance.feed_date)
         # The read-derived properties were cached when the form was built.
         for prop in (
             "dates_read_list",
@@ -368,9 +379,7 @@ class BookToReviewForm(forms.Form):
 
     def save(self):
         data = self.cleaned_data
-        author, _ = Author.objects.get_or_create(
-            name_slug=slugify(data["author"]), defaults={"name": data["author"]}
-        )
+        author, _ = Author.objects.get_or_create_by_name(data["author"])
         book, created = Book.all_objects.get_or_create(
             primary_author=author,
             title_slug=slugify(data["title"]),
@@ -390,4 +399,49 @@ class BookToReviewForm(forms.Form):
             source="manual",
             notes=data["notes"] or None,
         )
+        return book
+
+
+class BookToReviewEditForm(BookToReviewForm):
+    """Edit a book already queued for review: updates the existing Book and
+    its recorded Read instead of creating new rows."""
+
+    def __init__(self, *args, instance, **kwargs):
+        self.instance = instance
+        self.read = instance.reads.order_by("-finished_on").first()
+        initial = kwargs.pop("initial", {})
+        initial.update(
+            {
+                "title": instance.title,
+                "author": instance.primary_author.name,
+                "series": instance.series.name if instance.series else "",
+                "series_position": instance.series_position or "",
+            }
+        )
+        if self.read:
+            initial["date"] = self.read.finished_on
+            initial["notes"] = self.read.notes or ""
+        super().__init__(*args, initial=initial, **kwargs)
+
+    def save(self):
+        data = self.cleaned_data
+        book = self.instance
+        author, _ = Author.objects.get_or_create_by_name(data["author"])
+        book.title = data["title"]
+        book.title_slug = slugify(data["title"])
+        book.primary_author = author
+        book.series = data["series"]
+        book.series_position = data["series_position"] or None
+        book.save()
+        if self.read:
+            self.read.finished_on = data["date"]
+            self.read.notes = data["notes"] or None
+            self.read.save()
+        else:
+            Read.objects.create(
+                book=book,
+                finished_on=data["date"],
+                source="manual",
+                notes=data["notes"] or None,
+            )
         return book

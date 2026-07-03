@@ -11,6 +11,7 @@ from scriptorium.main.stats import (
     get_year_stats,
 )
 from tests.factories import (
+    AuthorFactory,
     BookFactory,
     ReadFactory,
     SeriesFactory,
@@ -132,6 +133,7 @@ def test_get_nodes_skips_graph_nodes_without_matching_book():
     source = make_reviewed_book(
         title="Source",
         title_slug="source",
+        primary_author=AuthorFactory(name="Ann Leckie", name_slug="ann-leckie"),
         series=SeriesFactory(name="A Cycle", name_slug="a-cycle"),
     )
     # Destination is not reviewed, so Book.objects.all() (which filters on
@@ -152,7 +154,14 @@ def test_get_nodes_skips_graph_nodes_without_matching_book():
     assert orphan.slug not in node_ids
     nodes_by_id = {node["id"]: node for node in nodes}
     assert nodes_by_id[source.slug]["series"] == "A Cycle"
-    assert "cycle" in nodes_by_id[source.slug]["search"]
+    assert nodes_by_id[source.slug]["search"] == [
+        "source",
+        "ann",
+        "leckie",
+        "a",
+        "cycle",
+        f"rating:{source.rating}",
+    ]
     assert nodes_by_id[sibling.slug]["series"] is None
 
 

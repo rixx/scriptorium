@@ -14,7 +14,7 @@ from django.utils.functional import cached_property
 from django.utils.timezone import now
 from PIL import Image
 
-from .utils import get_spine_color, get_ui_color
+from .utils import get_spine_color, get_ui_color, slugify
 
 
 def get_cover_path(instance, filename):
@@ -25,10 +25,20 @@ def get_thumbnail_path(instance, filename):
     return f"{instance.book.slug}/{instance.size}{Path(filename).suffix}"
 
 
+class AuthorManager(models.Manager):
+    def get_or_create_by_name(self, name):
+        """Authors are keyed on their unique slug, so casing or punctuation
+        variants of an existing author resolve to the same row instead of
+        violating the name_slug constraint."""
+        return self.get_or_create(name_slug=slugify(name), defaults={"name": name})
+
+
 class Author(models.Model):
     name = models.CharField(max_length=300)
     name_slug = models.CharField(max_length=300, unique=True)
     text = models.TextField(null=True, blank=True)
+
+    objects = AuthorManager()
 
     def __str__(self):
         return self.name
@@ -92,19 +102,13 @@ class BookManager(models.Manager):
             super()
             .get_queryset()
             .select_related("primary_author", "series")
-            .prefetch_related("additional_authors")
+            .prefetch_related("additional_authors", "reads")
         ).filter(status=BookStatus.REVIEWED)
 
     def get_by_slug(self, slug):
         author, book = slug.strip("/").split("/")
         return self.get_queryset().get(
             primary_author__name_slug=author, title_slug=book
-        )
-
-    def with_dates_read(self):
-        # distinct, so the count stays correct when other annotations join in
-        return self.get_queryset().annotate(
-            dates_read_count=models.Count("reads", distinct=True)
         )
 
     def read_in_year(self, year):
@@ -272,6 +276,26 @@ class Book(models.Model):
             f"{self.title}:reviews:{feed_date.isoformat()}:{self.goodreads_id or ''}".encode()
         )
         return str(uuid.UUID(m.hexdigest()))
+
+    def sync_reads(self, dates, *, remove_extra=False, **read_kwargs):
+        """Create Read rows so every date in ``dates`` has one, skipping dates
+        that already have a Read. With ``remove_extra``, reads on other dates
+        are deleted -- except that swapping out a single date is treated as a
+        correction and updates the existing Read in place, keeping its
+        metadata (notes, source, started_on, ...)."""
+        dates = set(dates)
+        existing = set(self.reads.values_list("finished_on", flat=True))
+        to_add = sorted(dates - existing)
+        if remove_extra:
+            to_remove = sorted(existing - dates)
+            if len(to_add) == 1 and len(to_remove) == 1:
+                read = self.reads.get(finished_on=to_remove[0])
+                read.finished_on = to_add[0]
+                read.save()
+                return
+            self.reads.filter(finished_on__in=to_remove).delete()
+        for date in to_add:
+            self.reads.create(finished_on=date, **read_kwargs)
 
     def download_cover(self):
         if not self.cover_source:

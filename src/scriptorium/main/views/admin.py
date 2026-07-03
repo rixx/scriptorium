@@ -9,7 +9,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Max, Q
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.utils.functional import cached_property
 from django.views.decorators.http import require_POST
 from django.views.generic import (
@@ -28,6 +28,7 @@ from scriptorium.main.forms import (
     BookEditForm,
     BookSearchForm,
     BookSelectForm,
+    BookToReviewEditForm,
     BookToReviewForm,
     BookWizardForm,
     EditionSelectForm,
@@ -38,17 +39,7 @@ from scriptorium.main.forms import (
     ReviewEditForm,
     ReviewWizardForm,
 )
-from scriptorium.main.models import (
-    Author,
-    Book,
-    BookStatus,
-    Page,
-    Poem,
-    Quote,
-    Read,
-    Tag,
-)
-from scriptorium.main.utils import slugify
+from scriptorium.main.models import Author, Book, BookStatus, Page, Poem, Quote, Tag
 from scriptorium.main.views.mixins import (
     ActiveTemplateMixin,
     AuthorMixin,
@@ -197,9 +188,16 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
             step: self.get_cleaned_data_for_step(step) for step in self.get_form_list()
         }
         author_name = steps["book"].pop("author_name")
-        author, _ = Author.objects.get_or_create(
-            name=author_name, defaults={"name_slug": slugify(author_name)}
-        )
+        author, _ = Author.objects.get_or_create_by_name(author_name)
+        book = Book.all_objects.filter(
+            primary_author=author, title_slug=steps["book"]["title_slug"]
+        ).first()
+        if book and book.status == BookStatus.REVIEWED:
+            messages.error(
+                self.request,
+                f"“{book.title}” already has a published review — edit that instead.",
+            )
+            return redirect(f"/b/{book.slug}/")
         new_tags = steps["book"].pop("new_tags")
         tags = list(steps["book"].pop("tags")) or []
         if new_tags:
@@ -209,14 +207,14 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
         review_data = steps["review"]
         dates_read = review_data.pop("dates_read")
         did_not_finish = review_data.pop("did_not_finish")
-        book = Book.all_objects.filter(
-            primary_author=author, title_slug=steps["book"]["title_slug"]
-        ).first()
         if book:
-            # The wizard can pick up a queued (to-read or to-review) book;
+            # The wizard picked up a queued (to-read or to-review) book;
             # update it in place instead of hitting the unique slug constraint.
+            # Blank wizard fields keep the queued values -- the wizard can't
+            # blank an existing field (the book edit form can).
             for field, value in (steps["book"] | review_data).items():
-                setattr(book, field, value)
+                if value is not None and value != "":
+                    setattr(book, field, value)
             book.status = BookStatus.REVIEWED
             book.save()
         else:
@@ -227,10 +225,9 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
                 status=BookStatus.REVIEWED,
             )
         book.tags.set(tags)
-        for date in dates_read:
-            Read.objects.create(
-                book=book, finished_on=date, did_not_finish=did_not_finish
-            )
+        # A queued book already has Read rows (from the review queue form);
+        # only create reads for dates it doesn't have yet.
+        book.sync_reads(dates_read, did_not_finish=did_not_finish)
         # TODO create quotes
         # TODO download cover, update dimensions etc
         return redirect(f"/{book.slug}/")
@@ -422,6 +419,22 @@ class ToReviewList(LoginRequiredMixin, ListView):
             .annotate(date=Max("reads__finished_on"))
             .order_by("date")
         )
+
+
+class ToReviewEdit(LoginRequiredMixin, FormView):
+    form_class = BookToReviewEditForm
+    template_name = "private/toreview_edit.html"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["instance"] = get_object_or_404(
+            Book.all_objects.filter(status=BookStatus.TO_REVIEW), pk=self.kwargs["pk"]
+        )
+        return kwargs
+
+    def form_valid(self, form):
+        form.save()
+        return redirect("/b/toreview/")
 
 
 class ToReviewDelete(LoginRequiredMixin, DetailView):

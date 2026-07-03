@@ -384,9 +384,20 @@ def test_book_edit_form_series_initial_shows_series_name():
     form = BookEditForm(instance=book)
 
     assert form.initial["series"] == "Earthsea"
-    assert BookEditForm(instance=BookFactory()).initial["series"] == ""
-    # An unsaved instance has no series to show.
-    assert "series" not in BookEditForm().initial
+
+
+def test_book_edit_form_series_initial_empty_without_series():
+    book = BookFactory()
+
+    form = BookEditForm(instance=book)
+
+    assert form.initial["series"] == ""
+
+
+def test_book_edit_form_series_initial_missing_for_unsaved_instance():
+    form = BookEditForm()
+
+    assert "series" not in form.initial
 
 
 def test_book_edit_form_series_creates_series_from_name():
@@ -508,6 +519,44 @@ def test_review_edit_form_save_removing_latest_read_keeps_feed_date():
     assert [read.finished_on for read in book.reads.all()] == [dt.date(2020, 1, 1)]
     assert book.latest_date == dt.date(2020, 1, 1)
     assert book.feed_date == dt.date(2024, 6, 15)
+
+
+def test_review_edit_form_save_date_correction_keeps_feed_date_and_metadata():
+    """Correcting a read date must not look like a reread: the Read row keeps
+    its metadata and the review does not re-enter the feed."""
+    book = make_reviewed_book(reads=[dt.date(2024, 6, 15)])
+    book.reads.update(notes="Beach read.", source="koreader")
+    Book.all_objects.filter(pk=book.pk).update(feed_date=dt.date(2024, 6, 15))
+    book.refresh_from_db()
+    read = book.reads.get()
+
+    form = ReviewEditForm(data=_review_post("2024-06-10"), instance=book)
+    assert form.is_valid(), form.errors
+    form.save()
+
+    read.refresh_from_db()
+    assert read.finished_on == dt.date(2024, 6, 10)
+    assert read.notes == "Beach read."
+    assert read.source == "koreader"
+    book.refresh_from_db()
+    assert [r.pk for r in book.reads.all()] == [read.pk]
+    assert book.feed_date == dt.date(2024, 6, 15)
+
+
+def test_review_edit_form_save_unrelated_edit_keeps_mixed_dnf_flags():
+    book = make_reviewed_book(reads=[dt.date(2020, 1, 1), dt.date(2024, 1, 1)])
+    book.reads.filter(finished_on=dt.date(2020, 1, 1)).update(did_not_finish=True)
+
+    form = ReviewEditForm(
+        data=_review_post("2020-01-01,2024-01-01", text="Touched body."), instance=book
+    )
+    assert form.is_valid(), form.errors
+    form.save()
+
+    assert [read.did_not_finish for read in book.reads.order_by("finished_on")] == [
+        True,
+        False,
+    ]
 
 
 def test_review_edit_form_save_applies_dnf_to_all_reads():

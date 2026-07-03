@@ -19,11 +19,12 @@
     <tbody>
       {% for book in books %}
         <tr>
-          <td>{{ book.title }}</td>
+          <td><a href="/b/toreview/{{ book.id }}/">{{ book.title }}</a></td>
           <td>{{ book.author_string }}</td>
           <td>{% if book.series %}{{ book.series.name }}{% endif %} {% if book.series_position %}#{{ book.series_position }}{% endif %}</td>
           <td>{{ book.date }}</td>
           <td>
+            <a href="/b/toreview/{{ book.id }}/">Edit</a>
             <a href="/b/toreview/{{ book.id }}/delete">Delete</a>
           </td>
         </tr>

@@ -9,7 +9,7 @@ from django.core.files.base import ContentFile
 from django.db import models
 from PIL import Image
 
-from scriptorium.main.models import Book, BookStatus, Spine, Tag, Thumbnail
+from scriptorium.main.models import Author, Book, BookStatus, Spine, Tag, Thumbnail
 from tests.factories import (
     AuthorFactory,
     BookFactory,
@@ -45,6 +45,25 @@ def test_author_all_books_includes_primary_and_additional_authorship():
     assert set(primary.all_books()) == {solo, collab}
     assert set(co_author.all_books()) == {collab}
     assert unrelated not in primary.all_books()
+
+
+def test_author_get_or_create_by_name_reuses_author_for_slug_variant():
+    existing = AuthorFactory(name="Ursula K. Le Guin", name_slug="ursula-k-le-guin")
+
+    author, created = Author.objects.get_or_create_by_name("ursula k. le guin")
+
+    assert created is False
+    assert author == existing
+    assert author.name == "Ursula K. Le Guin"
+    assert list(Author.objects.all()) == [existing]
+
+
+def test_author_get_or_create_by_name_creates_author_with_slug():
+    author, created = Author.objects.get_or_create_by_name("N. K. Jemisin")
+
+    assert created is True
+    assert author.name == "N. K. Jemisin"
+    assert author.name_slug == "n-k-jemisin"
 
 
 def test_author_tag_author_adds_tag_to_every_book(tag):
@@ -84,7 +103,7 @@ def test_series_books_returns_published_books_in_series():
     queued = BookFactory(series=series, status=BookStatus.TO_READ)
 
     assert set(series.books.all()) == {book_one, book_two}
-    assert queued in Book.all_objects.filter(series=series)
+    assert set(Book.all_objects.filter(series=series)) == {book_one, book_two, queued}
 
 
 # --- Book manager -----------------------------------------------------------
@@ -275,6 +294,42 @@ def test_book_did_not_finish_only_when_every_read_is_unfinished():
     assert no_reads.did_not_finish is False
 
 
+def test_book_sync_reads_creates_only_missing_dates():
+    book = BookFactory()
+    ReadFactory(book=book, finished_on=dt.date(2024, 1, 1), notes="Kept.")
+
+    book.sync_reads([dt.date(2024, 1, 1), dt.date(2024, 2, 2)], source="manual")
+
+    reads = book.reads.order_by("finished_on")
+    assert [(read.finished_on, read.notes, read.source) for read in reads] == [
+        (dt.date(2024, 1, 1), "Kept.", None),
+        (dt.date(2024, 2, 2), None, "manual"),
+    ]
+
+
+def test_book_sync_reads_remove_extra_deletes_stale_reads():
+    book = BookFactory()
+    kept = ReadFactory(book=book, finished_on=dt.date(2024, 1, 1))
+    ReadFactory(book=book, finished_on=dt.date(2023, 1, 1))
+    ReadFactory(book=book, finished_on=dt.date(2022, 1, 1))
+
+    book.sync_reads([dt.date(2024, 1, 1)], remove_extra=True)
+
+    assert list(book.reads.all()) == [kept]
+
+
+def test_book_sync_reads_single_date_swap_updates_read_in_place():
+    book = BookFactory()
+    read = ReadFactory(book=book, finished_on=dt.date(2024, 1, 1), notes="Notes stay.")
+
+    book.sync_reads([dt.date(2024, 1, 5)], remove_extra=True)
+
+    read.refresh_from_db()
+    assert read.finished_on == dt.date(2024, 1, 5)
+    assert read.notes == "Notes stay."
+    assert list(book.reads.all()) == [read]
+
+
 # --- Read -------------------------------------------------------------------
 
 
@@ -355,23 +410,17 @@ def test_book_feed_uuid_is_stable_and_unique():
 
 
 def test_book_feed_uuid_falls_back_to_latest_read_date():
-    book = make_reviewed_book(latest_date=dt.date(2024, 2, 2))
-    Book.all_objects.filter(pk=book.pk).update(feed_date=None)
+    fallback = make_reviewed_book(title="Alpha", latest_date=dt.date(2024, 2, 2))
+    Book.all_objects.filter(pk=fallback.pk).update(feed_date=None)
+    explicit = make_reviewed_book(title="Alpha", reads=[])
+    Book.all_objects.filter(pk=explicit.pk).update(feed_date=dt.date(2024, 2, 2))
 
-    refetched = Book.objects.get(pk=book.pk)
+    fallback = Book.objects.get(pk=fallback.pk)
+    explicit = Book.objects.get(pk=explicit.pk)
 
-    assert refetched.feed_uuid == refetched.feed_uuid
-
-
-def test_book_with_dates_read_annotates_read_count():
-    one_read = make_reviewed_book(latest_date=dt.date(2024, 1, 1))
-    three_reads = make_reviewed_book(
-        reads=[dt.date(2020, 1, 1), dt.date(2022, 1, 1), dt.date(2024, 1, 1)]
-    )
-
-    counts = {b.pk: b.dates_read_count for b in Book.objects.with_dates_read()}
-    assert counts[one_read.pk] == 1
-    assert counts[three_reads.pk] == 3
+    # The books only differ in where the feed date comes from -- equal uuids
+    # prove that the fallback derives the uuid from the latest read date.
+    assert fallback.feed_uuid == explicit.feed_uuid
 
 
 def test_book_read_in_year_matches_once_and_aggregates_cleanly():

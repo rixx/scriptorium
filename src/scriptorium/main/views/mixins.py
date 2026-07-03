@@ -30,6 +30,7 @@ class ReviewMixin:
                 "related_books__destination",
                 "related_books__destination__primary_author",
                 "related_books__destination__additional_authors",
+                "related_books__destination__reads",
                 "quotes",
             )
             .get(

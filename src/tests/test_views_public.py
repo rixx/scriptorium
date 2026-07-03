@@ -187,6 +187,34 @@ def test_review_by_series_view_shows_series_with_multiple_books(
     assert populated_library["book_three"].title not in body
 
 
+def test_review_by_series_view_sorts_non_numeric_positions_last(
+    client, populated_library
+):
+    omnibus = make_reviewed_book(
+        title="Omnibus Edition",
+        title_slug="omnibus-edition",
+        primary_author=populated_library["author"],
+        series=populated_library["book_one"].series,
+        series_position="1-3",
+        rating=4,
+        latest_date=dt.date(2024, 3, 1),
+    )
+
+    response = client.get("/reviews/by-series/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    positions = [
+        body.index(book.title)
+        for book in (
+            populated_library["book_one"],
+            populated_library["book_two"],
+            omnibus,
+        )
+    ]
+    assert positions == sorted(positions)
+
+
 # --- Review / Author detail -------------------------------------------------
 
 
@@ -235,6 +263,22 @@ def test_catalogue_view_search_filters_by_title(client, populated_library):
     body = response.content.decode()
     assert populated_library["book_three"].title in body
     assert populated_library["book_one"].title not in body
+
+
+@pytest.mark.parametrize("item_count", [1, 3])
+def test_catalogue_view_query_count_stays_constant(
+    client, django_assert_num_queries, item_count
+):
+    """Book cards render read dates, so the reads must come from a prefetch
+    instead of one query per book."""
+    books = [make_reviewed_book() for _ in range(item_count)]
+
+    with django_assert_num_queries(7):
+        response = client.get("/catalogue/")
+
+    body = response.content.decode()
+    for book in books:
+        assert book.title in body
 
 
 def test_catalogue_view_filters_by_tag(client, populated_library):

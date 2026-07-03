@@ -17,11 +17,22 @@ class Command(BaseCommand):
     def handle(self, *args, json_file, **options):
         with Path(json_file).open() as f:
             result = json.load(f)
-        calibre_books = {(b["title"], b["authors"]): b for b in result}
+        # Authors (and titles) are deduplicated by slug on import, so the
+        # stored spelling can differ from calibre's -- key both sides on
+        # slugs to keep the comparison stable across spelling variants.
+        calibre_books = {
+            (slugify(b["title"]), slugify(b["authors"])): b for b in result
+        }
         queue = Book.all_objects.filter(status=BookStatus.TO_READ).select_related(
             "primary_author"
         )
-        scriptorium_books = {(b.title, b.primary_author.name): b.id for b in queue}
+        scriptorium_books = {
+            (
+                b.title_slug or slugify(b.title),
+                b.primary_author.name_slug or slugify(b.primary_author.name),
+            ): b.id
+            for b in queue
+        }
         unknown = set(calibre_books) - set(scriptorium_books)
         too_many = set(scriptorium_books) - set(calibre_books)
 
@@ -29,18 +40,18 @@ class Command(BaseCommand):
             Book.all_objects.filter(
                 id__in=(v for k, v in scriptorium_books.items() if k in too_many)
             ).delete()
-            for title, author_name in unknown:
-                author, _ = Author.objects.get_or_create(
-                    name_slug=slugify(author_name), defaults={"name": author_name}
+            for key in unknown:
+                calibre_book = calibre_books[key]
+                author, _ = Author.objects.get_or_create_by_name(
+                    calibre_book["authors"]
                 )
-                title_slug = slugify(title)
+                title_slug = slugify(calibre_book["title"])
                 if Book.all_objects.filter(
                     primary_author=author, title_slug=title_slug
                 ).exists():
                     continue
-                calibre_book = calibre_books[(title, author_name)]
                 Book.all_objects.create(
-                    title=title,
+                    title=calibre_book["title"],
                     title_slug=title_slug,
                     primary_author=author,
                     status=BookStatus.TO_READ,
