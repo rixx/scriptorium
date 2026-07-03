@@ -2,36 +2,36 @@
 
 {% block content %}
 
-  <h2>Book queue</h2>
-
-  <p>These books are currently in my active reading queue – that is, they are on my reader and waiting for me to get around to them.</p>
+  <h2>Review queue</h2>
 
   <p>
-    There are <b>{{ total_books|thousands }} books</b> here in total, with {{ total_pages|thousands }} pages.
-    {% if factor_books and factor_pages %}
-      Going off last year, when I read {{ past_year_books }} books ({{ past_year_pages|thousands }} pages),
-      it will take me just about <b>{{ factor_books }} years</b> to get through these
-      (or, more precisely going by pages, <b>{{ factor_pages }} years</b>).
-    {% endif %}
+    These are books I've read but haven't reviewed yet — either they're waiting
+    for their first review, or I've reread them since writing one.
+    {% if books %}There are <b>{{ books.count()|thousands }} books</b> in the queue.{% else %}The queue is empty — everything I've read has a review!{% endif %}
   </p>
 
-  {% if factor_books and factor_pages %}
-    <p>… if I don't add any new books in the meantime.</p>
+  {% if books %}
+    <ul>
+      {% for book in books %}
+        <li>
+          {% if book.status == "reviewed" %}
+            <b><a href="/{{ book.slug }}/">{{ book.title }}</a></b>
+          {% else %}
+            <b>{{ book.title }}</b>
+          {% endif %}
+          by <i>{{ book.author_string }}</i>
+          {% if book.series %}({{ book.series.name }}{% if book.series_position %} #{{ book.series_position }}{% endif %}){% endif %}
+          {% if book.date %}— read {{ book.date|render_date }}{% endif %}
+          {% if not request.user.is_anonymous %}
+            ·
+            {% if book.status == "reviewed" %}
+              <a href="/b/{{ book.slug }}/">edit review</a>
+            {% else %}
+              <a href="/b/toreview/{{ book.id }}/">write review</a>
+            {% endif %}
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
   {% endif %}
-
-  {% for shelf in shelves %}
-    <h3>{{ shelf.name }}</h3>
-    <details>
-      <summary>Show all {{ shelf.books.count() }} books ({{ shelf.page_count|thousands }} pages)</summary>
-      <ul>
-        {% for book in shelf.books %}
-          <li>
-            <b>{{ book.title }}</b> by
-            <i>{{ book.author_string }}</i>
-            {% if book.pages %}({{ book.pages }} pages){% endif %}
-          </li>
-        {% endfor %}
-      </ul>
-    </details>
-  {% endfor %}
 {% endblock %}

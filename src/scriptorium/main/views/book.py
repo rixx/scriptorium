@@ -2,7 +2,7 @@ from collections import defaultdict
 from itertools import groupby
 
 import networkx as nx
-from django.db.models import Avg, Count, Max, Sum
+from django.db.models import Avg, Count, Max
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.template import loader
@@ -12,7 +12,7 @@ from django.views.generic import ListView, TemplateView
 from django_context_decorator import context
 
 from scriptorium.main.forms import CatalogueForm
-from scriptorium.main.models import Book, BookStatus, Tag
+from scriptorium.main.models import Book, Tag
 from scriptorium.main.stats import (
     get_all_years,
     get_charts,
@@ -298,59 +298,14 @@ class QueueView(ActiveTemplateMixin, TemplateView):
     template_name = "public/list_queue.html"
     active = "queue"
 
-    @cached_property
-    def queue(self):
-        return Book.all_objects.filter(status=BookStatus.TO_READ).select_related(
-            "primary_author"
-        )
-
     @context
-    def shelves(self):
-        shelf_order = sorted(
-            self.queue.exclude(shelf__isnull=True)
-            .values_list("shelf", flat=True)
-            .distinct()
-        )
-        return [
-            {
-                "name": shelf,
-                "books": self.queue.filter(shelf=shelf),
-                "page_count": self.queue.filter(shelf=shelf).aggregate(
-                    page_count=Sum("pages")
-                )["page_count"],
-            }
-            for shelf in shelf_order
-        ]
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["total_books"] = self.queue.count()
-        context["total_pages"] = (
-            self.queue.aggregate(page_count=Sum("pages"))["page_count"] or 0
-        )
-        past_year_books = Book.objects.read_in_year(now().year - 1)
-        context["past_year_books"] = past_year_books.count()
-        context["past_year_pages"] = (
-            past_year_books.aggregate(page_count=Sum("pages"))["page_count"] or 0
-        )
-        # A year without any reads yields no forecast (instead of a
-        # ZeroDivisionError); the template skips the projection sentence.
-        context["factor_books"] = (
-            round(context["total_books"] / context["past_year_books"], 1)
-            if context["past_year_books"]
-            else None
-        )
-        context["factor_pages"] = (
-            round(context["total_pages"] / context["past_year_pages"], 1)
-            if context["past_year_pages"]
-            else None
-        )
-        return context
+    def books(self):
+        return Book.all_objects.needs_review()
 
     @context
     @cached_property
     def title(self):
-        return "Reading queue"
+        return "Review queue"
 
 
 class TagView(ActiveTemplateMixin, TemplateView):

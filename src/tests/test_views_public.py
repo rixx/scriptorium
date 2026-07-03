@@ -6,14 +6,15 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 
-from scriptorium.main.models import BookRelation, BookStatus
-from scriptorium.main.views import GraphView, QueueView, healthz
+from scriptorium.main.models import Book, BookRelation, BookStatus
+from scriptorium.main.views import GraphView, healthz
 from tests.factories import (
     AuthorFactory,
     BookFactory,
     PageFactory,
     PoemFactory,
     QuoteFactory,
+    ReadFactory,
     TagFactory,
     make_reviewed_book,
 )
@@ -366,56 +367,67 @@ def test_graph_data_returns_nodes_and_links(client):
 # --- Queue ------------------------------------------------------------------
 
 
-def test_queue_view_shows_shelves_and_totals(rf):
-    today = dt.datetime.now(tz=dt.UTC).date()
-    last_year = today.replace(year=today.year - 1)
-    BookFactory(status=BookStatus.TO_READ, shelf="fiction", pages=200)
-    BookFactory(status=BookStatus.TO_READ, shelf="fiction", pages=300)
-    BookFactory(status=BookStatus.TO_READ, shelf="non-fiction", pages=100)
-    make_reviewed_book(title="Read Last Year", pages=250, latest_date=last_year)
-
-    view = QueueView()
-    view.request = rf.get("/queue/")
-    view.kwargs = {}
-    context = view.get_context_data()
-
-    assert context["total_books"] == 3
-    assert context["total_pages"] == 600
-    assert context["past_year_books"] == 1
-    assert context["past_year_pages"] == 250
-    shelves = {shelf["name"]: shelf for shelf in context["shelves"]}
-    assert set(shelves.keys()) == {"fiction", "non-fiction"}
-    assert shelves["fiction"]["page_count"] == 500
-    assert shelves["non-fiction"]["page_count"] == 100
-
-
-def test_queue_view_without_past_year_reads_has_no_forecast(rf):
-    """Regression: zero reads in the past year used to crash the queue page
-    with a ZeroDivisionError. The factors become None instead."""
-    BookFactory(status=BookStatus.TO_READ, shelf="fiction", pages=200)
-
-    view = QueueView()
-    view.request = rf.get("/queue/")
-    view.kwargs = {}
-    context = view.get_context_data()
-
-    assert context["total_books"] == 1
-    assert context["past_year_books"] == 0
-    assert context["past_year_pages"] == 0
-    assert context["factor_books"] is None
-    assert context["factor_pages"] is None
-
-
-def test_queue_page_without_past_year_reads_renders_without_forecast(client):
-    BookFactory(status=BookStatus.TO_READ, shelf="fiction", pages=200)
+def test_queue_page_lists_books_needing_review(client):
+    """The public queue page shows the review queue: books awaiting their
+    first review plus stale rereads, but not to-read or freshly reviewed
+    books. Published books link to their review; anonymous visitors get no
+    admin links."""
+    unreviewed = BookFactory(status=BookStatus.TO_REVIEW, title="Awaiting Review")
+    ReadFactory(book=unreviewed, finished_on=dt.date(2024, 5, 1))
+    stale_reread = make_reviewed_book(
+        title="Stale Reread", latest_date=dt.date(2024, 2, 2)
+    )
+    Book.all_objects.filter(pk=stale_reread.pk).update(
+        review_updated=dt.date(2020, 1, 1)
+    )
+    make_reviewed_book(title="Fresh Review", latest_date=dt.date(2024, 6, 1))
+    BookFactory(status=BookStatus.TO_READ, title="Still To Read")
 
     response = client.get("/queue/")
 
     assert response.status_code == 200
     body = response.content.decode()
-    assert "1 books" in body
-    # The projection sentence needs last year's pace and is skipped entirely.
-    assert "Going off last year" not in body
+    assert "2 books" in body
+    assert "Awaiting Review" in body
+    assert "Stale Reread" in body
+    assert "Still To Read" not in body
+    assert "Fresh Review" not in body
+    # The published reread links to its public review page.
+    assert f'href="/{stale_reread.slug}/"' in body
+    # Anonymous visitors see no review-editing entry points.
+    assert "/b/toreview/" not in body
+    assert f'href="/b/{stale_reread.slug}/"' not in body
+
+
+def test_queue_page_empty_state(client):
+    make_reviewed_book(title="Fresh Review", latest_date=dt.date(2024, 6, 1))
+
+    response = client.get("/queue/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "The queue is empty" in body
+    assert "Fresh Review" not in body
+
+
+def test_queue_page_offers_edit_links_when_logged_in(admin_logged_in_client):
+    """The public queue doubles as the owner's entry point for picking up
+    unreviewed books: logged in, each row links to the matching review flow."""
+    unreviewed = BookFactory(status=BookStatus.TO_REVIEW, title="Awaiting Review")
+    ReadFactory(book=unreviewed, finished_on=dt.date(2024, 5, 1))
+    stale_reread = make_reviewed_book(
+        title="Stale Reread", latest_date=dt.date(2024, 2, 2)
+    )
+    Book.all_objects.filter(pk=stale_reread.pk).update(
+        review_updated=dt.date(2020, 1, 1)
+    )
+
+    response = admin_logged_in_client.get("/queue/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert f'href="/b/toreview/{unreviewed.pk}/"' in body
+    assert f'href="/b/{stale_reread.slug}/"' in body
 
 
 # --- Quote ------------------------------------------------------------------
