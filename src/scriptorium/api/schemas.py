@@ -11,6 +11,7 @@ class MessageOut(Schema):
 
 
 class ReadOut(Schema):
+    id: int
     date: dt.date = Field(alias="finished_on")
     format: str | None = None
     source: str | None = None
@@ -18,10 +19,10 @@ class ReadOut(Schema):
 
 
 class ReadDetailOut(ReadOut):
-    id: int
     book: str
     started_on: dt.date | None = None
     did_not_finish: bool
+    total_time_seconds: int | None = None
     highlights: list[dict] | None = None
 
     @staticmethod
@@ -219,6 +220,7 @@ class ReadPatchIn(Schema):
     source: str | None = None
     notes: str | None = None
     did_not_finish: bool = None
+    total_time_seconds: int | None = None
 
 
 class AuthorOut(Schema):

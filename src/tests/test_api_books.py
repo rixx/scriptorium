@@ -297,6 +297,7 @@ def test_books_detail_returns_full_review_data(api_client):
     assert data["text"] == "A brilliant exploration of competing utopias."
     assert data["reads"] == [
         {
+            "id": book.reads.get().pk,
             "date": "2024-03-14",
             "format": "paper",
             "source": "library",

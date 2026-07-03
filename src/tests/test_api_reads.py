@@ -154,6 +154,26 @@ def test_reads_patch_updates_fields_without_bumping_feed(api_client):
     assert book.feed_date == dt.date(2023, 1, 1)
 
 
+def test_reads_patch_backfills_start_date_and_reading_time(api_client):
+    """The KOReader-statistics backfill path: started_on and
+    total_time_seconds land on an existing read and are echoed back."""
+    read = ReadFactory(book=BookFactory(status=BookStatus.TO_REVIEW))
+
+    response = api_client.patch(
+        f"/api/reads/{read.pk}/",
+        {"started_on": "2024-06-01", "total_time_seconds": 12345},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["started_on"] == "2024-06-01"
+    assert data["total_time_seconds"] == 12345
+    read.refresh_from_db()
+    assert read.started_on == dt.date(2024, 6, 1)
+    assert read.total_time_seconds == 12345
+
+
 def test_reads_patch_can_update_notes_only(api_client):
     read = ReadFactory(book=BookFactory(status=BookStatus.TO_REVIEW), notes=None)
 
