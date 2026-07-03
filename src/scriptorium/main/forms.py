@@ -1,3 +1,5 @@
+import datetime as dt
+
 from django import forms
 from django.db.models import Q
 
@@ -7,6 +9,7 @@ from scriptorium.main.models import (
     Page,
     Poem,
     Quote,
+    Read,
     Review,
     Tag,
     ToReview,
@@ -183,10 +186,47 @@ class BookWizardForm(forms.ModelForm):
         )
 
 
-class ReviewWizardForm(forms.ModelForm):
+class ReviewForm(forms.ModelForm):
+    """The review form still takes comma-separated read dates and a book-level
+    DNF flag; both are translated to Read rows rather than stored on Review."""
+
+    dates_read = forms.CharField(
+        help_text="Comma-separated dates, e.g. 2023-12-06,2024-01-31"
+    )
+    did_not_finish = forms.BooleanField(required=False)
+
     class Meta:
         model = Review
-        fields = ("dates_read", "rating", "text", "tldr", "did_not_finish")
+        fields = ("rating", "text", "tldr")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields["dates_read"].initial = ",".join(
+                date.isoformat() for date in self.instance.dates_read_list
+            )
+            self.fields["did_not_finish"].initial = self.instance.did_not_finish
+
+    def clean_dates_read(self):
+        try:
+            dates = sorted(
+                {
+                    dt.date.fromisoformat(part.strip())
+                    for part in self.cleaned_data["dates_read"].split(",")
+                    if part.strip()
+                }
+            )
+        except ValueError:
+            raise forms.ValidationError(
+                "Dates must be YYYY-MM-DD, separated by commas."
+            ) from None
+        if not dates:
+            raise forms.ValidationError("At least one read date is required.")
+        return dates
+
+
+class ReviewWizardForm(ReviewForm):
+    pass
 
 
 class BookEditForm(forms.ModelForm):
@@ -229,17 +269,24 @@ class BookEditForm(forms.ModelForm):
         )
 
 
-class ReviewEditForm(forms.ModelForm):
+class ReviewEditForm(ReviewForm):
     def save(self, *args, **kwargs):
-        # put all this in ReviewMixin
-        # check dates_read to be a list of dates
-        # set latest_date
-        # validate rating
-        return super().save(*args, **kwargs)
-
-    class Meta:
-        model = Review
-        fields = ("dates_read", "rating", "text", "tldr", "did_not_finish")
+        instance = super().save(*args, **kwargs)
+        dates = self.cleaned_data["dates_read"]
+        reads = instance.book.reads
+        reads.exclude(finished_on__in=dates).delete()
+        existing = set(reads.values_list("finished_on", flat=True))
+        for date in dates:
+            if date not in existing:
+                Read.objects.create(book=instance.book, finished_on=date)
+        reads.update(did_not_finish=self.cleaned_data["did_not_finish"])
+        # Read.save() only bumps latest_date upwards; removing the latest read
+        # has to be reflected manually (without a feed date bump).
+        instance.refresh_from_db(fields=["latest_date", "feed_date"])
+        if instance.latest_date != dates[-1]:
+            instance.latest_date = dates[-1]
+            instance.save(update_fields=["latest_date"])
+        return instance
 
 
 class PageForm(forms.ModelForm):

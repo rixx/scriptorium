@@ -79,10 +79,7 @@ class YearView(YearNavMixin, ActiveTemplateMixin, TemplateView):
     @cached_property
     def reviews(self):
         return sorted(
-            Review.objects.all()
-            .filter(dates_read__contains=self.year)
-            .select_related("book", "book__primary_author")
-            .prefetch_related("book__additional_authors"),
+            Review.objects.read_in_year(self.year).prefetch_related("book__reads"),
             key=lambda review: review.date_read_lookup[self.year],
             reverse=True,
         )
@@ -330,9 +327,7 @@ class QueueView(ActiveTemplateMixin, TemplateView):
         context["total_pages"] = ToRead.objects.all().aggregate(
             page_count=Sum("pages")
         )["page_count"]
-        past_year_reviews = Review.objects.all().filter(
-            dates_read__contains=now().year - 1
-        )
+        past_year_reviews = Review.objects.read_in_year(now().year - 1)
         context["past_year_books"] = past_year_reviews.count()
         context["past_year_pages"] = past_year_reviews.aggregate(
             page_count=Sum("book__pages")

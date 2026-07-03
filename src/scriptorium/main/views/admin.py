@@ -44,6 +44,7 @@ from scriptorium.main.models import (
     Page,
     Poem,
     Quote,
+    Read,
     Review,
     Tag,
     ToReview,
@@ -186,7 +187,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
                     kwargs["openlibrary"] = book
                 except Exception:  # noqa: BLE001
                     kwargs["openlibrary"] = {}
-            # kwargs = {# TODO pre-fill fields here!}
+            # TODO pre-fill fields here
         elif step == "review":
             select_data = self.get_cleaned_data_for_step("select")
         return kwargs
@@ -208,11 +209,14 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
                 tags.append(Tag.objects.create(name_slug=name, category=category))
         book = Book.objects.create(**steps["book"], primary_author=author)
         book.tags.set(tags)
-        Review.objects.create(
-            **steps["review"],
-            book=book,
-            latest_date=steps["review"]["dates_read"].split(",")[-1],
-        )
+        review_data = steps["review"]
+        dates_read = review_data.pop("dates_read")
+        did_not_finish = review_data.pop("did_not_finish")
+        Review.objects.create(**review_data, book=book, latest_date=dates_read[-1])
+        for date in dates_read:
+            Read.objects.create(
+                book=book, finished_on=date, did_not_finish=did_not_finish
+            )
         # TODO create quotes
         # TODO download cover, update dimensions etc
         return redirect(f"/{book.slug}/")

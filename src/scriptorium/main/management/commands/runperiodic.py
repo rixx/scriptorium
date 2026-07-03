@@ -24,8 +24,9 @@ class Command(BaseCommand):
         toreview_objects = []
         qs = (
             Review.objects.with_dates_read()
-            .annotate(toreview_count=Count("book__toreview"))
+            .annotate(toreview_count=Count("book__toreview", distinct=True))
             .filter(toreview_count__lt=F("dates_read_count"))
+            .prefetch_related("book__reads")
         )
         for review in qs:
             toreview_objects.extend(

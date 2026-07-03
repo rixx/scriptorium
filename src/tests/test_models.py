@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 import requests
 from django.core.files.base import ContentFile
+from django.db import models
 from PIL import Image
 
 from scriptorium.main.models import Book, Review, Spine, Tag, Thumbnail
@@ -14,6 +15,7 @@ from tests.factories import (
     BookFactory,
     PoemFactory,
     QuoteFactory,
+    ReadFactory,
     ReviewFactory,
     TagFactory,
     ToReviewFactory,
@@ -171,15 +173,6 @@ def test_book_quotes_by_language_groups_adjacent_quotes():
 # --- Review -----------------------------------------------------------------
 
 
-def test_review_save_populates_dates_read_from_latest_date():
-    book = BookFactory()
-    review = Review(book=book, text="x", rating=3, latest_date=dt.date(2024, 5, 1))
-
-    review.save()
-
-    assert review.dates_read == "2024-05-01"
-
-
 def test_review_save_sets_feed_date_on_creation():
     book = BookFactory()
     review = Review(book=book, text="x", rating=3, latest_date=dt.date(2024, 5, 1))
@@ -189,25 +182,9 @@ def test_review_save_sets_feed_date_on_creation():
     assert review.feed_date == dt.datetime.now(tz=dt.UTC).date()
 
 
-def test_review_save_updates_feed_date_on_reread():
-    book = BookFactory()
-    review = ReviewFactory(
-        book=book, latest_date=dt.date(2020, 1, 1), dates_read="2020-01-01"
-    )
-    Review.objects.filter(pk=review.pk).update(feed_date=dt.date(2020, 1, 1))
-    review.refresh_from_db()
-
-    review.latest_date = dt.date(2024, 6, 1)
-    review.save()
-
-    assert review.feed_date == dt.datetime.now(tz=dt.UTC).date()
-
-
 def test_review_save_keeps_feed_date_when_not_a_reread():
     book = BookFactory()
-    review = ReviewFactory(
-        book=book, latest_date=dt.date(2024, 1, 1), dates_read="2024-01-01"
-    )
+    review = ReviewFactory(book=book, latest_date=dt.date(2024, 1, 1))
     stored_feed_date = review.feed_date
 
     review.tldr = "edited"
@@ -216,9 +193,10 @@ def test_review_save_keeps_feed_date_when_not_a_reread():
     assert review.feed_date == stored_feed_date
 
 
-def test_review_dates_read_list_parses_comma_separated_dates():
+def test_review_dates_read_list_sorts_reads_chronologically():
     review = ReviewFactory(
-        latest_date=dt.date(2024, 5, 1), dates_read="2020-01-02,2022-07-10,2024-05-01"
+        latest_date=dt.date(2024, 5, 1),
+        reads=[dt.date(2024, 5, 1), dt.date(2020, 1, 2), dt.date(2022, 7, 10)],
     )
 
     assert review.dates_read_list == [
@@ -230,13 +208,65 @@ def test_review_dates_read_list_parses_comma_separated_dates():
 
 def test_review_date_read_lookup_keyed_by_year():
     review = ReviewFactory(
-        latest_date=dt.date(2024, 5, 1), dates_read="2020-01-02,2024-05-01"
+        latest_date=dt.date(2024, 5, 1),
+        reads=[dt.date(2020, 1, 2), dt.date(2024, 5, 1)],
     )
 
     assert review.date_read_lookup == {
         2020: dt.date(2020, 1, 2),
         2024: dt.date(2024, 5, 1),
     }
+
+
+def test_review_did_not_finish_only_when_every_read_is_unfinished():
+    abandoned = ReviewFactory(reads=[])
+    ReadFactory(book=abandoned.book, did_not_finish=True)
+    finished_on_reread = ReviewFactory(reads=[])
+    ReadFactory(book=finished_on_reread.book, did_not_finish=True)
+    ReadFactory(book=finished_on_reread.book, did_not_finish=False)
+    no_reads = ReviewFactory(reads=[])
+
+    assert abandoned.did_not_finish is True
+    assert finished_on_reread.did_not_finish is False
+    assert no_reads.did_not_finish is False
+
+
+# --- Read -------------------------------------------------------------------
+
+
+def test_read_save_bumps_latest_and_feed_date_for_new_latest_read():
+    review = ReviewFactory(latest_date=dt.date(2020, 1, 1))
+    Review.objects.filter(pk=review.pk).update(feed_date=dt.date(2020, 1, 1))
+
+    ReadFactory(book=review.book, finished_on=dt.date(2024, 6, 1))
+
+    review.refresh_from_db()
+    assert review.latest_date == dt.date(2024, 6, 1)
+    assert review.feed_date == dt.datetime.now(tz=dt.UTC).date()
+
+
+def test_read_save_backfilling_older_read_does_not_bump():
+    review = ReviewFactory(latest_date=dt.date(2024, 1, 1))
+    Review.objects.filter(pk=review.pk).update(feed_date=dt.date(2024, 1, 1))
+
+    ReadFactory(book=review.book, finished_on=dt.date(2019, 5, 5))
+
+    review.refresh_from_db()
+    assert review.latest_date == dt.date(2024, 1, 1)
+    assert review.feed_date == dt.date(2024, 1, 1)
+
+
+def test_read_save_updating_existing_read_does_not_bump():
+    review = ReviewFactory(latest_date=dt.date(2024, 1, 1))
+    Review.objects.filter(pk=review.pk).update(feed_date=dt.date(2024, 1, 1))
+    read = review.book.reads.get()
+
+    read.notes = "reread for book club"
+    read.save()
+
+    review.refresh_from_db()
+    assert review.feed_date == dt.date(2024, 1, 1)
+    assert review.book.reads.get().notes == "reread for book club"
 
 
 def test_review_word_count_counts_whitespace_separated_tokens():
@@ -269,18 +299,34 @@ def test_review_manager_excludes_drafts():
     assert Review.objects.with_drafts().count() == 2
 
 
-def test_review_with_dates_read_annotates_count():
-    one_read = make_reviewed_book().review
-    one_read.dates_read = "2024-01-01"
-    one_read.save(update_fields=["dates_read"])
-
-    three_reads = make_reviewed_book().review
-    three_reads.dates_read = "2020-01-01,2022-01-01,2024-01-01"
-    three_reads.save(update_fields=["dates_read"])
+def test_review_with_dates_read_annotates_read_count():
+    one_read = make_reviewed_book(latest_date=dt.date(2024, 1, 1)).review
+    three_reads = make_reviewed_book(
+        latest_date=dt.date(2024, 1, 1),
+        reads=[dt.date(2020, 1, 1), dt.date(2022, 1, 1), dt.date(2024, 1, 1)],
+    ).review
+    # additional joined rows (e.g. ToReview) must not inflate the read count
+    ToReviewFactory(book=three_reads.book)
+    ToReviewFactory(book=three_reads.book)
 
     counts = {r.pk: r.dates_read_count for r in Review.objects.with_dates_read()}
     assert counts[one_read.pk] == 1
     assert counts[three_reads.pk] == 3
+
+
+def test_review_read_in_year_matches_once_and_aggregates_cleanly():
+    reread = make_reviewed_book(
+        pages=100,
+        latest_date=dt.date(2023, 8, 1),
+        reads=[dt.date(2023, 2, 1), dt.date(2023, 8, 1)],
+    ).review
+    make_reviewed_book(pages=100, latest_date=dt.date(2022, 1, 1))
+
+    reviews = Review.objects.read_in_year(2023)
+
+    assert list(reviews) == [reread]
+    # two reads in the same year must not double the aggregates
+    assert reviews.aggregate(pages=models.Sum("book__pages"))["pages"] == 100
 
 
 # --- Quote ------------------------------------------------------------------
@@ -381,10 +427,7 @@ def test_spine_starred_matches_five_star_rating():
 def test_to_review_match_links_book_and_returns_true():
     author = AuthorFactory()
     book = make_reviewed_book(
-        primary_author=author,
-        title_slug="my-book",
-        latest_date=dt.date(2024, 6, 15),
-        dates_read="2024-06-15",
+        primary_author=author, title_slug="my-book", latest_date=dt.date(2024, 6, 15)
     )
     to_review = ToReviewFactory(title="My Book", date=dt.date(2024, 6, 16))
 
@@ -396,10 +439,7 @@ def test_to_review_match_links_book_and_returns_true():
 def test_to_review_match_rejects_when_dates_disagree():
     author = AuthorFactory()
     make_reviewed_book(
-        primary_author=author,
-        title_slug="my-book",
-        latest_date=dt.date(2024, 1, 1),
-        dates_read="2024-01-01",
+        primary_author=author, title_slug="my-book", latest_date=dt.date(2024, 1, 1)
     )
     to_review = ToReviewFactory(title="My Book", date=dt.date(2024, 6, 15))
 

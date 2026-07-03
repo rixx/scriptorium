@@ -44,11 +44,7 @@ def test_get_stats_grid_counts_unmatched_to_reviews():
     # A real review keeps max_year/max_month non-zero so generate_svg doesn't
     # trip on a divide-by-zero for the totals rect width.
     make_reviewed_book(
-        title="Anchor",
-        title_slug="anchor",
-        pages=250,
-        latest_date=dt.date(2024, 3, 1),
-        dates_read="2024-03-01",
+        title="Anchor", title_slug="anchor", pages=250, latest_date=dt.date(2024, 3, 1)
     )
     ToReviewFactory(date=dt.date(2024, 6, 15), book=None)
     ToReviewFactory(date=dt.date(2024, 6, 20), book=None)
@@ -77,7 +73,6 @@ def test_get_year_stats_recursively_includes_next_year():
         publication_year=1999,
         rating=3,
         latest_date=dt.date(2022, 5, 1),
-        dates_read="2022-05-01",
     )
     make_reviewed_book(
         title="Year N book",
@@ -86,7 +81,6 @@ def test_get_year_stats_recursively_includes_next_year():
         publication_year=2000,
         rating=4,
         latest_date=dt.date(2023, 5, 1),
-        dates_read="2023-05-01",
     )
     next_year_book = make_reviewed_book(
         title="Year N+1 book",
@@ -95,7 +89,6 @@ def test_get_year_stats_recursively_includes_next_year():
         publication_year=2001,
         rating=5,
         latest_date=dt.date(2024, 5, 1),
-        dates_read="2024-05-01",
     )
 
     stats = get_year_stats(2023, extra_years=True)

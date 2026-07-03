@@ -11,8 +11,6 @@ from pathlib import Path
 import requests
 from django.core.files.base import ContentFile
 from django.db import models
-from django.db.models import Value
-from django.db.models.functions import Length, Replace
 from django.utils.functional import cached_property
 from django.utils.timezone import now
 from PIL import Image
@@ -335,31 +333,29 @@ class ReviewManager(models.Manager):
         )
 
     def with_dates_read(self):
-        # All credit for this monster goes to https://stackoverflow.com/questions/70379732
-        # I hate it I love it, it`s perfect for a stupid side project
+        # distinct, so the count stays correct when other annotations join in
         return self.get_queryset().annotate(
-            dates_read_count=Length("dates_read")
-            - Length(Replace("dates_read", Value(",")))
-            + 1
+            dates_read_count=models.Count("book__reads", distinct=True)
         )
+
+    def read_in_year(self, year):
+        reads = Read.objects.filter(
+            book=models.OuterRef("book_id"), finished_on__year=year
+        )
+        return self.get_queryset().filter(models.Exists(reads))
 
 
 class Review(models.Model):
-    """Use the with_dates_read manager method to be able to filter by dates_read.
-    Yes, storing them comma-separated in a CharField is dumb."""
-
     book = models.OneToOneField(Book, on_delete=models.PROTECT, related_name="review")
 
     text = models.TextField()
     tldr = models.TextField(null=True, blank=True)
 
     rating = models.IntegerField(null=True, blank=True)
-    did_not_finish = models.BooleanField(default=False)
     is_draft = models.BooleanField(default=False)
 
     latest_date = models.DateField()
     feed_date = models.DateField(null=True)
-    dates_read = models.CharField(max_length=300, null=True, blank=True)
 
     social = models.JSONField(null=True)
 
@@ -369,29 +365,24 @@ class Review(models.Model):
         return f"Review ({self.rating}/5) for {self.book}"
 
     def save(self, *args, **kwargs):
-        pre_save = Review.objects.get(pk=self.pk) if self.pk else None
-        today = now().date()
-        if pre_save:
-            # if the review is updated, the feed date should only be updated if I read the book again
-            if pre_save.latest_date < self.latest_date:
-                self.feed_date = today
-        else:
-            # new reviews always get the creation date as feed date
-            self.feed_date = today
-        if not self.dates_read:
-            self.dates_read = self.latest_date.isoformat()
+        if not self.pk:
+            # new reviews always get the creation date as feed date;
+            # rereads bump it in Read.save()
+            self.feed_date = now().date()
         return super().save(*args, **kwargs)
 
     @cached_property
     def dates_read_list(self):
-        return [
-            dt.datetime.strptime(date, "%Y-%m-%d").date()  # noqa: DTZ007
-            for date in self.dates_read.split(",")
-        ]
+        return sorted(read.finished_on for read in self.book.reads.all())
 
     @cached_property
     def date_read_lookup(self):
         return {date.year: date for date in self.dates_read_list}
+
+    @cached_property
+    def did_not_finish(self):
+        reads = self.book.reads.all()
+        return bool(reads) and all(read.did_not_finish for read in reads)
 
     @cached_property
     def word_count(self):
@@ -410,6 +401,44 @@ class Review(models.Model):
             f"{self.book.title}:reviews:{feed_date.isoformat()}:{self.book.goodreads_id or ''}".encode()
         )
         return str(uuid.UUID(m.hexdigest()))
+
+
+class Read(models.Model):
+    """One complete (or abandoned) read-through of a book."""
+
+    class Format(models.TextChoices):
+        PAPER = "paper", "paper"
+        EBOOK = "ebook", "ebook"
+        AUDIO = "audio", "audio"
+
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name="reads")
+    finished_on = models.DateField()
+    started_on = models.DateField(null=True, blank=True)
+    did_not_finish = models.BooleanField(default=False)
+    format = models.CharField(
+        max_length=5, choices=Format.choices, null=True, blank=True
+    )
+    source = models.CharField(max_length=300, null=True, blank=True)
+    total_time_seconds = models.IntegerField(null=True, blank=True)
+    notes = models.TextField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-finished_on",)
+
+    def __str__(self):
+        return f"Read of {self.book} on {self.finished_on}"
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        result = super().save(*args, **kwargs)
+        if is_new:
+            # A new latest read is a reread the feed should surface; backfilling
+            # older reads does not bump the feed date. Queryset update to avoid
+            # Review.save() side effects and keep bulk imports fast.
+            Review.objects.with_drafts().filter(
+                book_id=self.book_id, latest_date__lt=self.finished_on
+            ).update(latest_date=self.finished_on, feed_date=now().date())
+        return result
 
 
 class Spine:

@@ -10,6 +10,7 @@ from scriptorium.main.models import (
     Poem,
     PoemStatus,
     Quote,
+    Read,
     Review,
     Tag,
     ToRead,
@@ -62,9 +63,18 @@ class BookFactory(factory.django.DjangoModelFactory):
     publication_year = 2020
 
 
+class ReadFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Read
+
+    book = factory.SubFactory(BookFactory)
+    finished_on = factory.LazyFunction(lambda: dt.date(2024, 6, 15))
+
+
 class ReviewFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Review
+        skip_postgeneration_save = True
 
     book = factory.SubFactory(BookFactory)
     text = "A thoughtful review of the book."
@@ -72,6 +82,16 @@ class ReviewFactory(factory.django.DjangoModelFactory):
     rating = 4
     latest_date = factory.LazyFunction(lambda: dt.date(2024, 6, 15))
     is_draft = False
+
+    @factory.post_generation
+    def reads(self, create, extracted, **kwargs):
+        """Every review comes with one Read per date in ``reads`` (defaulting
+        to a single read on ``latest_date``); pass ``reads=[]`` to skip."""
+        if not create:
+            return
+        dates = extracted if extracted is not None else [self.latest_date]
+        for date in dates:
+            ReadFactory(book=self.book, finished_on=date)
 
 
 class QuoteFactory(factory.django.DjangoModelFactory):
@@ -125,7 +145,7 @@ def make_reviewed_book(**book_kwargs):
     """Create a Book with a published (non-draft) Review attached."""
     review_kwargs = {
         key: book_kwargs.pop(key)
-        for key in ("rating", "text", "tldr", "latest_date", "dates_read", "is_draft")
+        for key in ("rating", "text", "tldr", "latest_date", "is_draft", "reads")
         if key in book_kwargs
     }
     book = BookFactory(**book_kwargs)

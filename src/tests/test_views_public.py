@@ -75,7 +75,6 @@ def stats_library(_gender_tags):
                 publication_year=year,
                 rating=4,
                 latest_date=read_date,
-                dates_read=read_date.isoformat(),
             )
         )
     return books
@@ -129,12 +128,8 @@ def test_feed_view_excludes_drafts(client):
 
 def test_year_view_defaults_to_current_year(client):
     today = dt.datetime.now(tz=dt.UTC).date()
-    recent = make_reviewed_book(
-        title="Recent Read", latest_date=today, dates_read=today.isoformat()
-    )
-    older = make_reviewed_book(
-        title="Old Read", latest_date=dt.date(2000, 1, 1), dates_read="2000-01-01"
-    )
+    recent = make_reviewed_book(title="Recent Read", latest_date=today)
+    older = make_reviewed_book(title="Old Read", latest_date=dt.date(2000, 1, 1))
 
     response = client.get("/reviews/")
 
@@ -146,10 +141,10 @@ def test_year_view_defaults_to_current_year(client):
 
 def test_year_view_specific_year(client):
     book_2023 = make_reviewed_book(
-        title="Book from 2023", latest_date=dt.date(2023, 5, 1), dates_read="2023-05-01"
+        title="Book from 2023", latest_date=dt.date(2023, 5, 1)
     )
     book_2024 = make_reviewed_book(
-        title="Book from 2024", latest_date=dt.date(2024, 5, 1), dates_read="2024-05-01"
+        title="Book from 2024", latest_date=dt.date(2024, 5, 1)
     )
 
     response = client.get("/reviews/2023/")
@@ -324,12 +319,7 @@ def test_queue_view_shows_shelves_and_totals(rf):
     ToReadFactory(shelf="fiction", pages=200)
     ToReadFactory(shelf="fiction", pages=300)
     ToReadFactory(shelf="non-fiction", pages=100)
-    make_reviewed_book(
-        title="Read Last Year",
-        pages=250,
-        latest_date=last_year,
-        dates_read=last_year.isoformat(),
-    )
+    make_reviewed_book(title="Read Last Year", pages=250, latest_date=last_year)
 
     view = QueueView()
     view.request = rf.get("/queue/")
@@ -536,7 +526,6 @@ def test_year_in_books_view_renders_year_stats(client, stats_library):
         publication_year=2010,
         rating=4,
         latest_date=dt.date(2023, 6, 1),
-        dates_read="2023-06-01",
     )
 
     response = client.get("/reviews/2024/stats/")

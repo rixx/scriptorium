@@ -183,7 +183,9 @@ def generate_svg(
 def get_stats_grid():
     stats = {}
     time_lookup = defaultdict(list)
-    for review in Review.objects.all().select_related("book"):
+    for review in (
+        Review.objects.all().select_related("book").prefetch_related("book__reads")
+    ):
         for timestamp in review.dates_read_list:
             key = timestamp.strftime("%Y-%m")
             time_lookup[key].append(review)
@@ -311,7 +313,7 @@ def get_stats_table():
 
 
 def get_year_stats(year, extra_years=True):
-    reviews = Review.objects.filter(dates_read__contains=year).select_related("book")
+    reviews = Review.objects.read_in_year(year).prefetch_related("book__reads")
     to_review = ToReview.objects.filter(date__year=year, book__isnull=True)
     stats = {}
     total_books = len(reviews)
@@ -333,7 +335,7 @@ def get_year_stats(year, extra_years=True):
     stats["all_time"] = dict(get_stats_table())
     if extra_years:
         stats["previous"] = get_year_stats(year - 1, extra_years=False)
-        if Review.objects.filter(dates_read__contains=year + 1).exists():
+        if Review.objects.read_in_year(year + 1).exists():
             stats["next"] = get_year_stats(year + 1, extra_years=False)
         else:
             stats["next"] = None
@@ -449,12 +451,10 @@ def get_charts():
     rating_over_time = [
         (
             year,
-            Review.objects.filter(
-                rating__isnull=False, dates_read__contains=year
-            ).aggregate(Avg("rating"))["rating__avg"],
-            Review.objects.filter(
-                rating__isnull=False, dates_read__contains=year
-            ).count(),
+            Review.objects.read_in_year(year)
+            .filter(rating__isnull=False)
+            .aggregate(Avg("rating"))["rating__avg"],
+            Review.objects.read_in_year(year).filter(rating__isnull=False).count(),
         )
         for year in reversed(get_all_years()[:-1])
     ]

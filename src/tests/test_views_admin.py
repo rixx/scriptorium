@@ -1,3 +1,4 @@
+import datetime as dt
 import json
 
 import pytest
@@ -496,7 +497,7 @@ def test_review_create_done_creates_author_book_review_and_tags(rf):
                 "plot": "",
             },
             "review": {
-                "dates_read": "2024-02-10,2024-03-14",
+                "dates_read": [dt.date(2024, 2, 10), dt.date(2024, 3, 14)],
                 "rating": 5,
                 "text": "A brilliant book.",
                 "tldr": "Go read it.",
@@ -519,7 +520,12 @@ def test_review_create_done_creates_author_book_review_and_tags(rf):
     review = Review.objects.get(book=book)
     assert review.rating == 5
     assert review.text == "A brilliant book."
-    assert str(review.latest_date) == "2024-03-14"
+    assert review.latest_date == dt.date(2024, 3, 14)
+    assert [read.finished_on for read in book.reads.order_by("finished_on")] == [
+        dt.date(2024, 2, 10),
+        dt.date(2024, 3, 14),
+    ]
+    assert [read.did_not_finish for read in book.reads.all()] == [False, False]
 
 
 def test_review_create_done_reuses_existing_author(rf):
@@ -545,7 +551,7 @@ def test_review_create_done_reuses_existing_author(rf):
                 "plot": "",
             },
             "review": {
-                "dates_read": "2024-04-01",
+                "dates_read": [dt.date(2024, 4, 1)],
                 "rating": 4,
                 "text": "Dream logic.",
                 "tldr": "Good.",

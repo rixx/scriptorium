@@ -56,7 +56,6 @@ def review(book):
         rating=5,
         text="A brilliant exploration of competing utopias.",
         latest_date=dt.date(2024, 3, 14),
-        dates_read="2024-03-14",
     )
 
 
@@ -128,7 +127,6 @@ def populated_library(author):
         series_position="1",
         rating=4,
         latest_date=dt.date(2024, 1, 10),
-        dates_read="2024-01-10",
     )
     book_two = make_reviewed_book(
         title="Book Two",
@@ -138,7 +136,6 @@ def populated_library(author):
         series_position="2",
         rating=5,
         latest_date=dt.date(2024, 2, 20),
-        dates_read="2024-02-20",
     )
     other_author = AuthorFactory(name="Other Writer", name_slug="other-writer")
     book_three = make_reviewed_book(
@@ -147,7 +144,6 @@ def populated_library(author):
         primary_author=other_author,
         rating=3,
         latest_date=dt.date(2023, 12, 1),
-        dates_read="2023-12-01",
     )
 
     for book in (book_one, book_two, book_three):

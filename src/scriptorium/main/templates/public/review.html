@@ -50,7 +50,7 @@
         <td>date added:</td>
         <th>{{ book.date_added | render_date }}</th>
       </tr>
-      {% if review.dates_read %}
+      {% if review.dates_read_list %}
         <tr>
           <td>date read:</td>
           <th>{% for d in review.dates_read_list %}{{ d | render_date }}<br>{% endfor %}</th>
