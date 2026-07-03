@@ -440,6 +440,23 @@ def test_queue_add_matches_existing_book_by_source(api_client):
     ]
 
 
+def test_queue_add_duplicate_date_backfills_start_date(api_client):
+    """Re-submitting an already logged date with a started_on fills in the
+    start date on the existing read (the create-or-update contract)."""
+    api_client.post("/api/queue/", _queue_payload(), content_type="application/json")
+
+    response = api_client.post(
+        "/api/queue/",
+        _queue_payload(started_on="2024-04-01"),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    read = Book.all_objects.get().reads.get()
+    assert read.started_on == dt.date(2024, 4, 1)
+    assert read.finished_on == dt.date(2024, 5, 1)
+
+
 def test_queue_add_attaches_source_to_existing_book(api_client):
     """A book that was queued without a URL gains one when the same title is
     re-submitted with a source."""

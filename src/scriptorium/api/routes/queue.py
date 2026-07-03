@@ -88,10 +88,12 @@ def add_to_queue(request, payload: QueueAddIn):
     )
     if duplicate_read:
         # sync_reads skipped the already-logged date; keep the submitted
-        # notes instead of silently discarding them.
+        # notes (and start date) instead of silently discarding them.
         duplicate_read.notes = payload.notes or None
         duplicate_read.source = "manual"
-        duplicate_read.save(update_fields=["notes", "source"])
+        if payload.started_on:
+            duplicate_read.started_on = payload.started_on
+        duplicate_read.save(update_fields=["notes", "source", "started_on"])
     book = (
         Book.all_objects.select_related("primary_author", "series")
         .prefetch_related("additional_authors", "reads")
