@@ -254,6 +254,7 @@ def test_to_review_edit_get_renders_initial_values(admin_logged_in_client):
         series=SeriesFactory(name="A Cycle", name_slug="a-cycle"),
         series_position="2",
         status=BookStatus.TO_REVIEW,
+        plot="A scholar is trapped in an endless house.",
     )
     ReadFactory(book=book, finished_on=dt.date(2024, 5, 1), notes="Holiday read.")
 
@@ -267,6 +268,52 @@ def test_to_review_edit_get_renders_initial_values(admin_logged_in_client):
     assert initial["series_position"] == "2"
     assert initial["date"] == dt.date(2024, 5, 1)
     assert initial["notes"] == "Holiday read."
+    assert initial["plot"] == "A scholar is trapped in an endless house."
+
+
+def test_to_review_edit_shows_metadata_and_highlights(admin_logged_in_client):
+    """The queue edit page is the review workbench: it shows the book's
+    stored metadata and the KOReader highlights (with their data blob for
+    the copy button)."""
+    book = BookFactory(
+        title="Queued",
+        title_slug="queued",
+        status=BookStatus.TO_REVIEW,
+        pages=304,
+        publication_year=1969,
+        isbn13="9780441478125",
+        source="koreader",
+    )
+    ReadFactory(
+        book=book,
+        finished_on=dt.date(2024, 5, 1),
+        format="ebook",
+        total_time_seconds=25440,
+        highlights=[
+            {
+                "text": "Light is the left hand of darkness.",
+                "note": "gorgeous",
+                "chapter": "Chapter 16",
+                "pageno": 233,
+            }
+        ],
+    )
+
+    response = admin_logged_in_client.get(f"/b/toreview/{book.pk}/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert book.primary_author.name in body
+    assert "304" in body
+    assert "1969" in body
+    assert "9780441478125" in body
+    assert "koreader" in body
+    assert "7.1h reading time" in body
+    assert "Light is the left hand of darkness." in body
+    assert "gorgeous" in body
+    assert "Chapter 16" in body
+    assert "Copy all" in body
+    assert f'id="highlights-data-{book.reads.get().pk}"' in body
 
 
 def test_to_review_edit_post_updates_existing_book_and_read(admin_logged_in_client):
@@ -290,6 +337,7 @@ def test_to_review_edit_post_updates_existing_book_and_read(admin_logged_in_clie
             "series": "A Cycle",
             "series_position": "2",
             "notes": "Holiday read.",
+            "plot": "A scholar is trapped in an endless house.",
         },
     )
 
@@ -300,6 +348,7 @@ def test_to_review_edit_post_updates_existing_book_and_read(admin_logged_in_clie
     assert book.title_slug == "queued-corrected"
     assert book.series.name == "A Cycle"
     assert book.series_position == "2"
+    assert book.plot == "A scholar is trapped in an endless house."
     read.refresh_from_db()
     assert read.finished_on == dt.date(2024, 5, 3)
     assert read.notes == "Holiday read."

@@ -404,6 +404,12 @@ class BookToReviewEditForm(BookToReviewForm):
     """Edit a book already queued for review: updates the existing Book and
     its recorded Read instead of creating new rows."""
 
+    plot = forms.CharField(
+        required=False,
+        widget=forms.Textarea,
+        help_text="Private plot summary — reference material for the review.",
+    )
+
     def __init__(self, *args, instance, **kwargs):
         self.instance = instance
         self.read = instance.reads.order_by("-finished_on").first()
@@ -414,6 +420,7 @@ class BookToReviewEditForm(BookToReviewForm):
                 "author": instance.primary_author.name,
                 "series": instance.series.name if instance.series else "",
                 "series_position": instance.series_position or "",
+                "plot": instance.plot or "",
             }
         )
         if self.read:
@@ -430,6 +437,7 @@ class BookToReviewEditForm(BookToReviewForm):
         book.primary_author = author
         book.series = data["series"]
         book.series_position = data["series_position"] or None
+        book.plot = data["plot"] or None
         book.save()
         if self.read:
             self.read.finished_on = data["date"]

@@ -147,30 +147,55 @@ class AllBooksManager(models.Manager):
         series_position=None,
         notes=None,
         shelf=None,
+        source=None,
+        pages=None,
+        started_on=None,
     ):
         """Quickly queue a finished book for a later review: creates (or
         reuses) the author and book, marks the book as waiting for review,
         and records the read itself. Already published books keep their
         status -- their new read queues them as a reread instead.
 
+        A book is matched by its source URL first (the stable identity for
+        web serials, whose titles drift), then by author and title slug.
+        ``source`` and ``pages`` update the matched book, so re-submitting
+        an ongoing serial keeps its page count current.
+
         Shared by the quick-add web form and the API queue endpoint."""
-        author, _ = Author.objects.get_or_create_by_name(author_name)
-        book, created = self.get_or_create(
-            primary_author=author,
-            title_slug=slugify(title),
-            defaults={
-                "title": title,
-                "status": BookStatus.TO_REVIEW,
-                "series": series,
-                "series_position": series_position or None,
-                "shelf": shelf or None,
-            },
-        )
-        if not created and book.status == BookStatus.TO_READ:
-            book.status = BookStatus.TO_REVIEW
-            book.save(update_fields=["status"])
+        book = self.filter(source=source).first() if source else None
+        created = False
+        if book is None:
+            author, _ = Author.objects.get_or_create_by_name(author_name)
+            book, created = self.get_or_create(
+                primary_author=author,
+                title_slug=slugify(title),
+                defaults={
+                    "title": title,
+                    "status": BookStatus.TO_REVIEW,
+                    "series": series,
+                    "series_position": series_position or None,
+                    "shelf": shelf or None,
+                    "source": source or None,
+                    "pages": pages or None,
+                },
+            )
+        if not created:
+            update_fields = []
+            if book.status == BookStatus.TO_READ:
+                book.status = BookStatus.TO_REVIEW
+                update_fields.append("status")
+            if source and book.source != source:
+                book.source = source
+                update_fields.append("source")
+            if pages and book.pages != pages:
+                book.pages = pages
+                update_fields.append("pages")
+            if update_fields:
+                book.save(update_fields=update_fields)
         if date:
-            book.sync_reads([date], source="manual", notes=notes or None)
+            book.sync_reads(
+                [date], source="manual", notes=notes or None, started_on=started_on
+            )
         return book, created
 
     def needs_review(self):

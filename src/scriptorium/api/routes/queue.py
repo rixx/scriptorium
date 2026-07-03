@@ -45,8 +45,16 @@ def add_to_queue(request, payload: QueueAddIn):
     the web form, an already published book stays published and its new read
     queues it as a reread instead. Re-submitting an already logged date
     updates that read's notes instead of adding a row and returns 200;
-    ``queued`` reports whether the book actually ended up in the queue."""
-    existing = Book.all_objects.filter(
+    ``queued`` reports whether the book actually ended up in the queue.
+
+    Books are matched by ``source`` URL first (the stable identity for web
+    serials), then by author and title slug, so re-submitting the same fic
+    updates it instead of duplicating it."""
+    existing = (
+        Book.all_objects.filter(source=payload.source).first()
+        if payload.source
+        else None
+    ) or Book.all_objects.filter(
         primary_author__name_slug=slugify(payload.author_name),
         title_slug=slugify(payload.title),
     ).first()
@@ -74,6 +82,9 @@ def add_to_queue(request, payload: QueueAddIn):
         series_position=payload.series_position,
         notes=payload.notes,
         shelf=payload.shelf,
+        source=payload.source,
+        pages=payload.pages,
+        started_on=payload.started_on,
     )
     if duplicate_read:
         # sync_reads skipped the already-logged date; keep the submitted

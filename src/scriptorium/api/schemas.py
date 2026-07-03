@@ -78,6 +78,7 @@ class BookDetailOut(BookListOut):
 
 
 class QueueReadOut(Schema):
+    id: int
     date: dt.date = Field(alias="finished_on")
     notes: str | None = None
     highlights: list[dict] | None = None

@@ -43,7 +43,7 @@ def test_queue_lists_unreviewed_and_stale_rereads_oldest_first(api_client):
         series_position="1",
         status=BookStatus.TO_REVIEW,
     )
-    ReadFactory(
+    unreviewed_read = ReadFactory(
         book=unreviewed, finished_on=dt.date(2024, 5, 1), notes="Loved the halls."
     )
     reread = make_stale_reread(
@@ -71,7 +71,14 @@ def test_queue_lists_unreviewed_and_stale_rereads_oldest_first(api_client):
             "status": "reviewed",
             "date": "2024-02-02",
             "why": "reread",
-            "reads": [{"date": "2024-02-02", "notes": None, "highlights": None}],
+            "reads": [
+                {
+                    "id": reread.reads.get().pk,
+                    "date": "2024-02-02",
+                    "notes": None,
+                    "highlights": None,
+                }
+            ],
         },
         {
             "id": unreviewed.pk,
@@ -84,7 +91,12 @@ def test_queue_lists_unreviewed_and_stale_rereads_oldest_first(api_client):
             "date": "2024-05-01",
             "why": "unreviewed",
             "reads": [
-                {"date": "2024-05-01", "notes": "Loved the halls.", "highlights": None}
+                {
+                    "id": unreviewed_read.pk,
+                    "date": "2024-05-01",
+                    "notes": "Loved the halls.",
+                    "highlights": None,
+                }
             ],
         },
     ]
@@ -179,7 +191,12 @@ def test_queue_add_creates_author_series_book_and_read(api_client):
         "date": "2024-05-01",
         "why": "unreviewed",
         "reads": [
-            {"date": "2024-05-01", "notes": "Read at the beach.", "highlights": None}
+            {
+                "id": book.reads.get().pk,
+                "date": "2024-05-01",
+                "notes": "Read at the beach.",
+                "highlights": None,
+            }
         ],
         "queued": True,
     }

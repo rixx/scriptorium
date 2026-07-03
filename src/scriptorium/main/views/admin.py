@@ -430,11 +430,16 @@ class ToReviewEdit(LoginRequiredMixin, FormView):
     form_class = BookToReviewEditForm
     template_name = "private/toreview_edit.html"
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs["instance"] = get_object_or_404(
+    @context
+    @cached_property
+    def book(self):
+        return get_object_or_404(
             Book.all_objects.filter(status=BookStatus.TO_REVIEW), pk=self.kwargs["pk"]
         )
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["instance"] = self.book
         return kwargs
 
     def form_valid(self, form):

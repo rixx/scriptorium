@@ -1,6 +1,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python,vim,django
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,vim,django
 
+### Scriptorium ###
+.scriptorium-api-token
+
 ### Django ###
 *.log
 *.pot
