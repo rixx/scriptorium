@@ -102,6 +102,15 @@ def test_healthz_view_returns_ok(rf):
     assert json.loads(response.content.decode()) == {"status": "ok"}
 
 
+def test_healthz_url_is_not_shadowed_by_author_routes(client):
+    """/healthz/ must be routed to the health check, not to the
+    <slug:author>/ catch-all (which would 500 on the missing author)."""
+    response = client.get("/healthz/")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
 def test_feed_view_returns_atom_feed(client, reviewed_book):
     response = client.get("/feed.atom")
 

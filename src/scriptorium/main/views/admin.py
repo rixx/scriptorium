@@ -7,7 +7,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
-from django.db.models import Max, Q
+from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.functional import cached_property
@@ -413,12 +413,7 @@ class ToReviewList(LoginRequiredMixin, ListView):
     context_object_name = "books"
 
     def get_queryset(self):
-        return (
-            Book.all_objects.filter(status=BookStatus.TO_REVIEW)
-            .select_related("primary_author", "series")
-            .annotate(date=Max("reads__finished_on"))
-            .order_by("date")
-        )
+        return Book.all_objects.needs_review()
 
 
 class ToReviewEdit(LoginRequiredMixin, FormView):

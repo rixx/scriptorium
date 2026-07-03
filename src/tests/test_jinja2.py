@@ -121,3 +121,22 @@ def test_get_missing_reviews_data_counts_recent_unreviewed_reads():
         "missing_reviews_total": 2,
         "missing_reviews_percentage": "50.0%",
     }
+
+
+@pytest.mark.django_db
+def test_get_missing_reviews_data_counts_stale_rereads():
+    """A published review whose book was reread later needs a refresh, so its
+    recent reads count as missing alongside the never-reviewed ones."""
+    from scriptorium.main.models import Book  # noqa: PLC0415
+
+    stale = make_reviewed_book(latest_date=dt.date(2024, 2, 2))
+    Book.all_objects.filter(pk=stale.pk).update(review_updated=dt.date(2020, 1, 1))
+    make_reviewed_book(latest_date=dt.date(2023, 1, 1))
+    waiting = BookFactory(status=BookStatus.TO_REVIEW)
+    ReadFactory(book=waiting, finished_on=dt.date(2023, 2, 1))
+
+    data = get_missing_reviews_data()
+
+    assert data["missing_reviews"] == 2
+    assert data["missing_reviews_total"] == 3
+    assert data["missing_reviews_reviewed"] == 1

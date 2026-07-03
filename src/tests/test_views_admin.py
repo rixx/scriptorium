@@ -228,6 +228,20 @@ def test_to_review_list_shows_books_waiting_for_review(admin_logged_in_client):
     assert queued.title not in body
 
 
+def test_to_review_list_includes_stale_rereads(admin_logged_in_client):
+    """A published book reread after its last review edit needs a review
+    refresh and shows up in the queue alongside unreviewed books."""
+    stale = make_reviewed_book(title="Reread since review")
+    Book.all_objects.filter(pk=stale.pk).update(review_updated=dt.date(2020, 1, 1))
+    fresh = make_reviewed_book(title="Review still fresh")
+
+    response = admin_logged_in_client.get("/b/toreview/")
+
+    body = response.content.decode()
+    assert stale.title in body
+    assert fresh.title not in body
+
+
 def test_to_review_edit_get_renders_initial_values(admin_logged_in_client):
     author = AuthorFactory(name="Some One", name_slug="some-one")
     book = BookFactory(

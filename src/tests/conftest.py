@@ -1,6 +1,7 @@
 import datetime as dt
 
 import pytest
+from django.test import Client
 
 from scriptorium.main.models import BookStatus
 from tests.factories import (
@@ -96,6 +97,14 @@ def user():
 def admin_logged_in_client(client, user):
     client.force_login(user)
     return client
+
+
+@pytest.fixture
+def api_client(settings):
+    """A test client that sends the configured API bearer token with every
+    request."""
+    settings.API_KEY = "test-api-key"
+    return Client(headers={"Authorization": "Bearer test-api-key"})
 
 
 @pytest.fixture

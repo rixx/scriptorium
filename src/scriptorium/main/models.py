@@ -119,6 +119,25 @@ class BookManager(models.Manager):
 class AllBooksManager(models.Manager):
     """Unfiltered access to books of every status."""
 
+    def needs_review(self):
+        """The review queue, oldest first: books awaiting their first review
+        plus published books whose latest read is newer than the review text.
+
+        The single source of truth for "what still needs a review" -- both the
+        web queue and the API build on this queryset. Each book is annotated
+        with ``date`` (its latest read, if any) for display and ordering."""
+        return (
+            self.select_related("primary_author", "series")
+            .annotate(date=models.Max("reads__finished_on"))
+            .filter(
+                models.Q(status=BookStatus.TO_REVIEW)
+                | models.Q(
+                    status=BookStatus.REVIEWED, date__gt=models.F("review_updated")
+                )
+            )
+            .order_by(models.F("date").asc(nulls_first=True), "pk")
+        )
+
 
 class Book(models.Model):
     title = models.CharField(max_length=300)
@@ -172,6 +191,10 @@ class Book(models.Model):
     # Date the review (last) entered the feed: set on first publication,
     # bumped by rereads in Read.save().
     feed_date = models.DateField(null=True)
+    # Date the review text last changed: set on first publication and on
+    # every text edit. Reads newer than this put the book back in the
+    # review queue (see AllBooksManager.needs_review).
+    review_updated = models.DateField(null=True)
     social = models.JSONField(null=True)
 
     objects = BookManager()
@@ -185,17 +208,25 @@ class Book(models.Model):
 
     def save(self, *args, **kwargs):
         if self.status == BookStatus.REVIEWED:
-            previous_status = (
-                Book.all_objects.filter(pk=self.pk)
-                .values_list("status", flat=True)
-                .first()
+            previous = (
+                Book.all_objects.filter(pk=self.pk).values("status", "text").first()
             )
-            if previous_status != BookStatus.REVIEWED:
+            changed_fields = set()
+            if not previous or previous["status"] != BookStatus.REVIEWED:
                 # First publication puts the review in the feed; rereads
                 # bump the feed date in Read.save().
                 self.feed_date = now().date()
-                if (update_fields := kwargs.get("update_fields")) is not None:
-                    kwargs["update_fields"] = {"feed_date", *update_fields}
+                self.review_updated = now().date()
+                changed_fields = {"feed_date", "review_updated"}
+            elif previous["text"] != self.text:
+                # An edited review is fresh again and leaves the queue.
+                self.review_updated = now().date()
+                changed_fields = {"review_updated"}
+            if (
+                changed_fields
+                and (update_fields := kwargs.get("update_fields")) is not None
+            ):
+                kwargs["update_fields"] = changed_fields | set(update_fields)
         result = super().save(*args, **kwargs)
         if not self.cover and self.cover_source:
             self.download_cover()

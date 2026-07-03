@@ -55,7 +55,9 @@ TEMPLATES = [
         "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {"environment": "scriptorium.main.jinja2.environment"},
-    }
+    },
+    # django-ninja's API docs (and debug toolbar) render via the Django engine.
+    {"BACKEND": "django.template.backends.django.DjangoTemplates", "APP_DIRS": True},
 ]
 
 WSGI_APPLICATION = "scriptorium.wsgi.application"
@@ -122,6 +124,9 @@ DEPLOY_FLAG_FILE = os.environ.get(
     "SCRIPTORIUM_DEPLOY_FLAG_FILE", str(DATA_DIR / "deploy.flag")
 )
 
+# Bearer token for the single-user REST API at /api/.
+API_KEY = os.environ.get("SCRIPTORIUM_API_KEY", "dev-key-change-me")
+
 try:
     import django_extensions  # noqa: F401
 
@@ -135,9 +140,6 @@ try:
 
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.append("debug_toolbar.middleware.DebugToolbarMiddleware")
-    TEMPLATES.append(
-        {"BACKEND": "django.template.backends.django.DjangoTemplates", "APP_DIRS": True}
-    )
     INTERNAL_IPS = ["127.0.0.1", "localhost"]
 except ImportError:
     pass

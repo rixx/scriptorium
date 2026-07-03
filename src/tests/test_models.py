@@ -253,6 +253,106 @@ def test_book_save_keeps_feed_date_for_unpublished_books():
     assert book.feed_date is None
 
 
+def test_book_save_sets_review_updated_on_first_publication():
+    book = BookFactory(status=BookStatus.TO_REVIEW)
+
+    book.status = BookStatus.REVIEWED
+    book.text = "A review."
+    book.save()
+
+    assert book.review_updated == dt.datetime.now(tz=dt.UTC).date()
+
+
+def test_book_save_bumps_review_updated_when_text_changes():
+    book = make_reviewed_book()
+    Book.all_objects.filter(pk=book.pk).update(review_updated=dt.date(2024, 1, 1))
+    book.refresh_from_db()
+
+    book.text = "A rewritten review."
+    book.save()
+
+    book.refresh_from_db()
+    assert book.review_updated == dt.datetime.now(tz=dt.UTC).date()
+
+
+def test_book_save_keeps_review_updated_when_text_unchanged():
+    book = make_reviewed_book()
+    Book.all_objects.filter(pk=book.pk).update(review_updated=dt.date(2024, 1, 1))
+    book.refresh_from_db()
+
+    book.tldr = "edited, but the review text is untouched"
+    book.save()
+
+    book.refresh_from_db()
+    assert book.review_updated == dt.date(2024, 1, 1)
+
+
+def test_book_save_with_update_fields_persists_review_updated_on_text_change():
+    book = make_reviewed_book()
+    Book.all_objects.filter(pk=book.pk).update(review_updated=dt.date(2024, 1, 1))
+    book.refresh_from_db()
+
+    book.text = "A rewritten review."
+    book.save(update_fields=["text"])
+
+    book.refresh_from_db()
+    assert book.text == "A rewritten review."
+    assert book.review_updated == dt.datetime.now(tz=dt.UTC).date()
+
+
+def test_book_save_ignores_text_changes_on_unpublished_books():
+    book = BookFactory(status=BookStatus.TO_REVIEW)
+
+    book.text = "A draft."
+    book.save()
+
+    book.refresh_from_db()
+    assert book.review_updated is None
+
+
+# --- Review queue (needs_review) ----------------------------------------------
+
+
+def test_needs_review_lists_unreviewed_and_stale_rereads_oldest_first():
+    unreviewed = BookFactory(status=BookStatus.TO_REVIEW)
+    ReadFactory(book=unreviewed, finished_on=dt.date(2024, 5, 1))
+    stale_reread = make_reviewed_book(latest_date=dt.date(2024, 2, 2))
+    Book.all_objects.filter(pk=stale_reread.pk).update(
+        review_updated=dt.date(2020, 1, 1)
+    )
+    # Fresh review (review_updated is today, newer than any read) and books
+    # that were never read stay out of the queue.
+    make_reviewed_book(latest_date=dt.date(2024, 6, 1))
+    BookFactory(status=BookStatus.TO_READ)
+
+    queue = Book.all_objects.needs_review()
+
+    assert list(queue) == [stale_reread, unreviewed]
+    assert [book.date for book in queue] == [dt.date(2024, 2, 2), dt.date(2024, 5, 1)]
+
+
+def test_needs_review_puts_books_without_reads_first():
+    read_book = BookFactory(status=BookStatus.TO_REVIEW)
+    ReadFactory(book=read_book, finished_on=dt.date(2024, 5, 1))
+    dateless = BookFactory(status=BookStatus.TO_REVIEW)
+
+    queue = Book.all_objects.needs_review()
+
+    assert list(queue) == [dateless, read_book]
+    assert queue[0].date is None
+
+
+def test_needs_review_uses_the_latest_read_for_staleness():
+    """A book reread *before* its last review edit is not stale, even if it
+    has older reads, and one reread after is queued exactly once."""
+    fresh = make_reviewed_book(reads=[dt.date(2020, 1, 1), dt.date(2023, 1, 1)])
+    Book.all_objects.filter(pk=fresh.pk).update(review_updated=dt.date(2023, 6, 1))
+    stale = make_reviewed_book(reads=[dt.date(2020, 1, 1), dt.date(2024, 1, 1)])
+    Book.all_objects.filter(pk=stale.pk).update(review_updated=dt.date(2023, 6, 1))
+
+    assert list(Book.all_objects.needs_review()) == [stale]
+
+
 def test_book_dates_read_list_sorts_reads_chronologically():
     book = make_reviewed_book(
         reads=[dt.date(2024, 5, 1), dt.date(2020, 1, 2), dt.date(2022, 7, 10)]
