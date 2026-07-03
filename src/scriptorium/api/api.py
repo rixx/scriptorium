@@ -4,6 +4,7 @@ from ninja import NinjaAPI
 from scriptorium.api.auth import ApiTokenAuth
 from scriptorium.api.routes.authors import router as authors_router
 from scriptorium.api.routes.books import router as books_router
+from scriptorium.api.routes.koreader import router as koreader_router
 from scriptorium.api.routes.openlibrary import router as openlibrary_router
 from scriptorium.api.routes.queue import router as queue_router
 from scriptorium.api.routes.quotes import router as quotes_router
@@ -20,6 +21,7 @@ api.add_router("/authors", authors_router)
 api.add_router("/tags", tags_router)
 api.add_router("/series", series_router)
 api.add_router("/openlibrary", openlibrary_router)
+api.add_router("/koreader", koreader_router)
 
 
 @api.exception_handler(DjangoValidationError)

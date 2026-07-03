@@ -31,6 +31,7 @@ def test_openapi_schema_lists_all_routes(client):
         "/api/authors/{author_slug}/",
         "/api/tags/",
         "/api/series/",
+        "/api/koreader/sync/",
         "/api/openlibrary/search/",
         "/api/openlibrary/works/{work_id}/editions/",
         "/api/openlibrary/books/{olid}/",

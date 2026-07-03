@@ -500,6 +500,12 @@ class Read(models.Model):
     source = models.CharField(max_length=300, null=True, blank=True)
     total_time_seconds = models.IntegerField(null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
+    # KOReader integration: identity of the device-side file this read came
+    # from (KOReader's partial MD5), and the raw highlight dump for this
+    # read-through. Together they form the device push's upsert key
+    # (koreader_md5, finished_on); see the API's koreader route.
+    koreader_md5 = models.CharField(max_length=32, null=True, blank=True, db_index=True)
+    highlights = models.JSONField(null=True, blank=True)
 
     class Meta:
         ordering = ("-finished_on",)

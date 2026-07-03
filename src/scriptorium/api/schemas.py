@@ -22,6 +22,7 @@ class ReadDetailOut(ReadOut):
     book: str
     started_on: dt.date | None = None
     did_not_finish: bool
+    highlights: list[dict] | None = None
 
     @staticmethod
     def resolve_book(obj):
@@ -79,6 +80,7 @@ class BookDetailOut(BookListOut):
 class QueueReadOut(Schema):
     date: dt.date = Field(alias="finished_on")
     notes: str | None = None
+    highlights: list[dict] | None = None
 
 
 class QueueItemOut(Schema):
@@ -242,6 +244,69 @@ class SeriesOut(Schema):
     name: str
     slug: str = Field(alias="name_slug")
     book_count: int
+
+
+class KoreaderHighlightIn(Schema):
+    """One highlight as the KOReader plugin sends it -- stored verbatim as
+    the ``Read.highlights`` blob, so this shape is the stable contract the
+    CLI and AI-drafting consumers read later."""
+
+    text: str
+    note: str | None = None
+    chapter: str | None = None
+    datetime: str | None = None
+    pageno: int | None = None
+    color: str | None = None
+    drawer: str | None = None
+
+
+class KoreaderBookIn(Schema):
+    md5: str = Field(
+        min_length=32,
+        max_length=32,
+        description="KOReader's partial MD5 of the book file",
+    )
+    title: str = Field(min_length=1)
+    authors: list[str] = []
+    language: str | None = None
+    series: str | None = None
+    series_index: int | float | str | None = None
+    identifiers: list[str] = Field(
+        [], description="The EPUB's dc:identifier entries (ISBN:..., uuid:..., ...)"
+    )
+    pages: int | None = None
+    status: Literal["complete", "abandoned"] = "complete"
+    rating: int | None = Field(None, ge=1, le=5)
+    summary_note: str | None = None
+    finished_on: dt.date
+    started_on: dt.date | None = None
+    total_time_seconds: int | None = None
+    highlights: list[KoreaderHighlightIn] = []
+
+
+class KoreaderDeviceIn(Schema):
+    id: str | None = None
+    model: str | None = None
+
+
+class KoreaderSyncIn(Schema):
+    plugin_version: str
+    device: KoreaderDeviceIn | None = None
+    books: list[KoreaderBookIn] = Field(min_length=1)
+
+
+class KoreaderResultOut(Schema):
+    md5: str
+    action: Literal["matched", "created_book", "updated_read", "error"]
+    book: str | None = Field(None, description="Book slug (author/title)")
+    read_id: int | None = None
+    highlights_stored: int = 0
+    warnings: list[str] = []
+    detail: str | None = Field(None, description="Error message when action is 'error'")
+
+
+class KoreaderSyncOut(Schema):
+    results: list[KoreaderResultOut]
 
 
 class OpenLibraryWorkOut(Schema):
