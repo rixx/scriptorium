@@ -4,17 +4,7 @@ from django import forms
 from django.db.models import Q
 from django.utils.timezone import now
 
-from scriptorium.main.models import (
-    Author,
-    Book,
-    BookStatus,
-    Page,
-    Poem,
-    Quote,
-    Read,
-    Series,
-    Tag,
-)
+from scriptorium.main.models import Author, Book, Page, Poem, Quote, Read, Series, Tag
 from scriptorium.main.utils import slugify
 
 
@@ -30,9 +20,7 @@ class SeriesNameField(forms.CharField):
         name = super().clean(value)
         if not name:
             return None
-        return Series.objects.get_or_create(
-            name_slug=slugify(name), defaults={"name": name}
-        )[0]
+        return Series.objects.get_or_create_by_name(name)[0]
 
 
 class LoginForm(forms.Form):
@@ -379,25 +367,13 @@ class BookToReviewForm(forms.Form):
 
     def save(self):
         data = self.cleaned_data
-        author, _ = Author.objects.get_or_create_by_name(data["author"])
-        book, created = Book.all_objects.get_or_create(
-            primary_author=author,
-            title_slug=slugify(data["title"]),
-            defaults={
-                "title": data["title"],
-                "status": BookStatus.TO_REVIEW,
-                "series": data["series"],
-                "series_position": data["series_position"] or None,
-            },
-        )
-        if not created and book.status == BookStatus.TO_READ:
-            book.status = BookStatus.TO_REVIEW
-            book.save(update_fields=["status"])
-        Read.objects.create(
-            book=book,
-            finished_on=data["date"],
-            source="manual",
-            notes=data["notes"] or None,
+        book, _ = Book.all_objects.queue_for_review(
+            title=data["title"],
+            author_name=data["author"],
+            date=data["date"],
+            series=data["series"],
+            series_position=data["series_position"],
+            notes=data["notes"],
         )
         return book
 

@@ -87,10 +87,20 @@ class BookStatus(models.TextChoices):
     REVIEWED = "reviewed", "reviewed"
 
 
+class SeriesManager(models.Manager):
+    def get_or_create_by_name(self, name):
+        """Series are keyed on their unique slug, so casing or punctuation
+        variants of an existing series resolve to the same row instead of
+        violating the name_slug constraint."""
+        return self.get_or_create(name_slug=slugify(name), defaults={"name": name})
+
+
 class Series(models.Model):
     name = models.CharField(max_length=300)
     name_slug = models.CharField(max_length=300, unique=True)
     text = models.TextField(null=True, blank=True)
+
+    objects = SeriesManager()
 
     def __str__(self):
         return self.name
@@ -118,6 +128,42 @@ class BookManager(models.Manager):
 
 class AllBooksManager(models.Manager):
     """Unfiltered access to books of every status."""
+
+    def queue_for_review(
+        self,
+        *,
+        title,
+        author_name,
+        date=None,
+        series=None,
+        series_position=None,
+        notes=None,
+        shelf=None,
+    ):
+        """Quickly queue a finished book for a later review: creates (or
+        reuses) the author and book, marks the book as waiting for review,
+        and records the read itself. Already published books keep their
+        status -- their new read queues them as a reread instead.
+
+        Shared by the quick-add web form and the API queue endpoint."""
+        author, _ = Author.objects.get_or_create_by_name(author_name)
+        book, created = self.get_or_create(
+            primary_author=author,
+            title_slug=slugify(title),
+            defaults={
+                "title": title,
+                "status": BookStatus.TO_REVIEW,
+                "series": series,
+                "series_position": series_position or None,
+                "shelf": shelf or None,
+            },
+        )
+        if not created and book.status == BookStatus.TO_READ:
+            book.status = BookStatus.TO_REVIEW
+            book.save(update_fields=["status"])
+        if date:
+            book.sync_reads([date], source="manual", notes=notes or None)
+        return book, created
 
     def needs_review(self):
         """The review queue, oldest first: books awaiting their first review

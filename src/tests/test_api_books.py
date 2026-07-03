@@ -2,8 +2,9 @@ import datetime as dt
 
 import pytest
 from django.test import Client
+from django.utils.timezone import now
 
-from scriptorium.main.models import BookStatus
+from scriptorium.main.models import Book, BookStatus, Tag
 from tests.factories import (
     AuthorFactory,
     BookFactory,
@@ -197,6 +198,7 @@ def test_books_detail_returns_full_review_data(api_client):
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == book.pk
+    assert data["url"] == "http://testserver/ursula-k-le-guin/the-dispossessed/"
     assert data["text"] == "A brilliant exploration of competing utopias."
     assert data["reads"] == [
         {
@@ -239,3 +241,175 @@ def test_books_detail_unknown_slug_returns_404(api_client):
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Not Found"}
+
+
+# --- Book patch ------------------------------------------------------------------
+
+
+def _detail_url(book):
+    return f"/api/books/{book.slug}/"
+
+
+def test_books_patch_requires_token(client, settings):
+    settings.API_KEY = "test-api-key"
+    book = make_reviewed_book(title="Secret", pages=200)
+
+    response = client.patch(
+        _detail_url(book), {"pages": 1}, content_type="application/json"
+    )
+
+    assert response.status_code == 401
+    book.refresh_from_db()
+    assert book.pages == 200
+
+
+def test_books_patch_unknown_book_returns_404(api_client):
+    response = api_client.patch(
+        "/api/books/nobody/nothing/", {"pages": 1}, content_type="application/json"
+    )
+
+    assert response.status_code == 404
+
+
+def test_books_patch_updates_metadata(api_client):
+    book = BookFactory(status=BookStatus.TO_REVIEW, pages=None)
+
+    response = api_client.patch(
+        _detail_url(book),
+        {
+            "pages": 341,
+            "publication_year": 1974,
+            "isbn13": "9780061054884",
+            "openlibrary_id": "OL59802W",
+            "series": "Hainish Cycle",
+            "series_position": "5",
+        },
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["pages"] == 341
+    assert data["series"] == "Hainish Cycle"
+    assert data["series_position"] == "5"
+    book.refresh_from_db()
+    assert book.pages == 341
+    assert book.publication_year == 1974
+    assert book.isbn13 == "9780061054884"
+    assert book.openlibrary_id == "OL59802W"
+    assert book.series.name_slug == "hainish-cycle"
+
+
+def test_books_patch_text_on_published_review_stamps_review_updated(api_client):
+    book = make_reviewed_book(text="Old text.")
+    Book.all_objects.filter(pk=book.pk).update(
+        review_updated=dt.date(2020, 1, 1), feed_date=dt.date(2020, 1, 2)
+    )
+
+    response = api_client.patch(
+        _detail_url(book), {"text": "New text."}, content_type="application/json"
+    )
+
+    assert response.status_code == 200
+    book.refresh_from_db()
+    assert book.text == "New text."
+    # A fresh review leaves the reread queue but does not re-enter the feed.
+    assert book.review_updated == now().date()
+    assert book.feed_date == dt.date(2020, 1, 2)
+
+
+def test_books_patch_without_text_change_keeps_review_updated(api_client):
+    book = make_reviewed_book()
+    Book.all_objects.filter(pk=book.pk).update(review_updated=dt.date(2020, 1, 1))
+
+    response = api_client.patch(
+        _detail_url(book), {"tldr": "Newer."}, content_type="application/json"
+    )
+
+    assert response.status_code == 200
+    book.refresh_from_db()
+    assert book.tldr == "Newer."
+    assert book.review_updated == dt.date(2020, 1, 1)
+
+
+def test_books_patch_null_clears_fields(api_client):
+    book = make_reviewed_book(
+        series=SeriesFactory(name="Hainish Cycle"), series_position="5", rating=5
+    )
+
+    response = api_client.patch(
+        _detail_url(book),
+        {"series": None, "series_position": None, "rating": None},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["series"] is None
+    assert data["rating"] is None
+    book.refresh_from_db()
+    assert book.series is None
+    assert book.series_position is None
+    assert book.rating is None
+
+
+def test_books_patch_replaces_tags(api_client):
+    book = make_reviewed_book()
+    book.tags.add(TagFactory(category="genre", name_slug="old"))
+    existing = TagFactory(category="themes", name="future", name_slug="future")
+
+    response = api_client.patch(
+        _detail_url(book),
+        {"tags": ["themes:future", "genre:new-tag"]},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert sorted(response.json()["tags"]) == ["genre:new-tag", "themes:future"]
+    new_tag = Tag.objects.get(category="genre", name_slug="new-tag")
+    assert set(book.tags.all()) == {existing, new_tag}
+    assert Tag.objects.count() == 3  # old and future were reused, new-tag created
+
+
+def test_books_patch_ignores_identity_and_status_fields(api_client):
+    book = make_reviewed_book(title="Fixed Title")
+
+    response = api_client.patch(
+        _detail_url(book),
+        {"title": "Sneaky", "title_slug": "sneaky", "status": "to_read", "pages": 100},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    book.refresh_from_db()
+    assert book.title == "Fixed Title"
+    assert book.title_slug != "sneaky"
+    assert book.status == BookStatus.REVIEWED
+    assert book.pages == 100
+
+
+def test_books_patch_invalid_tag_spec_returns_400(api_client):
+    book = make_reviewed_book(pages=200)
+
+    response = api_client.patch(
+        _detail_url(book),
+        {"tags": ["nocolon"], "pages": 1},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    book.refresh_from_db()
+    assert book.pages == 200
+    assert book.tags.count() == 0
+
+
+def test_books_patch_rating_out_of_range_returns_422(api_client):
+    book = make_reviewed_book(rating=4)
+
+    response = api_client.patch(
+        _detail_url(book), {"rating": 9}, content_type="application/json"
+    )
+
+    assert response.status_code == 422
+    book.refresh_from_db()
+    assert book.rating == 4

@@ -2,7 +2,7 @@ import datetime as dt
 
 import pytest
 
-from scriptorium.main.models import Book, BookStatus
+from scriptorium.main.models import Author, Book, BookStatus, Series
 from tests.factories import (
     AuthorFactory,
     BookFactory,
@@ -131,3 +131,185 @@ def test_queue_next_returns_404_when_queue_is_empty(api_client):
 
     assert response.status_code == 404
     assert response.json() == {"detail": "The review queue is empty."}
+
+
+# --- Add to queue -------------------------------------------------------------
+
+
+def _queue_payload(**overrides):
+    payload = {
+        "title": "The Tombs of Atuan",
+        "author_name": "Ursula K. Le Guin",
+        "series": "Earthsea",
+        "series_position": "2",
+        "date_read": "2024-05-01",
+        "notes": "Read at the beach.",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def test_queue_add_requires_token(client, settings):
+    settings.API_KEY = "test-api-key"
+
+    response = client.post(
+        "/api/queue/", _queue_payload(), content_type="application/json"
+    )
+
+    assert response.status_code == 401
+    assert Book.all_objects.count() == 0
+
+
+def test_queue_add_creates_author_series_book_and_read(api_client):
+    response = api_client.post(
+        "/api/queue/", _queue_payload(), content_type="application/json"
+    )
+
+    assert response.status_code == 201
+    book = Book.all_objects.get()
+    assert response.json() == {
+        "id": book.pk,
+        "slug": "ursula-k-le-guin/the-tombs-of-atuan",
+        "title": "The Tombs of Atuan",
+        "author": "Ursula K. Le Guin",
+        "series": "Earthsea",
+        "series_position": "2",
+        "status": "to_review",
+        "date": "2024-05-01",
+        "why": "unreviewed",
+        "reads": [{"date": "2024-05-01", "notes": "Read at the beach."}],
+    }
+    assert book.status == BookStatus.TO_REVIEW
+    assert book.series.name_slug == "earthsea"
+    read = book.reads.get()
+    assert read.finished_on == dt.date(2024, 5, 1)
+    assert read.source == "manual"
+    assert read.notes == "Read at the beach."
+
+
+def test_queue_add_without_read_date_creates_unread_queue_item(api_client):
+    response = api_client.post(
+        "/api/queue/",
+        {"title": "Piranesi", "author_name": "Susanna Clarke"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["date"] is None
+    assert data["reads"] == []
+    assert data["series"] is None
+    book = Book.all_objects.get()
+    assert book.status == BookStatus.TO_REVIEW
+    assert book.reads.count() == 0
+
+
+def test_queue_add_reuses_author_and_series_by_slug(api_client):
+    author = AuthorFactory(name="Ursula K. Le Guin", name_slug="ursula-k-le-guin")
+    series = SeriesFactory(name="Earthsea", name_slug="earthsea")
+
+    response = api_client.post(
+        "/api/queue/",
+        _queue_payload(author_name="ursula k. le guin", series="EARTHSEA"),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    book = Book.all_objects.get()
+    assert book.primary_author == author
+    assert book.series == series
+    assert Author.objects.count() == 1
+    assert Series.objects.count() == 1
+
+
+def test_queue_add_promotes_queued_to_read_book(api_client):
+    book = BookFactory(
+        title="The Tombs of Atuan",
+        title_slug="the-tombs-of-atuan",
+        primary_author=AuthorFactory(
+            name="Ursula K. Le Guin", name_slug="ursula-k-le-guin"
+        ),
+        status=BookStatus.TO_READ,
+    )
+
+    response = api_client.post(
+        "/api/queue/", _queue_payload(), content_type="application/json"
+    )
+
+    assert response.status_code == 201
+    assert Book.all_objects.count() == 1
+    book.refresh_from_db()
+    assert book.status == BookStatus.TO_REVIEW
+    assert [read.finished_on for read in book.reads.all()] == [dt.date(2024, 5, 1)]
+
+
+def test_queue_add_deduplicates_repeated_reads(api_client):
+    api_client.post("/api/queue/", _queue_payload(), content_type="application/json")
+
+    response = api_client.post(
+        "/api/queue/", _queue_payload(), content_type="application/json"
+    )
+
+    assert response.status_code == 201
+    book = Book.all_objects.get()
+    assert book.reads.count() == 1
+
+
+def test_queue_add_reviewed_book_with_date_queues_reread(api_client):
+    book = make_reviewed_book(
+        title="Reread Me", title_slug="reread-me", latest_date=dt.date(2020, 1, 1)
+    )
+
+    response = api_client.post(
+        "/api/queue/",
+        _queue_payload(title="Reread Me", author_name=book.primary_author.name),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["why"] == "reread"
+    assert data["status"] == "reviewed"
+    book.refresh_from_db()
+    assert book.status == BookStatus.REVIEWED
+    assert sorted(read.finished_on for read in book.reads.all()) == [
+        dt.date(2020, 1, 1),
+        dt.date(2024, 5, 1),
+    ]
+
+
+def test_queue_add_reviewed_book_without_date_is_refused(api_client):
+    book = make_reviewed_book(title="Reread Me", title_slug="reread-me")
+
+    response = api_client.post(
+        "/api/queue/",
+        {"title": "Reread Me", "author_name": book.primary_author.name},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 409
+    assert list(response.json()) == ["detail"]
+    book.refresh_from_db()
+    assert book.status == BookStatus.REVIEWED
+    assert book.reads.count() == 1
+
+
+def test_queue_add_stores_shelf_on_new_books(api_client):
+    response = api_client.post(
+        "/api/queue/",
+        _queue_payload(shelf="beach reads"),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    assert Book.all_objects.get().shelf == "beach reads"
+
+
+def test_queue_add_requires_title(api_client):
+    response = api_client.post(
+        "/api/queue/", {"author_name": "Nobody"}, content_type="application/json"
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "payload", "title"]
+    assert Book.all_objects.count() == 0
