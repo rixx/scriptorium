@@ -15,7 +15,7 @@
         <ul>
           {% for book in ibooks %}
             <li>
-              {% if book.review.rating == 5 %}
+              {% if book.rating == 5 %}
                 <span class="rating rating-inline">★</span>
               {% endif %}
               <a href="/{{ book.slug }}/">{{ book.title }}</a>

@@ -46,7 +46,6 @@ from scriptorium.main.models import (
     Poem,
     Quote,
     Read,
-    Review,
     Tag,
 )
 from scriptorium.main.utils import slugify
@@ -207,25 +206,27 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
             for tag in new_tags:
                 category, name = tag.split(":", maxsplit=1)
                 tags.append(Tag.objects.create(name_slug=name, category=category))
+        review_data = steps["review"]
+        dates_read = review_data.pop("dates_read")
+        did_not_finish = review_data.pop("did_not_finish")
         book = Book.all_objects.filter(
             primary_author=author, title_slug=steps["book"]["title_slug"]
         ).first()
         if book:
             # The wizard can pick up a queued (to-read or to-review) book;
             # update it in place instead of hitting the unique slug constraint.
-            for field, value in steps["book"].items():
+            for field, value in (steps["book"] | review_data).items():
                 setattr(book, field, value)
             book.status = BookStatus.REVIEWED
             book.save()
         else:
             book = Book.objects.create(
-                **steps["book"], primary_author=author, status=BookStatus.REVIEWED
+                **steps["book"],
+                **review_data,
+                primary_author=author,
+                status=BookStatus.REVIEWED,
             )
         book.tags.set(tags)
-        review_data = steps["review"]
-        dates_read = review_data.pop("dates_read")
-        did_not_finish = review_data.pop("did_not_finish")
-        Review.objects.create(**review_data, book=book, latest_date=dates_read[-1])
         for date in dates_read:
             Read.objects.create(
                 book=book, finished_on=date, did_not_finish=did_not_finish
@@ -247,8 +248,8 @@ class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):
     @cached_property
     def review_form(self):
         if self.request.method == "POST":
-            return ReviewEditForm(self.request.POST, instance=self.book.review)
-        return ReviewEditForm(instance=self.book.review)
+            return ReviewEditForm(self.request.POST, instance=self.book)
+        return ReviewEditForm(instance=self.book)
 
     def form_invalid(self, form):
         messages.error(self.request, form.errors)

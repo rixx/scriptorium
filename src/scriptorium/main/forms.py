@@ -11,7 +11,6 @@ from scriptorium.main.models import (
     Poem,
     Quote,
     Read,
-    Review,
     Series,
     Tag,
 )
@@ -63,7 +62,7 @@ class CatalogueForm(forms.Form):
 
     order_by = forms.ChoiceField(
         choices=(
-            ("review__rating", "Rating"),
+            ("rating", "Rating"),
             ("title", "Title"),
             ("primary_author__name", "Author"),
             ("publication_year", "Publication year"),
@@ -82,7 +81,7 @@ class CatalogueForm(forms.Form):
         data = self.cleaned_data
         qs = (
             Book.objects.all()
-            .select_related("primary_author", "review")
+            .select_related("primary_author")
             .prefetch_related("additional_authors", "tags")
         )
 
@@ -107,13 +106,11 @@ class CatalogueForm(forms.Form):
             )
             if data.get("fulltext"):
                 text_search = (
-                    text_search
-                    | Q(review__text__icontains=search)
-                    | Q(plot__icontains=search)
+                    text_search | Q(text__icontains=search) | Q(plot__icontains=search)
                 )
             qs = qs.filter(text_search)
         if order_by := data.get("order_by"):
-            if order_by in ("review__rating", "publication_year", "pages"):
+            if order_by in ("rating", "publication_year", "pages"):
                 order_by = f"-{order_by}"
             qs = qs.order_by(order_by)
         else:
@@ -206,8 +203,9 @@ class BookWizardForm(forms.ModelForm):
 
 
 class ReviewForm(forms.ModelForm):
-    """The review form still takes comma-separated read dates and a book-level
-    DNF flag; both are translated to Read rows rather than stored on Review."""
+    """Edits the review fields on a Book. The form still takes comma-separated
+    read dates and a book-level DNF flag; both are translated to Read rows
+    rather than stored on the Book."""
 
     dates_read = forms.CharField(
         help_text="Comma-separated dates, e.g. 2023-12-06,2024-01-31"
@@ -215,7 +213,7 @@ class ReviewForm(forms.ModelForm):
     did_not_finish = forms.BooleanField(required=False)
 
     class Meta:
-        model = Review
+        model = Book
         fields = ("rating", "text", "tldr")
 
     def __init__(self, *args, **kwargs):
@@ -300,19 +298,21 @@ class ReviewEditForm(ReviewForm):
     def save(self, *args, **kwargs):
         instance = super().save(*args, **kwargs)
         dates = self.cleaned_data["dates_read"]
-        reads = instance.book.reads
+        reads = instance.reads
         reads.exclude(finished_on__in=dates).delete()
         existing = set(reads.values_list("finished_on", flat=True))
         for date in dates:
             if date not in existing:
-                Read.objects.create(book=instance.book, finished_on=date)
+                Read.objects.create(book=instance, finished_on=date)
         reads.update(did_not_finish=self.cleaned_data["did_not_finish"])
-        # Read.save() only bumps latest_date upwards; removing the latest read
-        # has to be reflected manually (without a feed date bump).
-        instance.refresh_from_db(fields=["latest_date", "feed_date"])
-        if instance.latest_date != dates[-1]:
-            instance.latest_date = dates[-1]
-            instance.save(update_fields=["latest_date"])
+        # The read-derived properties were cached when the form was built.
+        for prop in (
+            "dates_read_list",
+            "latest_date",
+            "date_read_lookup",
+            "did_not_finish",
+        ):
+            instance.__dict__.pop(prop, None)
         return instance
 
 

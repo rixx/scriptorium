@@ -26,10 +26,10 @@
             <ul>
               {% for book in author.book_list %}
                 <li>
-                  {% if book.review.rating == 5 %}
+                  {% if book.rating == 5 %}
                     <span class="rating rating-inline">★</span>
                   {% endif %}
-                  {% if book.review.text %}
+                  {% if book.text %}
                     <a href="/{{ book.slug }}/">{{ book.title }}</a>
                   {% else %}
                     {{ book.title }}

@@ -9,7 +9,7 @@ import pygal
 from django.db.models import Avg, Sum
 from django.utils.timezone import now
 
-from .models import Book, BookStatus, Read, Review, Tag
+from .models import Book, BookStatus, Read, Tag
 
 
 class LineBar(pygal.Line, pygal.Bar):
@@ -248,100 +248,102 @@ def get_stats_grid():
     return stats
 
 
-def median_year(reviews):
+def median_year(books):
     return statistics.median(
-        reviews.filter(book__publication_year__isnull=False).values_list(
-            "book__publication_year", flat=True
+        books.filter(publication_year__isnull=False).values_list(
+            "publication_year", flat=True
         )
     )
 
 
-def median_length(reviews):
+def median_length(books):
     return statistics.median(
-        reviews.filter(book__pages__isnull=False).values_list("book__pages", flat=True)
+        books.filter(pages__isnull=False).values_list("pages", flat=True)
     )
 
 
-def average_rating(reviews):
-    return round(reviews.aggregate(Avg("rating"))["rating__avg"], 1)
+def average_rating(books):
+    return round(books.aggregate(Avg("rating"))["rating__avg"], 1)
 
 
-def count_pages(reviews):
-    return reviews.aggregate(Sum("book__pages"))["book__pages__sum"]
+def count_pages(books):
+    return books.aggregate(Sum("pages"))["pages__sum"]
 
 
-def get_tag_count(reviews, tag_name):
+def get_tag_count(books, tag_name):
     category, name_slug = tag_name.split(":", maxsplit=1)
-    return reviews.filter(
-        book__tags__in=[Tag.objects.get(category=category, name_slug=name_slug)]
+    return books.filter(
+        tags__in=[Tag.objects.get(category=category, name_slug=name_slug)]
     ).count()
 
 
 def get_stats_table():
-    reviews = Review.objects.all()
-    review_count = reviews.count()
+    books = Book.objects.all()
+    book_count = books.count()
     percent_female = round(
-        get_tag_count(reviews, "author:gender:female") * 100 / review_count, 1
+        get_tag_count(books, "author:gender:female") * 100 / book_count, 1
     )
     percent_male = round(
-        get_tag_count(reviews, "author:gender:male") * 100 / review_count, 1
+        get_tag_count(books, "author:gender:male") * 100 / book_count, 1
     )
 
     return [
-        ("Total books", len(reviews)),
-        ("Total pages", count_pages(reviews)),
+        ("Total books", len(books)),
+        ("Total pages", count_pages(books)),
         (
             "Books per week",
             round(
-                review_count
+                book_count
                 / ((dt.datetime.now(tz=dt.UTC).date() - dt.date(1998, 1, 1)).days / 7),
                 2,
             ),
         ),
-        ("Median publication year", median_year(reviews)),
-        ("Median length", median_length(reviews)),  # TODO median_length(plans)),
-        ("Average rating", average_rating(reviews)),
+        ("Median publication year", median_year(books)),
+        ("Median length", median_length(books)),  # TODO median_length(plans)),
+        ("Average rating", average_rating(books)),
         ("Percent female/male authors", f"{percent_female}% / {percent_male}%"),
     ]
 
 
 def get_year_stats(year, extra_years=True):
-    reviews = Review.objects.read_in_year(year).prefetch_related("book__reads")
+    books = Book.objects.read_in_year(year).prefetch_related("reads")
     unreviewed_reads = Read.objects.filter(
         finished_on__year=year, book__status=BookStatus.TO_REVIEW
     )
     stats = {}
-    total_books = len(reviews)
+    total_books = len(books)
     stats["total_books"] = total_books + unreviewed_reads.count()
-    stats["total_pages"] = count_pages(reviews)
+    stats["total_pages"] = count_pages(books)
     stats["average_pages"] = round(stats["total_pages"] / total_books, 1)
-    stats["average_rating"] = average_rating(reviews)
-    page_reviews = reviews.order_by("book__pages")
-    stats["shortest_book"] = page_reviews.first().book
-    stats["longest_book"] = page_reviews.last().book
-    word_reviews = sorted(reviews, key=lambda r: r.word_count)
-    stats["shortest_review"] = word_reviews[0].book
-    stats["longest_review"] = word_reviews[-1].book
+    stats["average_rating"] = average_rating(books)
+    page_books = books.order_by("pages")
+    stats["shortest_book"] = page_books.first()
+    stats["longest_book"] = page_books.last()
+    word_books = sorted(books, key=lambda book: book.word_count)
+    stats["shortest_review"] = word_books[0]
+    stats["longest_review"] = word_books[-1]
     stats["average_review"] = round(
-        sum(review.word_count for review in reviews) / total_books, 1
+        sum(book.word_count for book in books) / total_books, 1
     )
-    stats["median_year"] = median_year(reviews)
-    stats["median_length"] = median_length(reviews)
+    stats["median_year"] = median_year(books)
+    stats["median_length"] = median_length(books)
     stats["all_time"] = dict(get_stats_table())
     if extra_years:
         stats["previous"] = get_year_stats(year - 1, extra_years=False)
-        if Review.objects.read_in_year(year + 1).exists():
+        if Book.objects.read_in_year(year + 1).exists():
             stats["next"] = get_year_stats(year + 1, extra_years=False)
         else:
             stats["next"] = None
     stats["gender"] = {
-        "male": get_tag_count(reviews, "author:gender:male"),
-        "female": get_tag_count(reviews, "author:gender:female"),
+        "male": get_tag_count(books, "author:gender:male"),
+        "female": get_tag_count(books, "author:gender:female"),
     }
-    reviews = sorted(reviews, key=lambda x: x.date_read_lookup[year], reverse=True)
-    stats["first_book"] = reviews[-1].book
-    stats["last_book"] = reviews[0].book
-    month_counter = Counter([r.date_read_lookup[year].strftime("%B") for r in reviews])
+    books = sorted(books, key=lambda x: x.date_read_lookup[year], reverse=True)
+    stats["first_book"] = books[-1]
+    stats["last_book"] = books[0]
+    month_counter = Counter(
+        [book.date_read_lookup[year].strftime("%B") for book in books]
+    )
     stats["busiest_month"] = month_counter.most_common()[0]
     return stats
 
@@ -367,7 +369,7 @@ def get_nodes(graph=None):
     book_lookup = {
         book.slug: book
         for book in Book.objects.all()
-        .select_related("primary_author", "review")
+        .select_related("primary_author")
         .prefetch_related("additional_authors")
     }
     for node in graph.nodes:
@@ -382,7 +384,7 @@ def get_nodes(graph=None):
                 "cover": bool(book.cover),
                 "author": book.author_string,
                 "series": book.series.name if book.series else None,
-                "rating": book.review.rating,
+                "rating": book.rating,
                 "color": book.spine_color,
                 "connections": len(list(graph.neighbors(node))),
                 "search": [
@@ -391,7 +393,7 @@ def get_nodes(graph=None):
                     + book.primary_author.name.lower().split()
                     + (book.series.name.lower().split() if book.series else [])
                     + [f"tag:{tag}" for tag in book.tags.all() or []]
-                    + ([f"rating:{book.review.rating}"] if book.review.rating else [])
+                    + ([f"rating:{book.rating}"] if book.rating else [])
                     if term
                 ],
             }
@@ -446,10 +448,10 @@ def get_charts():
     rating_over_time = [
         (
             year,
-            Review.objects.read_in_year(year)
+            Book.objects.read_in_year(year)
             .filter(rating__isnull=False)
             .aggregate(Avg("rating"))["rating__avg"],
-            Review.objects.read_in_year(year).filter(rating__isnull=False).count(),
+            Book.objects.read_in_year(year).filter(rating__isnull=False).count(),
         )
         for year in reversed(get_all_years()[:-1])
     ]
@@ -460,15 +462,13 @@ def get_charts():
         (
             f"{pages}-{next_pages or '∞'}",
             round(
-                Review.objects.filter(
-                    rating__isnull=False,
-                    book__pages__gte=pages,
-                    book__pages__lt=next_pages,
+                Book.objects.filter(
+                    rating__isnull=False, pages__gte=pages, pages__lt=next_pages
                 ).aggregate(Avg("rating"))["rating__avg"],
                 1,
             ),
-            Review.objects.filter(
-                rating__isnull=False, book__pages__gte=pages, book__pages__lt=next_pages
+            Book.objects.filter(
+                rating__isnull=False, pages__gte=pages, pages__lt=next_pages
             ).count(),
         )
         for pages, next_pages in pairwise(page_buckets)
@@ -476,11 +476,11 @@ def get_charts():
     rating_book_pages.append(
         (
             f"{page_buckets[-1]}+",
-            Review.objects.filter(
-                rating__isnull=False, book__pages__gte=page_buckets[-1]
+            Book.objects.filter(
+                rating__isnull=False, pages__gte=page_buckets[-1]
             ).aggregate(Avg("rating"))["rating__avg"],
-            Review.objects.filter(
-                rating__isnull=False, book__pages__gte=page_buckets[-1]
+            Book.objects.filter(
+                rating__isnull=False, pages__gte=page_buckets[-1]
             ).count(),
         )
     )
@@ -504,15 +504,15 @@ def get_charts():
         (
             f"{year}-{(next_year if next_year == 1900 else str(next_year)[2:]) or '∞'}",
             round(
-                Review.objects.filter(
+                Book.objects.filter(
                     rating__isnull=False,
-                    book__publication_year__gte=year,
-                    book__publication_year__lt=next_year,
+                    publication_year__gte=year,
+                    publication_year__lt=next_year,
                 ).aggregate(Avg("rating"))["rating__avg"],
                 2,
             ),
-            Review.objects.filter(
-                book__publication_year__gte=year, book__publication_year__lt=next_year
+            Book.objects.filter(
+                publication_year__gte=year, publication_year__lt=next_year
             ).count(),
         )
         for year, next_year in pairwise(publication_year_buckets)
@@ -520,13 +520,11 @@ def get_charts():
     rating_book_publication_year.append(
         (
             f"{publication_year_buckets[-1]}+",
-            Review.objects.filter(
-                rating__isnull=False,
-                book__publication_year__gte=publication_year_buckets[-1],
+            Book.objects.filter(
+                rating__isnull=False, publication_year__gte=publication_year_buckets[-1]
             ).aggregate(Avg("rating"))["rating__avg"],
-            Review.objects.filter(
-                rating__isnull=False,
-                book__publication_year__gte=publication_year_buckets[-1],
+            Book.objects.filter(
+                rating__isnull=False, publication_year__gte=publication_year_buckets[-1]
             ).count(),
         )
     )

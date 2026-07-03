@@ -14,7 +14,6 @@ from scriptorium.main.models import (
     PoemStatus,
     Quote,
     Read,
-    Review,
     Tag,
 )
 from scriptorium.main.views.admin import ReviewCreate, show_edition_step
@@ -519,10 +518,10 @@ def test_review_create_done_creates_author_book_review_and_tags(rf):
     assert response.url == f"/{book.slug}/"
     assert list(book.tags.values_list("name_slug", flat=True)) == ["scifi"]
     assert list(book.tags.values_list("category", flat=True)) == ["genre"]
-    review = Review.objects.get(book=book)
-    assert review.rating == 5
-    assert review.text == "A brilliant book."
-    assert review.latest_date == dt.date(2024, 3, 14)
+    assert book.rating == 5
+    assert book.text == "A brilliant book."
+    assert book.tldr == "Go read it."
+    assert book.latest_date == dt.date(2024, 3, 14)
     assert [read.finished_on for read in book.reads.order_by("finished_on")] == [
         dt.date(2024, 2, 10),
         dt.date(2024, 3, 14),
@@ -619,7 +618,8 @@ def test_review_create_done_publishes_existing_queued_book(rf):
     assert queued.title == "The Word for World is Forest"
     assert queued.pages == 189
     assert Book.all_objects.filter(primary_author=author).count() == 1
-    assert queued.review.rating == 4
+    assert queued.rating == 4
+    assert queued.text == "Trees."
 
 
 # --- ReviewEdit -------------------------------------------------------------
@@ -712,8 +712,7 @@ def test_review_edit_post_valid_saves_both_forms_and_adds_new_tag(
     assert response.url == f"/{author.name_slug}/old-title/"
     book.refresh_from_db()
     assert book.title == "New Title"
-    book.review.refresh_from_db()
-    assert book.review.tldr == "Refreshed."
+    assert book.tldr == "Refreshed."
     assert set(book.tags.values_list("name_slug", flat=True)) == {"novel", "hope"}
     assert Tag.objects.filter(name_slug="hope", category="themes").count() == 1
 
@@ -739,8 +738,8 @@ def test_review_edit_post_valid_without_new_tags_skips_tag_creation(
     assert response.status_code == 302
     assert response.url == f"/{author.name_slug}/no-tags-added/"
     assert Tag.objects.count() == tag_count_before
-    book.review.refresh_from_db()
-    assert book.review.text == "Touched body."
+    book.refresh_from_db()
+    assert book.text == "Touched body."
 
 
 def test_review_edit_post_invalid_book_form_re_renders_with_errors(

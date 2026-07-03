@@ -91,7 +91,7 @@ class BookManager(models.Manager):
         return (
             super()
             .get_queryset()
-            .select_related("review", "primary_author", "series")
+            .select_related("primary_author", "series")
             .prefetch_related("additional_authors")
         ).filter(status=BookStatus.REVIEWED)
 
@@ -100,6 +100,16 @@ class BookManager(models.Manager):
         return self.get_queryset().get(
             primary_author__name_slug=author, title_slug=book
         )
+
+    def with_dates_read(self):
+        # distinct, so the count stays correct when other annotations join in
+        return self.get_queryset().annotate(
+            dates_read_count=models.Count("reads", distinct=True)
+        )
+
+    def read_in_year(self, year):
+        reads = Read.objects.filter(book=models.OuterRef("pk"), finished_on__year=year)
+        return self.get_queryset().filter(models.Exists(reads))
 
 
 class AllBooksManager(models.Manager):
@@ -151,6 +161,15 @@ class Book(models.Model):
     tags = models.ManyToManyField(Tag)
     plot = models.TextField(null=True, blank=True)
 
+    # Review data: only to-read/to-review books legitimately have no text.
+    text = models.TextField(null=True)
+    tldr = models.TextField(null=True, blank=True)
+    rating = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Date the review (last) entered the feed: set on first publication,
+    # bumped by rereads in Read.save().
+    feed_date = models.DateField(null=True)
+    social = models.JSONField(null=True)
+
     objects = BookManager()
     all_objects = AllBooksManager()
 
@@ -161,6 +180,18 @@ class Book(models.Model):
         return f"{self.title} by {self.author_string}"
 
     def save(self, *args, **kwargs):
+        if self.status == BookStatus.REVIEWED:
+            previous_status = (
+                Book.all_objects.filter(pk=self.pk)
+                .values_list("status", flat=True)
+                .first()
+            )
+            if previous_status != BookStatus.REVIEWED:
+                # First publication puts the review in the feed; rereads
+                # bump the feed date in Read.save().
+                self.feed_date = now().date()
+                if (update_fields := kwargs.get("update_fields")) is not None:
+                    kwargs["update_fields"] = {"feed_date", *update_fields}
         result = super().save(*args, **kwargs)
         if not self.cover and self.cover_source:
             self.download_cover()
@@ -206,6 +237,41 @@ class Book(models.Model):
     @cached_property
     def cover_thumbnail(self):
         return Thumbnail.objects.filter(book=self, size="thumbnail").first()
+
+    @cached_property
+    def dates_read_list(self):
+        return sorted(read.finished_on for read in self.reads.all())
+
+    @cached_property
+    def latest_date(self):
+        return self.dates_read_list[-1] if self.dates_read_list else None
+
+    @cached_property
+    def date_read_lookup(self):
+        return {date.year: date for date in self.dates_read_list}
+
+    @cached_property
+    def did_not_finish(self):
+        reads = self.reads.all()
+        return bool(reads) and all(read.did_not_finish for read in reads)
+
+    @cached_property
+    def word_count(self):
+        return len(self.text.split()) if self.text else 0
+
+    @cached_property
+    def short_first_paragraph(self):
+        text = self.text.strip().split("\n\n")[0] if self.text else ""
+        return text[:240]
+
+    @cached_property
+    def feed_uuid(self):
+        m = hashlib.md5()  # noqa: S324
+        feed_date = self.feed_date or self.latest_date
+        m.update(
+            f"{self.title}:reviews:{feed_date.isoformat()}:{self.goodreads_id or ''}".encode()
+        )
+        return str(uuid.UUID(m.hexdigest()))
 
     def download_cover(self):
         if not self.cover_source:
@@ -297,90 +363,6 @@ class Quote(models.Model):
         return f"“{short_quote}”"
 
 
-class ReviewManager(models.Manager):
-    def get_queryset(self):
-        return self._add_prefetches(super().get_queryset()).filter(
-            book__status=BookStatus.REVIEWED
-        )
-
-    def with_drafts(self):
-        return self._add_prefetches(super().get_queryset())
-
-    def _add_prefetches(self, queryset):
-        return queryset.select_related("book", "book__primary_author").prefetch_related(
-            "book__additional_authors"
-        )
-
-    def with_dates_read(self):
-        # distinct, so the count stays correct when other annotations join in
-        return self.get_queryset().annotate(
-            dates_read_count=models.Count("book__reads", distinct=True)
-        )
-
-    def read_in_year(self, year):
-        reads = Read.objects.filter(
-            book=models.OuterRef("book_id"), finished_on__year=year
-        )
-        return self.get_queryset().filter(models.Exists(reads))
-
-
-class Review(models.Model):
-    book = models.OneToOneField(Book, on_delete=models.PROTECT, related_name="review")
-
-    text = models.TextField()
-    tldr = models.TextField(null=True, blank=True)
-
-    rating = models.IntegerField(null=True, blank=True)
-
-    latest_date = models.DateField()
-    feed_date = models.DateField(null=True)
-
-    social = models.JSONField(null=True)
-
-    objects = ReviewManager()
-
-    def __str__(self):
-        return f"Review ({self.rating}/5) for {self.book}"
-
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            # new reviews always get the creation date as feed date;
-            # rereads bump it in Read.save()
-            self.feed_date = now().date()
-        return super().save(*args, **kwargs)
-
-    @cached_property
-    def dates_read_list(self):
-        return sorted(read.finished_on for read in self.book.reads.all())
-
-    @cached_property
-    def date_read_lookup(self):
-        return {date.year: date for date in self.dates_read_list}
-
-    @cached_property
-    def did_not_finish(self):
-        reads = self.book.reads.all()
-        return bool(reads) and all(read.did_not_finish for read in reads)
-
-    @cached_property
-    def word_count(self):
-        return len(self.text.split())
-
-    @cached_property
-    def short_first_paragraph(self):
-        text = self.text.strip().split("\n\n")[0] if self.text else ""
-        return text[:240]
-
-    @cached_property
-    def feed_uuid(self):
-        m = hashlib.md5()  # noqa: S324
-        feed_date = self.feed_date or self.latest_date
-        m.update(
-            f"{self.book.title}:reviews:{feed_date.isoformat()}:{self.book.goodreads_id or ''}".encode()
-        )
-        return str(uuid.UUID(m.hexdigest()))
-
-
 class Read(models.Model):
     """One complete (or abandoned) read-through of a book."""
 
@@ -410,12 +392,21 @@ class Read(models.Model):
         is_new = self.pk is None
         result = super().save(*args, **kwargs)
         if is_new:
-            # A new latest read is a reread the feed should surface; backfilling
-            # older reads does not bump the feed date. Queryset update to avoid
-            # Review.save() side effects and keep bulk imports fast.
-            Review.objects.with_drafts().filter(
-                book_id=self.book_id, latest_date__lt=self.finished_on
-            ).update(latest_date=self.finished_on, feed_date=now().date())
+            # A new latest read on a published book is a reread the feed should
+            # surface; backfilling older reads does not bump the feed date.
+            # Queryset update to avoid Book.save() side effects (cover download)
+            # and keep bulk imports fast.
+            is_latest = (
+                not Read.objects.filter(
+                    book_id=self.book_id, finished_on__gte=self.finished_on
+                )
+                .exclude(pk=self.pk)
+                .exists()
+            )
+            if is_latest:
+                Book.all_objects.filter(
+                    pk=self.book_id, status=BookStatus.REVIEWED
+                ).update(feed_date=now().date())
         return result
 
 
@@ -426,7 +417,7 @@ class Spine:
         self.width = self.get_spine_width()
         self.color = self.book.spine_color
         self.cover = self.book.cover
-        self.starred = self.book.review.rating == 5
+        self.starred = self.book.rating == 5
 
     def random_height(self):
         return random.randint(16, 25)  # noqa: S311

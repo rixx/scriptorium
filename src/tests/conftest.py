@@ -2,13 +2,14 @@ import datetime as dt
 
 import pytest
 
+from scriptorium.main.models import BookStatus
 from tests.factories import (
     AuthorFactory,
     BookFactory,
     PageFactory,
     PoemFactory,
     QuoteFactory,
-    ReviewFactory,
+    ReadFactory,
     SeriesFactory,
     TagFactory,
     UserFactory,
@@ -49,20 +50,16 @@ def book(author):
 
 
 @pytest.fixture
-def review(book):
-    return ReviewFactory(
-        book=book,
-        rating=5,
-        text="A brilliant exploration of competing utopias.",
-        latest_date=dt.date(2024, 3, 14),
-    )
-
-
-@pytest.fixture
-def reviewed_book(review):
-    """A Book with a published Review. Accessing this fixture ensures the
-    Book passes the default (reviewed-only) BookManager filter."""
-    return review.book
+def reviewed_book(book):
+    """A published Book with review text, rating, and a Read. Accessing this
+    fixture ensures the Book passes the default (reviewed-only) BookManager
+    filter."""
+    book.status = BookStatus.REVIEWED
+    book.rating = 5
+    book.text = "A brilliant exploration of competing utopias."
+    book.save()
+    ReadFactory(book=book, finished_on=dt.date(2024, 3, 14))
+    return book
 
 
 @pytest.fixture

@@ -15,11 +15,10 @@ from scriptorium.main.forms import (
     ReviewEditForm,
     ReviewWizardForm,
 )
-from scriptorium.main.models import Book, BookStatus, Read, Review, Series
+from scriptorium.main.models import Book, BookStatus, Read, Series
 from tests.factories import (
     AuthorFactory,
     BookFactory,
-    ReviewFactory,
     SeriesFactory,
     TagFactory,
     make_reviewed_book,
@@ -112,14 +111,14 @@ def test_catalogue_form_non_fulltext_search_ignores_review_text():
     # The book does not match through title/author/etc.
     assert list(form.get_queryset()) == []
     # Sanity check that the review really did contain the keyword.
-    assert "magic keyword" in reviewed.review.text
+    assert "magic keyword" in reviewed.text
 
 
 def test_catalogue_form_order_by_rating_is_descending():
     low = make_reviewed_book(title="Low", rating=2)
     high = make_reviewed_book(title="High", rating=5)
 
-    form = CatalogueForm(data={"order_by": "review__rating"})
+    form = CatalogueForm(data={"order_by": "rating"})
 
     assert form.is_valid()
     assert list(form.get_queryset()) == [high, low]
@@ -464,77 +463,63 @@ def test_review_form_without_instance_has_no_dates_initial():
 
 
 def test_review_edit_form_initial_from_reads():
-    review = ReviewFactory(
-        latest_date=dt.date(2024, 5, 1),
-        reads=[dt.date(2024, 5, 1), dt.date(2020, 1, 2)],
-    )
-    review.book.reads.update(did_not_finish=True)
+    book = make_reviewed_book(reads=[dt.date(2024, 5, 1), dt.date(2020, 1, 2)])
+    book.reads.update(did_not_finish=True)
 
-    form = ReviewEditForm(instance=review)
+    form = ReviewEditForm(instance=book)
 
     assert form.fields["dates_read"].initial == "2020-01-02,2024-05-01"
     assert form.fields["did_not_finish"].initial is True
 
 
 def test_review_edit_form_save_syncs_reads_and_bumps_feed_date():
-    review = ReviewFactory(
-        latest_date=dt.date(2024, 1, 1),
-        reads=[dt.date(2020, 1, 1), dt.date(2024, 1, 1)],
-    )
-    Review.objects.filter(pk=review.pk).update(feed_date=dt.date(2024, 1, 1))
-    review.refresh_from_db()
-    kept = review.book.reads.get(finished_on=dt.date(2024, 1, 1))
+    book = make_reviewed_book(reads=[dt.date(2020, 1, 1), dt.date(2024, 1, 1)])
+    Book.all_objects.filter(pk=book.pk).update(feed_date=dt.date(2024, 1, 1))
+    book.refresh_from_db()
+    kept = book.reads.get(finished_on=dt.date(2024, 1, 1))
 
-    form = ReviewEditForm(data=_review_post("2024-01-01,2025-06-01"), instance=review)
+    form = ReviewEditForm(data=_review_post("2024-01-01,2025-06-01"), instance=book)
     assert form.is_valid(), form.errors
     form.save()
 
-    reads = review.book.reads.order_by("finished_on")
+    reads = book.reads.order_by("finished_on")
     assert [read.finished_on for read in reads] == [
         dt.date(2024, 1, 1),
         dt.date(2025, 6, 1),
     ]
     # the read kept from before is the same row, not a recreated one
     assert reads.first().pk == kept.pk
-    review.refresh_from_db()
-    assert review.latest_date == dt.date(2025, 6, 1)
+    book.refresh_from_db()
+    assert book.latest_date == dt.date(2025, 6, 1)
     # a new latest read counts as a reread and bumps the feed
-    assert review.feed_date == dt.datetime.now(tz=dt.UTC).date()
+    assert book.feed_date == dt.datetime.now(tz=dt.UTC).date()
 
 
 def test_review_edit_form_save_removing_latest_read_keeps_feed_date():
-    review = ReviewFactory(
-        latest_date=dt.date(2024, 6, 15),
-        reads=[dt.date(2020, 1, 1), dt.date(2024, 6, 15)],
-    )
-    Review.objects.filter(pk=review.pk).update(feed_date=dt.date(2024, 6, 15))
-    review.refresh_from_db()
+    book = make_reviewed_book(reads=[dt.date(2020, 1, 1), dt.date(2024, 6, 15)])
+    Book.all_objects.filter(pk=book.pk).update(feed_date=dt.date(2024, 6, 15))
+    book.refresh_from_db()
 
-    form = ReviewEditForm(data=_review_post("2020-01-01"), instance=review)
+    form = ReviewEditForm(data=_review_post("2020-01-01"), instance=book)
     assert form.is_valid(), form.errors
     form.save()
 
-    review.refresh_from_db()
-    assert [read.finished_on for read in review.book.reads.all()] == [
-        dt.date(2020, 1, 1)
-    ]
-    assert review.latest_date == dt.date(2020, 1, 1)
-    assert review.feed_date == dt.date(2024, 6, 15)
+    book.refresh_from_db()
+    assert [read.finished_on for read in book.reads.all()] == [dt.date(2020, 1, 1)]
+    assert book.latest_date == dt.date(2020, 1, 1)
+    assert book.feed_date == dt.date(2024, 6, 15)
 
 
 def test_review_edit_form_save_applies_dnf_to_all_reads():
-    review = ReviewFactory(
-        latest_date=dt.date(2024, 1, 1),
-        reads=[dt.date(2020, 1, 1), dt.date(2024, 1, 1)],
-    )
+    book = make_reviewed_book(reads=[dt.date(2020, 1, 1), dt.date(2024, 1, 1)])
 
     form = ReviewEditForm(
-        data=_review_post("2020-01-01,2024-01-01", did_not_finish="on"), instance=review
+        data=_review_post("2020-01-01,2024-01-01", did_not_finish="on"), instance=book
     )
     assert form.is_valid(), form.errors
     form.save()
 
-    assert [read.did_not_finish for read in review.book.reads.all()] == [True, True]
+    assert [read.did_not_finish for read in book.reads.all()] == [True, True]
 
 
 # --- BookToReviewForm --------------------------------------------------------

@@ -76,7 +76,7 @@
                 <div class="stats-block">
                     <div class="stats-block-content">
                         <div class="stats-block-title">First book</div>
-                        <div class="stats-block-big">{{ stats.first_book.review.date_read_lookup[year].strftime('%d.%m.') }}</div>
+                        <div class="stats-block-big">{{ stats.first_book.date_read_lookup[year].strftime('%d.%m.') }}</div>
                     </div>
                     <div class="stats-block-cover">
                         {% with book=stats.first_book %}
@@ -98,7 +98,7 @@
                     </div>
                     <div class="stats-block-content">
                         <div class="stats-block-title">Last book</div>
-                        <div class="stats-block-big">{{ stats.last_book.review.date_read_lookup[year].strftime('%d.%m.') }}</div>
+                        <div class="stats-block-big">{{ stats.last_book.date_read_lookup[year].strftime('%d.%m.') }}</div>
                     </div>
                 </div>
             </div>
@@ -112,7 +112,7 @@
                 <div class="stats-block">
                     <div class="stats-block-content">
                         <div class="stats-block-title">Shortest review</div>
-                        <div class="stats-block-big">{{ stats.shortest_review.review.word_count }}</div>
+                        <div class="stats-block-big">{{ stats.shortest_review.word_count }}</div>
                         <div class="stats-block-small">words</div>
                     </div>
                     <div class="stats-block-cover">
@@ -135,7 +135,7 @@
                     </div>
                     <div class="stats-block-content">
                         <div class="stats-block-title">Longest review</div>
-                        <div class="stats-block-big">{{ stats.longest_review.review.word_count }}</div>
+                        <div class="stats-block-big">{{ stats.longest_review.word_count }}</div>
                         <div class="stats-block-small">words</div>
                     </div>
                 </div>
@@ -150,13 +150,12 @@
     </div>
 
     <div id="year-stats-covers">
-        {% for review in reviews[::-1] %}
-            <a class="book-cover{% if review.rating == 5 %} big-grid{% endif %}" href="/{{ review.book.slug }}/">
+        {% for book in books[::-1] %}
+            <a class="book-cover{% if book.rating == 5 %} big-grid{% endif %}" href="/{{ book.slug }}/">
                 {% set spine_border = True %}
-                {% set book = review.book %}
-                {% if review.rating == 5 %}{% set full_size = True %} {% else %}{% set full_size = False %}{% endif %}
+                {% if book.rating == 5 %}{% set full_size = True %} {% else %}{% set full_size = False %}{% endif %}
                 {% include "_includes/book_cover.html" %}
-                {% if review.rating == 5 %}
+                {% if book.rating == 5 %}
                     <div class="rating"> ★ ★ ★ ★ ★</div>
                 {% endif %}
             </a>

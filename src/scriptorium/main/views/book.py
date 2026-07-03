@@ -2,7 +2,7 @@ from collections import defaultdict
 from itertools import groupby
 
 import networkx as nx
-from django.db.models import Avg, Count, Sum
+from django.db.models import Avg, Count, Max, Sum
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.template import loader
@@ -12,7 +12,7 @@ from django.views.generic import ListView, TemplateView
 from django_context_decorator import context
 
 from scriptorium.main.forms import CatalogueForm
-from scriptorium.main.models import Author, Book, BookStatus, Review, Tag
+from scriptorium.main.models import Book, BookStatus, Tag
 from scriptorium.main.stats import (
     get_all_years,
     get_charts,
@@ -35,15 +35,19 @@ class IndexView(ActiveTemplateMixin, TemplateView):
 
     @context
     def books(self):
-        return Book.objects.all().order_by("-review__latest_date")[:5]
+        return Book.objects.annotate(last_read=Max("reads__finished_on")).order_by(
+            "-last_read"
+        )[:5]
 
 
 def feed_view(request):
     template = loader.get_template("feed.atom")
     context = {
-        "reviews": Review.objects.all()
-        .annotate(relevant_date=Coalesce("feed_date", "latest_date"))
-        .order_by("-relevant_date")[:20]
+        "books": Book.objects.annotate(
+            relevant_date=Coalesce("feed_date", Max("reads__finished_on"))
+        )
+        .order_by("-relevant_date")
+        .prefetch_related("reads")[:20]
     }
     headers = {"Content-Type": "application/atom+xml"}
     return HttpResponse(template.render(context, request), headers=headers)
@@ -76,17 +80,12 @@ class YearView(YearNavMixin, ActiveTemplateMixin, TemplateView):
 
     @context
     @cached_property
-    def reviews(self):
+    def books(self):
         return sorted(
-            Review.objects.read_in_year(self.year).prefetch_related("book__reads"),
-            key=lambda review: review.date_read_lookup[self.year],
+            Book.objects.read_in_year(self.year).prefetch_related("reads"),
+            key=lambda book: book.date_read_lookup[self.year],
             reverse=True,
         )
-
-    @context
-    @cached_property
-    def books(self):
-        return [review.book for review in self.reviews]
 
 
 class YearInBooksView(YearView):
@@ -121,20 +120,10 @@ class ReviewByAuthor(YearNavMixin, ActiveTemplateMixin, TemplateView):
     @context
     @cached_property
     def authors(self):
-        authors = (
-            Author.objects.all()
-            .prefetch_related(
-                "books",
-                "books__review",
-                "books__additional_authors",
-                "books__primary_author",
-            )
-            .order_by("name")
-        )
         authors = {}
         for book in (
             Book.objects.all()
-            .select_related("primary_author", "review")
+            .select_related("primary_author")
             .prefetch_related("additional_authors")
         ):
             for author in book.authors:
@@ -264,9 +253,7 @@ class GraphView(ActiveTemplateMixin, TemplateView):
         graph = get_graph()
         context["node_count"] = graph.number_of_nodes()
         context["edge_count"] = graph.number_of_edges()
-        context["missing_nodes"] = (
-            Review.objects.all().count() - graph.number_of_nodes()
-        )
+        context["missing_nodes"] = Book.objects.all().count() - graph.number_of_nodes()
         context["parts"] = nx.number_connected_components(graph)
         context["is_connected"] = nx.is_connected(graph)
         return context
@@ -333,11 +320,11 @@ class QueueView(ActiveTemplateMixin, TemplateView):
         context["total_pages"] = self.queue.aggregate(page_count=Sum("pages"))[
             "page_count"
         ]
-        past_year_reviews = Review.objects.read_in_year(now().year - 1)
-        context["past_year_books"] = past_year_reviews.count()
-        context["past_year_pages"] = past_year_reviews.aggregate(
-            page_count=Sum("book__pages")
-        )["page_count"]
+        past_year_books = Book.objects.read_in_year(now().year - 1)
+        context["past_year_books"] = past_year_books.count()
+        context["past_year_pages"] = past_year_books.aggregate(page_count=Sum("pages"))[
+            "page_count"
+        ]
         context["factor_books"] = round(
             context["total_books"] / context["past_year_books"], 1
         )
@@ -365,7 +352,7 @@ class TagView(ActiveTemplateMixin, TemplateView):
     def tags(self):
         tags = (
             Tag.objects.all()
-            .annotate(book_count=Count("book"), rating=Avg("book__review__rating"))
+            .annotate(book_count=Count("book"), rating=Avg("book__rating"))
             .filter(book_count__gt=0)
             .order_by("-book_count")
         )
@@ -388,13 +375,13 @@ class ListDetail(ActiveTemplateMixin, TemplateView):
     @context
     @cached_property
     def tag_obj(self):
-        return Tag.objects.prefetch_related("book_set", "book_set__review").get(
+        return Tag.objects.prefetch_related("book_set").get(
             name_slug=self.kwargs["tag"]
         )
 
     @context
     def books(self):
-        return self.tag_obj.book_set.all().order_by("-review__rating")
+        return self.tag_obj.book_set.all().order_by("-rating")
 
 
 class AuthorView(AuthorMixin, ActiveTemplateMixin, TemplateView):

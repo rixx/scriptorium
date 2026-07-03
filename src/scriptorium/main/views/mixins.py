@@ -11,18 +11,25 @@ class ActiveTemplateMixin:
 
 
 class ReviewMixin:
+    def get_context_data(self, **kwargs):
+        result = super().get_context_data(**kwargs)
+        # The URL kwarg "book" (just the title slug) shadows the @context
+        # property below, so set the Book object explicitly.
+        result["book"] = self.book
+        return result
+
     @context
     @cached_property
     def book(self):
         return (
-            Book.objects.select_related("primary_author", "review")
+            Book.objects.select_related("primary_author")
             .prefetch_related(
                 "tags",
                 "additional_authors",
+                "reads",
                 "related_books__destination",
                 "related_books__destination__primary_author",
                 "related_books__destination__additional_authors",
-                "related_books__destination__review",
                 "quotes",
             )
             .get(
@@ -30,11 +37,6 @@ class ReviewMixin:
                 title_slug=self.kwargs["book"],
             )
         )
-
-    @context
-    @cached_property
-    def review(self):
-        return self.book.review
 
     @context
     @cached_property
@@ -57,9 +59,9 @@ class AuthorMixin:
     def books(self):
         return (
             self.author_obj.books.all()
-            .select_related("review", "primary_author")
+            .select_related("primary_author")
             .prefetch_related("additional_authors")
-            .order_by("-review__rating")
+            .order_by("-rating")
         )
 
 

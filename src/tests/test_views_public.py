@@ -196,7 +196,7 @@ def test_review_view_shows_book_and_review_text(client, reviewed_book):
     assert response.status_code == 200
     body = response.content.decode()
     assert reviewed_book.title in body
-    assert reviewed_book.review.text in body
+    assert reviewed_book.text in body
 
 
 def test_review_cover_view_without_cover_returns_404(client, reviewed_book):
