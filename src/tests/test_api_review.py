@@ -42,8 +42,7 @@ def _url(book):
     return f"/api/books/{book.slug}/review/"
 
 
-def test_review_submit_requires_token(client, settings):
-    settings.API_KEY = "test-api-key"
+def test_review_submit_requires_token(client, api_token):
     book = _queued_book()
 
     response = client.post(_url(book), _payload(), content_type="application/json")

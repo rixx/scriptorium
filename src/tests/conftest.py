@@ -5,6 +5,7 @@ from django.test import Client
 
 from scriptorium.main.models import BookStatus
 from tests.factories import (
+    ApiTokenFactory,
     AuthorFactory,
     BookFactory,
     PageFactory,
@@ -100,11 +101,15 @@ def admin_logged_in_client(client, user):
 
 
 @pytest.fixture
-def api_client(settings):
-    """A test client that sends the configured API bearer token with every
-    request."""
-    settings.API_KEY = "test-api-key"
-    return Client(headers={"Authorization": "Bearer test-api-key"})
+def api_token(user):
+    return ApiTokenFactory(user=user, name="Tests")
+
+
+@pytest.fixture
+def api_client(api_token):
+    """A test client that sends a valid database-backed API bearer token
+    with every request."""
+    return Client(headers={"Authorization": f"Bearer {api_token.token}"})
 
 
 @pytest.fixture

@@ -5,8 +5,7 @@ from tests.factories import TagFactory, make_reviewed_book
 pytestmark = pytest.mark.django_db
 
 
-def test_tags_list_requires_token(client, settings):
-    settings.API_KEY = "test-api-key"
+def test_tags_list_requires_token(client, api_token):
     TagFactory(name="Hidden")
 
     response = client.get("/api/tags/")

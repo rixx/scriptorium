@@ -6,6 +6,7 @@ from django.contrib.messages.storage.fallback import FallbackStorage
 
 from scriptorium.main import metadata
 from scriptorium.main.models import (
+    ApiToken,
     Author,
     Book,
     BookStatus,
@@ -18,6 +19,7 @@ from scriptorium.main.models import (
 )
 from scriptorium.main.views.admin import ReviewCreate, show_edition_step
 from tests.factories import (
+    ApiTokenFactory,
     AuthorFactory,
     BookFactory,
     PageFactory,
@@ -83,6 +85,7 @@ def test_logout_view_redirects_home_and_clears_session(admin_logged_in_client):
         "/b/quotes/new/",
         "/b/poems/",
         "/b/poems/new/",
+        "/b/tokens/",
         "/b/toreview/",
     ],
 )
@@ -1308,3 +1311,89 @@ def test_to_review_create_get_renders_form(admin_logged_in_client):
     assert 'name="title"' in body
     assert 'name="author"' in body
     assert 'name="date"' in body
+
+
+# --- API tokens ---------------------------------------------------------------
+
+
+def test_token_list_shows_tokens_with_values(admin_logged_in_client):
+    token = ApiTokenFactory(name="KOReader")
+    used = ApiTokenFactory(name="CLI")
+    ApiToken.objects.filter(pk=used.pk).update(
+        last_used=dt.datetime(2024, 5, 1, 12, 0, tzinfo=dt.UTC)
+    )
+
+    response = admin_logged_in_client.get("/b/tokens/")
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "KOReader" in body
+    assert token.token in body
+    assert "CLI" in body
+    assert "2024-05-01" in body
+    assert "never" in body  # the unused token has no last_used
+
+
+def test_token_create_generates_server_side_token_and_displays_it(
+    admin_logged_in_client, user
+):
+    response = admin_logged_in_client.post(
+        "/b/tokens/", {"name": "CLI", "token": "attacker-chosen"}
+    )
+
+    token = ApiToken.objects.get()
+    assert response.status_code == 302
+    assert response.url == f"/b/tokens/?created={token.pk}"
+    assert token.user == user
+    assert token.name == "CLI"
+    # The token value is generated server-side, never taken from the request.
+    assert token.token != "attacker-chosen"  # noqa: S105
+    assert len(token.token) > 30
+
+    followup = admin_logged_in_client.get(response.url)
+    assert token.token in followup.content.decode()
+
+
+def test_token_create_generates_unique_tokens(admin_logged_in_client):
+    admin_logged_in_client.post("/b/tokens/", {"name": "One"})
+    admin_logged_in_client.post("/b/tokens/", {"name": "Two"})
+
+    tokens = ApiToken.objects.values_list("token", flat=True)
+    assert len(tokens) == 2
+    assert len(set(tokens)) == 2
+
+
+def test_token_list_ignores_bogus_created_parameter(admin_logged_in_client):
+    response = admin_logged_in_client.get("/b/tokens/?created=bogus")
+
+    assert response.status_code == 200
+    assert "created:" not in response.content.decode()
+
+
+def test_token_revoke_deletes_token(admin_logged_in_client):
+    token = ApiTokenFactory(name="Old")
+
+    response = admin_logged_in_client.post(f"/b/tokens/{token.pk}/delete")
+
+    assert response.status_code == 302
+    assert response.url == "/b/tokens/"
+    assert not ApiToken.objects.exists()
+
+
+def test_token_revoke_requires_post(admin_logged_in_client):
+    token = ApiTokenFactory(name="Old")
+
+    response = admin_logged_in_client.get(f"/b/tokens/{token.pk}/delete")
+
+    assert response.status_code == 405
+    assert ApiToken.objects.exists()
+
+
+def test_token_revoke_requires_login(client):
+    token = ApiTokenFactory(name="Old")
+
+    response = client.post(f"/b/tokens/{token.pk}/delete")
+
+    assert response.status_code == 302
+    assert "login" in response.url
+    assert ApiToken.objects.exists()

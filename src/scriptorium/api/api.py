@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from ninja import NinjaAPI
 
-from scriptorium.api.auth import ApiKeyAuth
+from scriptorium.api.auth import ApiTokenAuth
 from scriptorium.api.routes.authors import router as authors_router
 from scriptorium.api.routes.books import router as books_router
 from scriptorium.api.routes.openlibrary import router as openlibrary_router
@@ -11,7 +11,7 @@ from scriptorium.api.routes.reads import router as reads_router
 from scriptorium.api.routes.series import router as series_router
 from scriptorium.api.routes.tags import router as tags_router
 
-api = NinjaAPI(title="Scriptorium API", auth=ApiKeyAuth())
+api = NinjaAPI(title="Scriptorium API", auth=ApiTokenAuth())
 api.add_router("/books", books_router)
 api.add_router("/queue", queue_router)
 api.add_router("/reads", reads_router)

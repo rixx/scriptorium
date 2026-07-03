@@ -1,6 +1,7 @@
 import hashlib
 import math
 import random
+import secrets
 import textwrap
 import uuid
 from io import BytesIO
@@ -8,6 +9,7 @@ from itertools import groupby
 from pathlib import Path
 
 import requests
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import models
 from django.utils.functional import cached_property
@@ -651,3 +653,25 @@ class Poem(models.Model):
     @cached_property
     def line_count(self):
         return len([line for line in self.text.split("\n") if line.strip()])
+
+
+class ApiToken(models.Model):
+    """A bearer token for the REST API, managed at /b/tokens/. The token
+    value is always generated server-side (on first save) and shown in the
+    management UI so it can be re-entered in clients like KOReader."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="api_tokens"
+    )
+    name = models.CharField(max_length=100)
+    token = models.CharField(max_length=64, unique=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    last_used = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = secrets.token_urlsafe(32)
+        super().save(*args, **kwargs)

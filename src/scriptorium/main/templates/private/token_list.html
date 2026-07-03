@@ -1,0 +1,47 @@
+{% extends "private/base.html" %}
+
+{% block content %}
+
+  <h2>API tokens</h2>
+
+  {% if created_token %}
+    <p>
+      Token <strong>{{ created_token.name }}</strong> created:
+      <code>{{ created_token.token }}</code>
+    </p>
+  {% endif %}
+
+  <form method="POST">
+    {{ csrf_input }}
+    {{ form.as_p() }}
+    <button type="submit">Create token</button>
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Token</th>
+        <th>Created</th>
+        <th>Last used</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for token in tokens %}
+        <tr>
+          <td>{{ token.name }}</td>
+          <td><code>{{ token.token }}</code></td>
+          <td>{{ token.created.date() }}</td>
+          <td>{% if token.last_used %}{{ token.last_used.date() }}{% else %}never{% endif %}</td>
+          <td>
+            <form method="post" action="/b/tokens/{{ token.id }}/delete" style="display: inline">
+              {{ csrf_input }}
+              <button type="submit">Revoke</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

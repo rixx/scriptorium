@@ -24,8 +24,7 @@ def make_stale_reread(latest_date, review_updated, **book_kwargs):
     return book
 
 
-def test_queue_requires_token(client, settings):
-    settings.API_KEY = "test-api-key"
+def test_queue_requires_token(client, api_token):
     BookFactory(title="Waiting", status=BookStatus.TO_REVIEW)
 
     response = client.get("/api/queue/")
@@ -150,8 +149,7 @@ def _queue_payload(**overrides):
     return payload
 
 
-def test_queue_add_requires_token(client, settings):
-    settings.API_KEY = "test-api-key"
+def test_queue_add_requires_token(client, api_token):
 
     response = client.post(
         "/api/queue/", _queue_payload(), content_type="application/json"
@@ -396,8 +394,7 @@ def test_queue_dismiss_rejects_unreviewed_books(api_client):
     assert [item["id"] for item in api_client.get("/api/queue/").json()] == [book.pk]
 
 
-def test_queue_dismiss_requires_token(client, settings):
-    settings.API_KEY = "test-api-key"
+def test_queue_dismiss_requires_token(client, api_token):
     book = make_stale_reread(
         title="Old Favourite",
         latest_date=dt.date(2024, 2, 2),
@@ -423,7 +420,10 @@ def test_queue_list_query_count_is_constant(
         book.additional_authors.add(AuthorFactory())
         ReadFactory(book=book, finished_on=dt.date(2024, 5, 1 + index))
 
-    with django_assert_num_queries(3):
+    # Warm the auth throttle so only the token lookup itself is counted.
+    api_client.get("/api/books/")
+
+    with django_assert_num_queries(4):
         response = api_client.get("/api/queue/")
 
     items = response.json()

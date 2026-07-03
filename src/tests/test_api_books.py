@@ -4,7 +4,7 @@ import pytest
 from django.test import Client
 from django.utils.timezone import now
 
-from scriptorium.main.models import Book, BookStatus, Tag
+from scriptorium.main.models import ApiToken, Book, BookStatus, Tag
 from tests.factories import (
     AuthorFactory,
     BookFactory,
@@ -21,8 +21,7 @@ pytestmark = pytest.mark.django_db
 # --- Auth ---------------------------------------------------------------------
 
 
-def test_api_rejects_request_without_token(client, settings):
-    settings.API_KEY = "test-api-key"
+def test_api_rejects_request_without_token(client, api_token):
     make_reviewed_book(title="Secret")
 
     response = client.get("/api/books/")
@@ -31,8 +30,7 @@ def test_api_rejects_request_without_token(client, settings):
     assert response.json() == {"detail": "Unauthorized"}
 
 
-def test_api_rejects_request_with_wrong_token(settings):
-    settings.API_KEY = "test-api-key"
+def test_api_rejects_request_with_unknown_token(api_token):
     make_reviewed_book(title="Secret")
 
     client = Client(headers={"Authorization": "Bearer wrong-key"})
@@ -42,7 +40,7 @@ def test_api_rejects_request_with_wrong_token(settings):
     assert response.json() == {"detail": "Unauthorized"}
 
 
-def test_api_accepts_request_with_configured_token(api_client):
+def test_api_accepts_request_with_database_token(api_client):
     response = api_client.get("/api/books/")
 
     assert response.status_code == 200
@@ -50,10 +48,9 @@ def test_api_accepts_request_with_configured_token(api_client):
 
 
 @pytest.mark.parametrize("token", ["", "anything"])
-def test_api_rejects_every_token_when_key_is_unset(settings, token):
-    """An empty API key means the API is disabled: even the matching empty
-    bearer token must not authenticate."""
-    settings.API_KEY = ""
+def test_api_rejects_every_token_when_no_tokens_exist(token):
+    """Without any ApiToken rows the API is effectively disabled: nothing
+    may match -- especially not an empty bearer token."""
     make_reviewed_book(title="Secret")
 
     client = Client(headers={"Authorization": f"Bearer {token}"})
@@ -63,40 +60,60 @@ def test_api_rejects_every_token_when_key_is_unset(settings, token):
     assert response.json() == {"detail": "Unauthorized"}
 
 
-def test_api_rejects_non_ascii_token(settings):
-    """hmac.compare_digest raises TypeError on non-ASCII str input; the token
-    must be rejected with a 401, not a 500."""
-    settings.API_KEY = "test-api-key"
-    make_reviewed_book(title="Secret")
+def test_api_rejects_empty_bearer_token_even_if_a_blank_token_row_exists(user):
+    """The empty token is rejected before the database lookup, so even a
+    (hand-crafted) blank token row must never authenticate."""
+    ApiToken.objects.create(user=user, name="Broken", token="x")
+    ApiToken.objects.update(token="")
 
-    client = Client(headers={"Authorization": "Bearer sécret"})
+    client = Client(headers={"Authorization": "Bearer "})
     response = client.get("/api/books/")
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Unauthorized"}
 
 
-def test_api_key_defaults_to_dev_key_only_without_environment_override():
-    """The settings module falls back to the well-known dev key (only under
-    DEBUG, which is on in tests); an environment variable always wins."""
-    import importlib  # noqa: PLC0415
-    import os  # noqa: PLC0415
+def test_api_stamps_last_used_on_use(api_token, api_client):
+    assert api_token.last_used is None
 
-    from scriptorium import settings as settings_module  # noqa: PLC0415
+    response = api_client.get("/api/books/")
 
-    original = os.environ.get("SCRIPTORIUM_API_KEY")
-    try:
-        os.environ.pop("SCRIPTORIUM_API_KEY", None)
-        assert importlib.reload(settings_module).API_KEY == "dev-key-change-me"
+    assert response.status_code == 200
+    api_token.refresh_from_db()
+    assert api_token.last_used is not None
+    assert now() - api_token.last_used < dt.timedelta(minutes=1)
 
-        os.environ["SCRIPTORIUM_API_KEY"] = "from-env"
-        assert importlib.reload(settings_module).API_KEY == "from-env"
-    finally:
-        if original is None:
-            os.environ.pop("SCRIPTORIUM_API_KEY", None)
-        else:
-            os.environ["SCRIPTORIUM_API_KEY"] = original
-        importlib.reload(settings_module)
+
+def test_api_throttles_last_used_writes_within_an_hour(api_token, api_client):
+    recent = now() - dt.timedelta(minutes=10)
+    ApiToken.objects.filter(pk=api_token.pk).update(last_used=recent)
+
+    response = api_client.get("/api/books/")
+
+    assert response.status_code == 200
+    api_token.refresh_from_db()
+    assert api_token.last_used == recent
+
+
+def test_api_refreshes_stale_last_used(api_token, api_client):
+    stale = now() - dt.timedelta(hours=2)
+    ApiToken.objects.filter(pk=api_token.pk).update(last_used=stale)
+
+    response = api_client.get("/api/books/")
+
+    assert response.status_code == 200
+    api_token.refresh_from_db()
+    assert api_token.last_used > stale
+
+
+def test_api_rejects_revoked_token_immediately(api_token, api_client):
+    assert api_client.get("/api/books/").status_code == 200
+
+    api_token.delete()
+
+    response = api_client.get("/api/books/")
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Unauthorized"}
 
 
 # --- Book list ------------------------------------------------------------------
@@ -230,7 +247,10 @@ def test_books_list_query_count_is_constant(
         book.tags.add(TagFactory())
         book.additional_authors.add(AuthorFactory())
 
-    with django_assert_num_queries(5):
+    # Warm the auth throttle so only the token lookup itself is counted.
+    api_client.get("/api/books/")
+
+    with django_assert_num_queries(6):
         response = api_client.get("/api/books/")
 
     data = response.json()
@@ -325,8 +345,7 @@ def _detail_url(book):
     return f"/api/books/{book.slug}/"
 
 
-def test_books_patch_requires_token(client, settings):
-    settings.API_KEY = "test-api-key"
+def test_books_patch_requires_token(client, api_token):
     book = make_reviewed_book(title="Secret", pages=200)
 
     response = client.patch(

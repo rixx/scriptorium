@@ -11,8 +11,7 @@ pytestmark = pytest.mark.django_db
 # convention as tests/test_metadata.py).
 
 
-def test_openlibrary_search_requires_token(client, settings):
-    settings.API_KEY = "test-api-key"
+def test_openlibrary_search_requires_token(client, api_token):
 
     response = client.get("/api/openlibrary/search/", {"q": "anything"})
 

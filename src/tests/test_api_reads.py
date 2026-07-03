@@ -13,8 +13,7 @@ def _reads_url(book):
     return f"/api/books/{book.slug}/reads/"
 
 
-def test_reads_create_requires_token(client, settings):
-    settings.API_KEY = "test-api-key"
+def test_reads_create_requires_token(client, api_token):
     book = BookFactory(status=BookStatus.TO_REVIEW)
 
     response = client.post(

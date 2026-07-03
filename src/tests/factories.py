@@ -4,6 +4,7 @@ import factory
 from django.contrib.auth import get_user_model
 
 from scriptorium.main.models import (
+    ApiToken,
     Author,
     Book,
     BookStatus,
@@ -32,6 +33,17 @@ class UserFactory(factory.django.DjangoModelFactory):
         self.set_password(raw)
         if create:
             self.save()
+
+
+class ApiTokenFactory(factory.django.DjangoModelFactory):
+    """The token value is intentionally left unset: the model generates it
+    server-side on first save."""
+
+    class Meta:
+        model = ApiToken
+
+    user = factory.SubFactory(UserFactory)
+    name = factory.Sequence(lambda n: f"Token {n}")
 
 
 class AuthorFactory(factory.django.DjangoModelFactory):

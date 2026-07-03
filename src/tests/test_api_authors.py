@@ -6,8 +6,7 @@ from tests.factories import AuthorFactory, BookFactory, TagFactory, make_reviewe
 pytestmark = pytest.mark.django_db
 
 
-def test_authors_list_requires_token(client, settings):
-    settings.API_KEY = "test-api-key"
+def test_authors_list_requires_token(client, api_token):
     AuthorFactory(name="Hidden")
 
     response = client.get("/api/authors/")
@@ -140,7 +139,10 @@ def test_authors_detail_query_count_is_constant(
         book.tags.add(TagFactory())
         book.additional_authors.add(AuthorFactory())
 
-    with django_assert_num_queries(5):
+    # Warm the auth throttle so only the token lookup itself is counted.
+    api_client.get("/api/books/")
+
+    with django_assert_num_queries(6):
         response = api_client.get("/api/authors/prolific/")
 
     books = response.json()["books"]

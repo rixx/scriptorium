@@ -4,7 +4,17 @@ from django import forms
 from django.db.models import Q
 from django.utils.timezone import now
 
-from scriptorium.main.models import Author, Book, Page, Poem, Quote, Read, Series, Tag
+from scriptorium.main.models import (
+    ApiToken,
+    Author,
+    Book,
+    Page,
+    Poem,
+    Quote,
+    Read,
+    Series,
+    Tag,
+)
 from scriptorium.main.utils import slugify
 
 
@@ -322,6 +332,15 @@ class PageForm(forms.ModelForm):
     class Meta:
         model = Page
         fields = ("title", "slug", "text")
+
+
+class ApiTokenForm(forms.ModelForm):
+    """Only the name is user-supplied -- the token value itself is generated
+    server-side when the instance is first saved."""
+
+    class Meta:
+        model = ApiToken
+        fields = ("name",)
 
 
 class QuoteForm(forms.ModelForm):

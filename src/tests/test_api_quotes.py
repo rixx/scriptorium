@@ -10,8 +10,7 @@ def _quotes_url(book):
     return f"/api/books/{book.slug}/quotes/"
 
 
-def test_quotes_list_requires_token(client, settings):
-    settings.API_KEY = "test-api-key"
+def test_quotes_list_requires_token(client, api_token):
     quote = QuoteFactory(source_book=make_reviewed_book(title="Secret"), text="Hidden.")
 
     response = client.get(_quotes_url(quote.source_book))

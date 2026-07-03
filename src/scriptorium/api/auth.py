@@ -1,19 +1,32 @@
-import hmac
+import datetime as dt
 
-from django.conf import settings
+from django.utils.timezone import now
 from ninja.security import HttpBearer
 
+from scriptorium.main.models import ApiToken
 
-class ApiKeyAuth(HttpBearer):
-    """Single-user bearer auth: the token is the static API key from
-    settings (``SCRIPTORIUM_API_KEY`` in the environment)."""
+#: last_used is informational ("is this token still in use?"), so it only
+#: needs hour resolution -- skipping fresher stamps avoids a database write
+#: on every request.
+LAST_USED_THROTTLE = dt.timedelta(hours=1)
+
+
+class ApiTokenAuth(HttpBearer):
+    """Bearer auth against database-backed ``ApiToken`` rows, which are
+    created and revoked in the private UI at ``/b/tokens/``."""
 
     def authenticate(self, request, token):
-        if not settings.API_KEY:
-            # No key configured: the API is disabled, nothing may match --
-            # especially not an empty bearer token.
+        if not token:
+            # Never match an empty bearer token, and skip the query.
             return None
-        # Compare bytes: compare_digest raises on non-ASCII str input.
-        if hmac.compare_digest(token.encode(), settings.API_KEY.encode()):
-            return token
-        return None
+        api_token = ApiToken.objects.filter(token=token).first()
+        if api_token is None:
+            return None
+        timestamp = now()
+        if (
+            api_token.last_used is None
+            or timestamp - api_token.last_used > LAST_USED_THROTTLE
+        ):
+            api_token.last_used = timestamp
+            api_token.save(update_fields=["last_used"])
+        return api_token

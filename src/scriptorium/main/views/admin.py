@@ -24,6 +24,7 @@ from django_context_decorator import context
 from formtools.wizard.views import SessionWizardView
 
 from scriptorium.main.forms import (
+    ApiTokenForm,
     AuthorForm,
     BookEditForm,
     BookSearchForm,
@@ -39,7 +40,16 @@ from scriptorium.main.forms import (
     ReviewEditForm,
     ReviewWizardForm,
 )
-from scriptorium.main.models import Author, Book, BookStatus, Page, Poem, Quote, Tag
+from scriptorium.main.models import (
+    ApiToken,
+    Author,
+    Book,
+    BookStatus,
+    Page,
+    Poem,
+    Quote,
+    Tag,
+)
 from scriptorium.main.views.mixins import (
     ActiveTemplateMixin,
     AuthorMixin,
@@ -451,6 +461,41 @@ def to_review_dismiss(request, pk):
     book = get_object_or_404(Book.all_objects.filter(status=BookStatus.REVIEWED), pk=pk)
     book.mark_review_current()
     return redirect("/b/toreview/")
+
+
+class ApiTokenList(LoginRequiredMixin, CreateView):
+    """List, create and revoke API tokens. Token values are displayed in
+    full: this is a single-user personal app, and clients like KOReader need
+    the value re-entered from this page."""
+
+    template_name = "private/token_list.html"
+    form_class = ApiTokenForm
+
+    @context
+    def tokens(self):
+        return ApiToken.objects.order_by("created")
+
+    @context
+    def created_token(self):
+        """The token created by the just-submitted form, highlighted so its
+        value can be copied straight away."""
+        try:
+            return ApiToken.objects.get(pk=self.request.GET.get("created"))
+        except (ApiToken.DoesNotExist, ValueError):
+            return None
+
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        self.object = form.save()
+        return redirect(f"/b/tokens/?created={self.object.pk}")
+
+
+@login_required
+@require_POST
+def api_token_delete(request, pk):
+    token = get_object_or_404(ApiToken, pk=pk)
+    token.delete()
+    return redirect("/b/tokens/")
 
 
 @login_required

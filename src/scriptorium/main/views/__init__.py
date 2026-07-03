@@ -1,4 +1,5 @@
 from .admin import (
+    ApiTokenList,
     AuthorEdit,
     Bibliothecarius,
     LoginView,
@@ -18,6 +19,7 @@ from .admin import (
     ToReviewDelete,
     ToReviewEdit,
     ToReviewList,
+    api_token_delete,
     healthz,
     logout_view,
     to_review_dismiss,
@@ -49,6 +51,7 @@ from .public import BorderImageList, border_image
 from .quote import QuoteView
 
 __all__ = [
+    "ApiTokenList",
     "AuthorEdit",
     "AuthorView",
     "Bibliothecarius",
@@ -91,6 +94,7 @@ __all__ = [
     "TohuwabohuView",
     "YearInBooksView",
     "YearView",
+    "api_token_delete",
     "border_image",
     "feed_view",
     "graph_data",
