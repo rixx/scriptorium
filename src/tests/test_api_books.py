@@ -394,6 +394,22 @@ def test_books_patch_updates_metadata(api_client):
     assert book.series.name_slug == "hainish-cycle"
 
 
+def test_books_patch_source_roundtrips_through_detail(api_client):
+    book = BookFactory(status=BookStatus.TO_REVIEW)
+
+    response = api_client.patch(
+        _detail_url(book),
+        {"source": "https://example.com/fics/piranesi"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    book.refresh_from_db()
+    assert book.source == "https://example.com/fics/piranesi"
+    detail = api_client.get(_detail_url(book)).json()
+    assert detail["source"] == "https://example.com/fics/piranesi"
+
+
 def test_books_patch_text_on_published_review_stamps_review_updated(api_client):
     book = make_reviewed_book(text="Old text.")
     Book.all_objects.filter(pk=book.pk).update(

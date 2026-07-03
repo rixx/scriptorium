@@ -386,6 +386,102 @@ def test_queue_add_requires_title(api_client):
     assert Book.all_objects.count() == 0
 
 
+def test_queue_add_stores_source_pages_and_start_date(api_client):
+    response = api_client.post(
+        "/api/queue/",
+        _queue_payload(
+            source="https://www.royalroad.com/fiction/63759/super-supportive",
+            pages=1200,
+            started_on="2024-04-01",
+        ),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    book = Book.all_objects.get()
+    assert book.source == "https://www.royalroad.com/fiction/63759/super-supportive"
+    assert book.pages == 1200
+    read = book.reads.get()
+    assert read.started_on == dt.date(2024, 4, 1)
+    assert read.finished_on == dt.date(2024, 5, 1)
+
+
+def test_queue_add_matches_existing_book_by_source(api_client):
+    """A web serial is identified by its URL: re-submitting the same source
+    with a drifted title/author updates the existing book (new read, fresh
+    page count) instead of creating a duplicate book or author."""
+    url = "https://www.royalroad.com/fiction/63759/super-supportive"
+    api_client.post(
+        "/api/queue/",
+        _queue_payload(source=url, pages=1200),
+        content_type="application/json",
+    )
+
+    response = api_client.post(
+        "/api/queue/",
+        _queue_payload(
+            title="The Tombs of Atuan — now with subtitle",
+            author_name="Somebody Else",
+            source=url,
+            pages=1300,
+            date_read="2024-07-01",
+        ),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    book = Book.all_objects.get()
+    assert book.title == "The Tombs of Atuan"
+    assert book.pages == 1300
+    assert Author.objects.count() == 1
+    assert sorted(read.finished_on for read in book.reads.all()) == [
+        dt.date(2024, 5, 1),
+        dt.date(2024, 7, 1),
+    ]
+
+
+def test_queue_add_attaches_source_to_existing_book(api_client):
+    """A book that was queued without a URL gains one when the same title is
+    re-submitted with a source."""
+    book = BookFactory(
+        title="The Tombs of Atuan",
+        title_slug="the-tombs-of-atuan",
+        primary_author=AuthorFactory(
+            name="Ursula K. Le Guin", name_slug="ursula-k-le-guin"
+        ),
+        status=BookStatus.TO_REVIEW,
+        source=None,
+    )
+
+    response = api_client.post(
+        "/api/queue/",
+        _queue_payload(source="https://example.com/fics/atuan"),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    assert Book.all_objects.count() == 1
+    book.refresh_from_db()
+    assert book.source == "https://example.com/fics/atuan"
+
+
+def test_queue_add_reviewed_book_matched_by_source_without_date_is_refused(api_client):
+    book = make_reviewed_book(title="Reread Me", title_slug="reread-me")
+    url = "https://example.com/fics/reread-me"
+    Book.all_objects.filter(pk=book.pk).update(source=url)
+
+    response = api_client.post(
+        "/api/queue/",
+        {"title": "Drifted Title", "author_name": "Somebody Else", "source": url},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 409
+    assert list(response.json()) == ["detail"]
+    assert Book.all_objects.count() == 1
+    assert Author.objects.count() == 1
+
+
 # --- Dismiss ------------------------------------------------------------------
 
 

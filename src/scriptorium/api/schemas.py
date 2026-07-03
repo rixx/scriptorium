@@ -67,6 +67,7 @@ class BookDetailOut(BookListOut):
     quotes_count: int
     isbn: str | None
     openlibrary_id: str | None = None
+    source: str | None = None
 
     @staticmethod
     def resolve_url(obj, context):
@@ -119,8 +120,15 @@ class QueueAddIn(Schema):
     series: str | None = None
     series_position: str | None = None
     date_read: dt.date | None = None
+    started_on: dt.date | None = None
     notes: str | None = None
     shelf: str | None = None
+    source: str | None = Field(
+        None,
+        description="URL the book/serial lives at; books are matched by it "
+        "on re-submission, before the author/title match.",
+    )
+    pages: int | None = None
 
 
 class QuoteOut(Schema):
@@ -177,6 +185,7 @@ class BookPatchIn(BookMetadataIn):
 
     isbn10: str | None = None
     goodreads_id: str | None = None
+    source: str | None = None
     plot: str | None = None
     text: str | None = None
     tldr: str | None = None
