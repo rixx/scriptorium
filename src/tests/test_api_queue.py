@@ -1,6 +1,7 @@
 import datetime as dt
 
 import pytest
+from django.utils.timezone import now
 
 from scriptorium.main.models import Author, Book, BookStatus, Series
 from tests.factories import (
@@ -178,6 +179,7 @@ def test_queue_add_creates_author_series_book_and_read(api_client):
         "date": "2024-05-01",
         "why": "unreviewed",
         "reads": [{"date": "2024-05-01", "notes": "Read at the beach."}],
+        "queued": True,
     }
     assert book.status == BookStatus.TO_REVIEW
     assert book.series.name_slug == "earthsea"
@@ -243,22 +245,37 @@ def test_queue_add_promotes_queued_to_read_book(api_client):
     assert [read.finished_on for read in book.reads.all()] == [dt.date(2024, 5, 1)]
 
 
-def test_queue_add_deduplicates_repeated_reads(api_client):
-    api_client.post("/api/queue/", _queue_payload(), content_type="application/json")
-
-    response = api_client.post(
-        "/api/queue/", _queue_payload(), content_type="application/json"
+def test_queue_add_duplicate_date_updates_notes_and_returns_200(api_client):
+    """Re-submitting an already logged date must not silently discard the
+    submitted notes: the existing read is updated instead of duplicated, and
+    the response says 200 (nothing new was created)."""
+    api_client.post(
+        "/api/queue/",
+        _queue_payload(notes="First impression."),
+        content_type="application/json",
     )
 
-    assert response.status_code == 201
+    response = api_client.post(
+        "/api/queue/",
+        _queue_payload(notes="Corrected note."),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["queued"] is True
     book = Book.all_objects.get()
-    assert book.reads.count() == 1
+    read = book.reads.get()
+    assert read.finished_on == dt.date(2024, 5, 1)
+    assert read.notes == "Corrected note."
+    assert read.source == "manual"
 
 
 def test_queue_add_reviewed_book_with_date_queues_reread(api_client):
     book = make_reviewed_book(
         title="Reread Me", title_slug="reread-me", latest_date=dt.date(2020, 1, 1)
     )
+    # Backdate the review so the new read is genuinely newer than it.
+    Book.all_objects.filter(pk=book.pk).update(review_updated=dt.date(2020, 1, 2))
 
     response = api_client.post(
         "/api/queue/",
@@ -270,6 +287,7 @@ def test_queue_add_reviewed_book_with_date_queues_reread(api_client):
     data = response.json()
     assert data["why"] == "reread"
     assert data["status"] == "reviewed"
+    assert data["queued"] is True
     book.refresh_from_db()
     assert book.status == BookStatus.REVIEWED
     assert sorted(read.finished_on for read in book.reads.all()) == [
@@ -278,12 +296,18 @@ def test_queue_add_reviewed_book_with_date_queues_reread(api_client):
     ]
 
 
-def test_queue_add_reviewed_book_without_date_is_refused(api_client):
+def test_queue_add_reviewed_book_without_date_is_refused_without_side_effects(
+    api_client,
+):
     book = make_reviewed_book(title="Reread Me", title_slug="reread-me")
 
     response = api_client.post(
         "/api/queue/",
-        {"title": "Reread Me", "author_name": book.primary_author.name},
+        {
+            "title": "Reread Me",
+            "author_name": book.primary_author.name,
+            "series": "Brand New Series",
+        },
         content_type="application/json",
     )
 
@@ -292,6 +316,34 @@ def test_queue_add_reviewed_book_without_date_is_refused(api_client):
     book.refresh_from_db()
     assert book.status == BookStatus.REVIEWED
     assert book.reads.count() == 1
+    # The refusal happens before anything is created.
+    assert Series.objects.count() == 0
+    assert Author.objects.count() == 1
+
+
+def test_queue_add_backfilled_old_read_reports_queued_false(api_client):
+    """Logging a read that predates the review keeps the book out of the
+    queue; the response's ``queued`` field is honest about that."""
+    book = make_reviewed_book(
+        title="Backfill", title_slug="backfill", latest_date=dt.date(2024, 6, 15)
+    )
+
+    response = api_client.post(
+        "/api/queue/",
+        _queue_payload(
+            title="Backfill",
+            author_name=book.primary_author.name,
+            date_read="2020-01-01",
+        ),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["queued"] is False
+    assert data["status"] == "reviewed"
+    assert book.reads.count() == 2
+    assert not Book.all_objects.needs_review().filter(pk=book.pk).exists()
 
 
 def test_queue_add_stores_shelf_on_new_books(api_client):
@@ -313,3 +365,68 @@ def test_queue_add_requires_title(api_client):
     assert response.status_code == 422
     assert response.json()["detail"][0]["loc"] == ["body", "payload", "title"]
     assert Book.all_objects.count() == 0
+
+
+# --- Dismiss ------------------------------------------------------------------
+
+
+def test_queue_dismiss_clears_reread_from_queue(api_client):
+    book = make_stale_reread(
+        title="Old Favourite",
+        latest_date=dt.date(2024, 2, 2),
+        review_updated=dt.date(2020, 1, 1),
+    )
+    assert [item["id"] for item in api_client.get("/api/queue/").json()] == [book.pk]
+
+    response = api_client.post(f"/api/queue/{book.pk}/dismiss/")
+
+    assert response.status_code == 204
+    book.refresh_from_db()
+    assert book.review_updated == now().date()
+    assert api_client.get("/api/queue/").json() == []
+
+
+def test_queue_dismiss_rejects_unreviewed_books(api_client):
+    book = BookFactory(title="Needs a review", status=BookStatus.TO_REVIEW)
+    ReadFactory(book=book, finished_on=dt.date(2024, 5, 1))
+
+    response = api_client.post(f"/api/queue/{book.pk}/dismiss/")
+
+    assert response.status_code == 404
+    assert [item["id"] for item in api_client.get("/api/queue/").json()] == [book.pk]
+
+
+def test_queue_dismiss_requires_token(client, settings):
+    settings.API_KEY = "test-api-key"
+    book = make_stale_reread(
+        title="Old Favourite",
+        latest_date=dt.date(2024, 2, 2),
+        review_updated=dt.date(2020, 1, 1),
+    )
+
+    response = client.post(f"/api/queue/{book.pk}/dismiss/")
+
+    assert response.status_code == 401
+    book.refresh_from_db()
+    assert book.review_updated == dt.date(2020, 1, 1)
+
+
+# --- Query counts ---------------------------------------------------------------
+
+
+@pytest.mark.parametrize("item_count", [1, 3])
+def test_queue_list_query_count_is_constant(
+    api_client, django_assert_num_queries, item_count
+):
+    for index in range(item_count):
+        book = BookFactory(title=f"Queued {index}", status=BookStatus.TO_REVIEW)
+        book.additional_authors.add(AuthorFactory())
+        ReadFactory(book=book, finished_on=dt.date(2024, 5, 1 + index))
+
+    with django_assert_num_queries(3):
+        response = api_client.get("/api/queue/")
+
+    items = response.json()
+    assert len(items) == item_count
+    assert all(" & " in item["author"] for item in items)
+    assert all(len(item["reads"]) == 1 for item in items)

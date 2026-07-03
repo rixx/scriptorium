@@ -356,6 +356,63 @@ def test_to_review_delete_rejects_published_books(admin_logged_in_client):
     assert Book.all_objects.filter(pk=book.pk).exists()
 
 
+def test_to_review_list_reread_rows_link_to_review_edit_and_dismiss(
+    admin_logged_in_client,
+):
+    """Rereads of published books don't fit the to-review edit/delete views:
+    their rows link to the existing review instead and offer a dismiss
+    action, while unreviewed rows keep the edit/delete links."""
+    stale = make_reviewed_book(title="Reread since review")
+    Book.all_objects.filter(pk=stale.pk).update(review_updated=dt.date(2020, 1, 1))
+    waiting = BookFactory(title="Waiting for review", status=BookStatus.TO_REVIEW)
+
+    response = admin_logged_in_client.get("/b/toreview/")
+
+    body = response.content.decode()
+    assert f'href="/b/{stale.slug}/"' in body
+    assert f'action="/b/toreview/{stale.pk}/dismiss"' in body
+    assert f'href="/b/toreview/{stale.pk}/"' not in body
+    assert f'href="/b/toreview/{stale.pk}/delete"' not in body
+    assert f'href="/b/toreview/{waiting.pk}/"' in body
+    assert f'href="/b/toreview/{waiting.pk}/delete"' in body
+    assert f'action="/b/toreview/{waiting.pk}/dismiss"' not in body
+
+
+def test_to_review_dismiss_clears_reread_from_queue(admin_logged_in_client):
+    stale = make_reviewed_book(title="Reread since review")
+    Book.all_objects.filter(pk=stale.pk).update(review_updated=dt.date(2020, 1, 1))
+    assert Book.all_objects.needs_review().filter(pk=stale.pk).exists()
+
+    response = admin_logged_in_client.post(f"/b/toreview/{stale.pk}/dismiss")
+
+    assert response.status_code == 302
+    assert response.url == "/b/toreview/"
+    stale.refresh_from_db()
+    assert stale.review_updated == dt.datetime.now(tz=dt.UTC).date()
+    assert not Book.all_objects.needs_review().filter(pk=stale.pk).exists()
+
+
+def test_to_review_dismiss_rejects_unreviewed_books(admin_logged_in_client):
+    book = BookFactory(title="Needs a review first", status=BookStatus.TO_REVIEW)
+    ReadFactory(book=book, finished_on=dt.date(2024, 6, 1))
+
+    response = admin_logged_in_client.post(f"/b/toreview/{book.pk}/dismiss")
+
+    assert response.status_code == 404
+    assert Book.all_objects.needs_review().filter(pk=book.pk).exists()
+
+
+def test_to_review_dismiss_requires_post(admin_logged_in_client):
+    stale = make_reviewed_book(title="Reread since review")
+    Book.all_objects.filter(pk=stale.pk).update(review_updated=dt.date(2020, 1, 1))
+
+    response = admin_logged_in_client.get(f"/b/toreview/{stale.pk}/dismiss")
+
+    assert response.status_code == 405
+    stale.refresh_from_db()
+    assert stale.review_updated == dt.date(2020, 1, 1)
+
+
 # --- Deploy trigger ---------------------------------------------------------
 
 

@@ -140,3 +140,22 @@ def test_get_missing_reviews_data_counts_stale_rereads():
     assert data["missing_reviews"] == 2
     assert data["missing_reviews_total"] == 3
     assert data["missing_reviews_reviewed"] == 1
+
+
+@pytest.mark.django_db
+def test_get_missing_reviews_data_ignores_reads_covered_by_the_review():
+    """Only reads newer than the review itself count for a published book:
+    a reviewed book with two old post-cutoff reads and one fresh reread is
+    missing exactly one review, not three."""
+    from scriptorium.main.models import Book  # noqa: PLC0415
+
+    stale = make_reviewed_book(
+        reads=[dt.date(2022, 5, 1), dt.date(2023, 5, 1), dt.date(2024, 6, 1)]
+    )
+    Book.all_objects.filter(pk=stale.pk).update(review_updated=dt.date(2024, 1, 1))
+
+    data = get_missing_reviews_data()
+
+    assert data["missing_reviews"] == 1
+    assert data["missing_reviews_total"] == 3
+    assert data["missing_reviews_reviewed"] == 2

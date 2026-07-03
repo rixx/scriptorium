@@ -1,7 +1,7 @@
 import pytest
 
 from scriptorium.main.models import BookStatus
-from tests.factories import AuthorFactory, BookFactory, make_reviewed_book
+from tests.factories import AuthorFactory, BookFactory, TagFactory, make_reviewed_book
 
 pytestmark = pytest.mark.django_db
 
@@ -105,9 +105,45 @@ def test_authors_patch_rejects_null_name(api_client):
     assert author.name == "Keep Me"
 
 
+def test_authors_patch_overlong_name_returns_400(api_client):
+    author = AuthorFactory(name="Keep Me")
+
+    response = api_client.patch(
+        f"/api/authors/{author.name_slug}/",
+        {"name": "x" * 301},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert "name" in response.json()["detail"]
+    author.refresh_from_db()
+    assert author.name == "Keep Me"
+
+
 def test_authors_patch_unknown_slug_returns_404(api_client):
     response = api_client.patch(
         "/api/authors/nobody/", {"name": "New"}, content_type="application/json"
     )
 
     assert response.status_code == 404
+
+
+@pytest.mark.parametrize("item_count", [1, 3])
+def test_authors_detail_query_count_is_constant(
+    api_client, django_assert_num_queries, item_count
+):
+    author = AuthorFactory(name="Prolific", name_slug="prolific")
+    for index in range(item_count):
+        book = make_reviewed_book(
+            title=f"Book {index}", title_slug=f"book-{index}", primary_author=author
+        )
+        book.tags.add(TagFactory())
+        book.additional_authors.add(AuthorFactory())
+
+    with django_assert_num_queries(5):
+        response = api_client.get("/api/authors/prolific/")
+
+    books = response.json()["books"]
+    assert len(books) == item_count
+    assert all(len(book["tags"]) == 1 for book in books)
+    assert all(len(book["authors"]) == 2 for book in books)

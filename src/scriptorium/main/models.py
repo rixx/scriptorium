@@ -80,6 +80,12 @@ class Tag(models.Model):
             self.name = self.name_slug
         return super().save(*args, **kwargs)
 
+    @property
+    def spec(self):
+        """The canonical 'category:slug' form the API uses for both input and
+        output, so GET -> PATCH round-trips are stable."""
+        return f"{self.category}:{self.name_slug}"
+
 
 class BookStatus(models.TextChoices):
     TO_READ = "to_read", "to read"
@@ -174,6 +180,7 @@ class AllBooksManager(models.Manager):
         with ``date`` (its latest read, if any) for display and ordering."""
         return (
             self.select_related("primary_author", "series")
+            .prefetch_related("additional_authors", "reads")
             .annotate(date=models.Max("reads__finished_on"))
             .filter(
                 models.Q(status=BookStatus.TO_REVIEW)
@@ -353,6 +360,15 @@ class Book(models.Model):
             f"{self.title}:reviews:{feed_date.isoformat()}:{self.goodreads_id or ''}".encode()
         )
         return str(uuid.UUID(m.hexdigest()))
+
+    def mark_review_current(self):
+        """The explicit "this review still stands" action: stamp the review
+        as freshly updated so newer reads leave the reread queue. Shared by
+        every deliberate review save (API publish, web review form, queue
+        dismissal) -- Book.save() alone only stamps on text changes."""
+        self.review_updated = now().date()
+        # Queryset update to avoid Book.save() side effects (cover download).
+        Book.all_objects.filter(pk=self.pk).update(review_updated=self.review_updated)
 
     def sync_reads(self, dates, *, remove_extra=False, **read_kwargs):
         """Create Read rows so every date in ``dates`` has one, skipping dates

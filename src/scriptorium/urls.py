@@ -26,6 +26,7 @@ urlpatterns = [
     path("b/toreview/new", views.ToReviewCreate.as_view()),
     path("b/toreview/<int:pk>/", views.ToReviewEdit.as_view()),
     path("b/toreview/<int:pk>/delete", views.ToReviewDelete.as_view()),
+    path("b/toreview/<int:pk>/dismiss", views.to_review_dismiss),
     path("b/<slug:author>/poems/<slug:slug>/", views.PoemEdit.as_view()),
     path("b/<slug:author>/", views.AuthorEdit.as_view()),
     path("b/<slug:author>/<slug:book>/poems/<slug:slug>/", views.PoemEdit.as_view()),

@@ -543,6 +543,27 @@ def test_review_edit_form_save_date_correction_keeps_feed_date_and_metadata():
     assert book.feed_date == dt.date(2024, 6, 15)
 
 
+def test_review_edit_form_save_without_text_change_clears_reread_queue():
+    """Saving the review form is a deliberate "the review is current" action:
+    even an unchanged review must clear the book's queued reread (Book.save()
+    alone only stamps review_updated on text changes)."""
+    book = make_reviewed_book(text="Kept text.", reads=[dt.date(2024, 6, 15)])
+    Book.all_objects.filter(pk=book.pk).update(review_updated=dt.date(2020, 1, 1))
+    book.refresh_from_db()
+    assert Book.all_objects.needs_review().filter(pk=book.pk).exists()
+
+    form = ReviewEditForm(
+        data=_review_post("2024-06-15", text="Kept text."), instance=book
+    )
+    assert form.is_valid(), form.errors
+    form.save()
+
+    book.refresh_from_db()
+    assert book.text == "Kept text."
+    assert book.review_updated == dt.datetime.now(tz=dt.UTC).date()
+    assert not Book.all_objects.needs_review().filter(pk=book.pk).exists()
+
+
 def test_review_edit_form_save_unrelated_edit_keeps_mixed_dnf_flags():
     book = make_reviewed_book(reads=[dt.date(2020, 1, 1), dt.date(2024, 1, 1)])
     book.reads.filter(finished_on=dt.date(2020, 1, 1)).update(did_not_finish=True)

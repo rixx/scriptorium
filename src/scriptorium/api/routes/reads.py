@@ -17,6 +17,7 @@ def update_read(request, read_id: int, payload: ReadPatchIn):
         read.finished_on = data.pop("date")
     for field, value in data.items():
         setattr(read, field, value)
+    read.full_clean()
     read.save()
     return read
 

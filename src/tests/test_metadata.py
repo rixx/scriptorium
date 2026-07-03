@@ -6,10 +6,12 @@ from django.test import override_settings
 
 from scriptorium.main import metadata
 from scriptorium.main.metadata import (
+    MetadataError,
     get_goodreads_book,
     get_openlibrary_book,
     get_openlibrary_book_data,
     get_openlibrary_editions,
+    get_openlibrary_editions_data,
     merge_goodreads,
     search_book,
     time_taken,
@@ -127,19 +129,51 @@ def test_search_book_returns_title_and_author_tuples(monkeypatch):
     ]
 
 
-def test_search_book_returns_empty_list_on_request_exception(monkeypatch):
+def test_search_book_raises_on_request_exception(monkeypatch):
     _install_fake_get(monkeypatch, [("search.json", requests.ConnectionError("boom"))])
 
-    assert search_book("search-unique-req-error") == []
+    with pytest.raises(MetadataError):
+        search_book("search-unique-req-error")
 
 
-def test_search_book_returns_empty_list_when_response_is_not_json(monkeypatch):
+def test_search_book_raises_when_response_is_not_json(monkeypatch):
     _install_fake_get(
         monkeypatch,
         [("search.json", FakeResponse(raise_on_json=ValueError("bad json")))],
     )
 
-    assert search_book("search-unique-json-error") == []
+    with pytest.raises(MetadataError):
+        search_book("search-unique-json-error")
+
+
+def test_search_book_does_not_memoize_failures(monkeypatch):
+    """A transient upstream error must not poison the functools.cache: the
+    same query succeeds once OpenLibrary answers again."""
+    _install_fake_get(monkeypatch, [("search.json", requests.ConnectionError("boom"))])
+    with pytest.raises(MetadataError):
+        search_book("search-unique-retry")
+
+    _install_fake_get(
+        monkeypatch,
+        [
+            (
+                "search.json",
+                FakeResponse(
+                    json_data={
+                        "docs": [
+                            {
+                                "key": "/works/OL9W",
+                                "title": "Recovered",
+                                "author_name": ["Someone"],
+                            }
+                        ]
+                    }
+                ),
+            )
+        ],
+    )
+
+    assert search_book("search-unique-retry") == [("OL9W", "Recovered by Someone")]
 
 
 # ---------- get_openlibrary_editions ----------
@@ -208,6 +242,47 @@ def test_get_openlibrary_editions_filters_languages_sorts_and_falls_back_to_pagi
         ("OL11M", "English short: 2019, eng, 200 pages"),
         ("OL14M", "German: 2016, ger, 250 pages"),
         ("OL13M", "Unknown lang: 2017, , 100 pages"),
+    ]
+
+
+def test_get_openlibrary_editions_data_handles_free_text_pagination(monkeypatch):
+    """The 'pagination' fallback is free text ('xii, 340 p.'); the first
+    integer in it becomes the page count, unparseable values fall back to 0
+    instead of crashing the sort."""
+    _install_fake_get(
+        monkeypatch,
+        [
+            (
+                "/editions.json",
+                FakeResponse(
+                    json_data={
+                        "entries": [
+                            {
+                                "key": "/books/OL30M",
+                                "title": "Roman-numbered frontmatter",
+                                "publish_date": "1995",
+                                "languages": [{"key": "/languages/eng"}],
+                                "pagination": "xii, 340 p.",
+                            },
+                            {
+                                "key": "/books/OL31M",
+                                "title": "Unpaged",
+                                "publish_date": "1990",
+                                "languages": [{"key": "/languages/eng"}],
+                                "pagination": "unpaged",
+                            },
+                        ]
+                    }
+                ),
+            )
+        ],
+    )
+
+    result = get_openlibrary_editions_data("WORK_UNIQUE_FREETEXT_PAGES")
+
+    assert [(edition["id"], edition["pages"]) for edition in result] == [
+        ("OL30M", 340),
+        ("OL31M", 0),
     ]
 
 

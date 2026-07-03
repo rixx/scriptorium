@@ -65,15 +65,21 @@ def search_openlibrary(search):
 @time_taken
 @cache
 def search_book(search):
-    """Works as (id, label) choice tuples for the review wizard."""
-    try:
-        works = search_openlibrary(search)
-    except MetadataError:
-        return []
+    """Works as (id, label) choice tuples for the review wizard. Upstream
+    failures raise MetadataError (the wizard catches it and offers manual
+    entry) instead of permanently memoizing an empty result."""
     return [
         (work["id"], f"{work['title']} by {', '.join(work['authors'])}")
-        for work in works
+        for work in search_openlibrary(search)
     ]
+
+
+def _page_count(value):
+    """Coerce an OpenLibrary page count to an int: 'number_of_pages' is a
+    number, but the 'pagination' fallback is free text like 'xii, 340 p.' --
+    extract the first integer, or fall back to 0."""
+    match = re.search(r"\d+", str(value)) if value else None
+    return int(match.group()) if match else 0
 
 
 @time_taken
@@ -98,11 +104,13 @@ def get_openlibrary_editions_data(work_id):
                 "title": edition["title"],
                 "publish_date": edition.get("publish_date", ""),
                 "language": language,
-                "pages": edition.get("number_of_pages", edition.get("pagination")) or 0,
+                "pages": _page_count(
+                    edition.get("number_of_pages", edition.get("pagination"))
+                ),
                 "cover_url": f"https://covers.openlibrary.org/b/olid/{edition_id}-M.jpg",
             }
         )
-    return sorted(result, key=lambda e: (e["language"] or "zzz", -int(e["pages"])))
+    return sorted(result, key=lambda e: (e["language"] or "zzz", -e["pages"]))
 
 
 @time_taken

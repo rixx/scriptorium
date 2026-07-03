@@ -19,14 +19,30 @@
     <tbody>
       {% for book in books %}
         <tr>
-          <td><a href="/b/toreview/{{ book.id }}/">{{ book.title }}</a></td>
-          <td>{{ book.author_string }}</td>
-          <td>{% if book.series %}{{ book.series.name }}{% endif %} {% if book.series_position %}#{{ book.series_position }}{% endif %}</td>
-          <td>{{ book.date }}</td>
-          <td>
-            <a href="/b/toreview/{{ book.id }}/">Edit</a>
-            <a href="/b/toreview/{{ book.id }}/delete">Delete</a>
-          </td>
+          {% if book.status == "reviewed" %}
+            {# A reread of a published book: edit the existing review, or
+               dismiss the reread because the review still stands. #}
+            <td><a href="/b/{{ book.slug }}/">{{ book.title }}</a></td>
+            <td>{{ book.author_string }}</td>
+            <td>{% if book.series %}{{ book.series.name }}{% endif %} {% if book.series_position %}#{{ book.series_position }}{% endif %}</td>
+            <td>{{ book.date }}</td>
+            <td>
+              <a href="/b/{{ book.slug }}/">Edit review</a>
+              <form method="post" action="/b/toreview/{{ book.id }}/dismiss" style="display: inline">
+                {{ csrf_input }}
+                <button type="submit">Dismiss</button>
+              </form>
+            </td>
+          {% else %}
+            <td><a href="/b/toreview/{{ book.id }}/">{{ book.title }}</a></td>
+            <td>{{ book.author_string }}</td>
+            <td>{% if book.series %}{{ book.series.name }}{% endif %} {% if book.series_position %}#{{ book.series_position }}{% endif %}</td>
+            <td>{{ book.date }}</td>
+            <td>
+              <a href="/b/toreview/{{ book.id }}/">Edit</a>
+              <a href="/b/toreview/{{ book.id }}/delete">Delete</a>
+            </td>
+          {% endif %}
         </tr>
       {% endfor %}
     </tbody>

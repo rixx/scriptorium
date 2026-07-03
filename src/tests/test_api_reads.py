@@ -169,6 +169,19 @@ def test_reads_patch_can_update_notes_only(api_client):
     assert read.finished_on == dt.date(2024, 6, 15)
 
 
+def test_reads_patch_overlong_source_returns_400(api_client):
+    read = ReadFactory(source="library")
+
+    response = api_client.patch(
+        f"/api/reads/{read.pk}/", {"source": "x" * 301}, content_type="application/json"
+    )
+
+    assert response.status_code == 400
+    assert "source" in response.json()["detail"]
+    read.refresh_from_db()
+    assert read.source == "library"
+
+
 def test_reads_patch_unknown_read_returns_404(api_client):
     response = api_client.patch(
         "/api/reads/999/", {"notes": "x"}, content_type="application/json"

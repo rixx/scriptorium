@@ -304,6 +304,9 @@ class ReviewEditForm(ReviewForm):
         else:
             instance.feed_date = old_feed_date
         Book.all_objects.filter(pk=instance.pk).update(feed_date=instance.feed_date)
+        # Saving the review form is a deliberate "the review is current"
+        # action even when the text didn't change: it clears queued rereads.
+        instance.mark_review_current()
         # The read-derived properties were cached when the form was built.
         for prop in (
             "dates_read_list",

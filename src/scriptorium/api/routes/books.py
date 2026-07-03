@@ -17,8 +17,14 @@ from scriptorium.api.schemas import (
     ReviewSubmitIn,
 )
 from scriptorium.main.models import Author, Book, BookStatus, Quote, Series, Tag
+from scriptorium.main.utils import slugify
 
 router = Router(tags=["books"])
+
+# Nullable but blank=False fields that legitimately stay empty (drafts have
+# no review text or feed dates yet, ``social`` is optional); full_clean would
+# reject them even though the API cannot set them to anything invalid.
+BOOK_CLEAN_EXCLUDE = ("text", "feed_date", "review_updated", "social")
 
 
 def _book_queryset():
@@ -34,17 +40,24 @@ def _get_book(author_slug, title_slug):
 
 
 def _resolve_tags(specs):
-    """Turn 'category:slug' strings into Tag rows, creating missing ones."""
+    """Turn 'category:name' strings into Tag rows, creating missing ones.
+    The post-colon part is slugified (like author and series names), so
+    'genre:Science Fiction' and 'genre:science-fiction' are the same tag."""
     tags = []
     for spec in specs:
-        category, _, slug = spec.partition(":")
+        category, _, name = spec.partition(":")
+        slug = slugify(name)
         if not slug or category not in Tag.TagCategory.values:
             raise HttpError(
                 400,
-                f"Invalid tag '{spec}': expected 'category:slug' with a "
+                f"Invalid tag '{spec}': expected 'category:name' with a "
                 f"category out of {', '.join(Tag.TagCategory.values)}.",
             )
-        tags.append(Tag.objects.get_or_create(category=category, name_slug=slug)[0])
+        tags.append(
+            Tag.objects.get_or_create(
+                category=category, name_slug=slug, defaults={"name": name.strip()}
+            )[0]
+        )
     return tags
 
 
@@ -58,11 +71,13 @@ def _apply_book_patch(book, data, *, keep_values=False):
     if "series" in data:
         name = data.pop("series")
         book.series = Series.objects.get_or_create_by_name(name)[0] if name else None
+    has_tags = "tags" in data
     tags = data.pop("tags", None)
     for field, value in data.items():
         setattr(book, field, value)
-    if tags is not None:
-        book.tags.set(_resolve_tags(tags))
+    if has_tags:
+        # Like the other fields, an explicit null clears the tag set.
+        book.tags.set(_resolve_tags(tags) if tags else [])
 
 
 def _add_quote(book, payload: QuoteIn):
@@ -114,13 +129,16 @@ def book_detail(request, author_slug: str, title_slug: str):
     response=BookDetailOut,
     summary="Update book metadata and review fields",
 )
+@transaction.atomic
 def update_book(request, author_slug: str, title_slug: str, payload: BookPatchIn):
     """Partial update: only fields present in the payload change, an explicit
-    null clears a field. Editing the text of a published review stamps
-    ``review_updated`` (taking the book out of the reread queue); the slug
-    identity (title, author) and reads are managed elsewhere."""
+    null clears a field (including the tag set). Editing the text of a
+    published review stamps ``review_updated`` (taking the book out of the
+    reread queue); the slug identity (title, author) and reads are managed
+    elsewhere."""
     book = _get_book(author_slug, title_slug)
     _apply_book_patch(book, payload.model_dump(exclude_unset=True))
+    book.full_clean(exclude=BOOK_CLEAN_EXCLUDE)
     book.save()
     return _get_book(author_slug, title_slug)
 
@@ -155,7 +173,11 @@ def submit_review(request, author_slug: str, title_slug: str, payload: ReviewSub
     if payload.rating is not None:
         book.rating = payload.rating
     book.status = BookStatus.REVIEWED
+    book.full_clean(exclude=BOOK_CLEAN_EXCLUDE)
     book.save()  # Stamps feed_date and review_updated.
+    # Republishing with unchanged text is still a deliberate "the review is
+    # current" action, which Book.save() alone wouldn't register.
+    book.mark_review_current()
     # A queued book may already have Read rows; only add missing dates.
     book.sync_reads(payload.dates_read, did_not_finish=payload.did_not_finish)
     for quote in payload.quotes:

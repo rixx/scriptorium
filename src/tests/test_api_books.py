@@ -49,6 +49,56 @@ def test_api_accepts_request_with_configured_token(api_client):
     assert response.json() == {"items": [], "count": 0}
 
 
+@pytest.mark.parametrize("token", ["", "anything"])
+def test_api_rejects_every_token_when_key_is_unset(settings, token):
+    """An empty API key means the API is disabled: even the matching empty
+    bearer token must not authenticate."""
+    settings.API_KEY = ""
+    make_reviewed_book(title="Secret")
+
+    client = Client(headers={"Authorization": f"Bearer {token}"})
+    response = client.get("/api/books/")
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Unauthorized"}
+
+
+def test_api_rejects_non_ascii_token(settings):
+    """hmac.compare_digest raises TypeError on non-ASCII str input; the token
+    must be rejected with a 401, not a 500."""
+    settings.API_KEY = "test-api-key"
+    make_reviewed_book(title="Secret")
+
+    client = Client(headers={"Authorization": "Bearer sécret"})
+    response = client.get("/api/books/")
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Unauthorized"}
+
+
+def test_api_key_defaults_to_dev_key_only_without_environment_override():
+    """The settings module falls back to the well-known dev key (only under
+    DEBUG, which is on in tests); an environment variable always wins."""
+    import importlib  # noqa: PLC0415
+    import os  # noqa: PLC0415
+
+    from scriptorium import settings as settings_module  # noqa: PLC0415
+
+    original = os.environ.get("SCRIPTORIUM_API_KEY")
+    try:
+        os.environ.pop("SCRIPTORIUM_API_KEY", None)
+        assert importlib.reload(settings_module).API_KEY == "dev-key-change-me"
+
+        os.environ["SCRIPTORIUM_API_KEY"] = "from-env"
+        assert importlib.reload(settings_module).API_KEY == "from-env"
+    finally:
+        if original is None:
+            os.environ.pop("SCRIPTORIUM_API_KEY", None)
+        else:
+            os.environ["SCRIPTORIUM_API_KEY"] = original
+        importlib.reload(settings_module)
+
+
 # --- Book list ------------------------------------------------------------------
 
 
@@ -65,7 +115,11 @@ def test_books_list_returns_published_books_with_metadata(api_client):
         pages=341,
         latest_date=dt.date(2024, 3, 14),
     )
-    book.tags.add(TagFactory(category="genre", name="Science Fiction"))
+    book.tags.add(
+        TagFactory(
+            category="genre", name="Science Fiction", name_slug="science-fiction"
+        )
+    )
     BookFactory(title="Not yet read", status=BookStatus.TO_READ)
 
     response = api_client.get("/api/books/")
@@ -86,7 +140,7 @@ def test_books_list_returns_published_books_with_metadata(api_client):
             "status": "reviewed",
             "latest_read": "2024-03-14",
             "pages": 341,
-            "tags": ["genre:Science Fiction"],
+            "tags": ["genre:science-fiction"],
         }
     ]
 
@@ -162,6 +216,27 @@ def test_books_list_paginates_with_limit_and_offset(api_client):
     data = response.json()
     assert data["count"] == 3
     assert [item["title"] for item in data["items"]] == ["Book 2"]
+
+
+@pytest.mark.parametrize("item_count", [1, 3])
+def test_books_list_query_count_is_constant(
+    api_client, django_assert_num_queries, item_count
+):
+    author = AuthorFactory(name="Writer", name_slug="writer")
+    for index in range(item_count):
+        book = make_reviewed_book(
+            title=f"Book {index}", title_slug=f"book-{index}", primary_author=author
+        )
+        book.tags.add(TagFactory())
+        book.additional_authors.add(AuthorFactory())
+
+    with django_assert_num_queries(5):
+        response = api_client.get("/api/books/")
+
+    data = response.json()
+    assert data["count"] == item_count
+    assert all(len(item["authors"]) == 2 for item in data["items"])
+    assert all(len(item["tags"]) == 1 for item in data["items"])
 
 
 # --- Book detail ---------------------------------------------------------------
@@ -386,6 +461,91 @@ def test_books_patch_ignores_identity_and_status_fields(api_client):
     assert book.title_slug != "sneaky"
     assert book.status == BookStatus.REVIEWED
     assert book.pages == 100
+
+
+def test_books_patch_tag_name_is_slugified_and_reuses_existing_tag(api_client):
+    book = make_reviewed_book()
+    existing = TagFactory(
+        category="genre", name="Science Fiction", name_slug="science-fiction"
+    )
+
+    response = api_client.patch(
+        _detail_url(book),
+        {"tags": ["genre:Science Fiction"]},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["tags"] == ["genre:science-fiction"]
+    assert list(book.tags.all()) == [existing]
+    assert Tag.objects.count() == 1
+
+
+def test_books_patch_new_tag_from_name_keeps_display_name(api_client):
+    book = make_reviewed_book()
+
+    response = api_client.patch(
+        _detail_url(book),
+        {"tags": ["genre:Science Fiction"]},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    tag = Tag.objects.get()
+    assert tag.category == "genre"
+    assert tag.name_slug == "science-fiction"
+    assert tag.name == "Science Fiction"
+
+
+def test_books_patch_tags_round_trip_is_a_noop(api_client):
+    """GET serializes tags in the same 'category:slug' form PATCH accepts, so
+    patching a book with its own tags changes nothing and creates no rows."""
+    book = make_reviewed_book()
+    tag = TagFactory(
+        category="genre", name="Science Fiction", name_slug="science-fiction"
+    )
+    book.tags.add(tag)
+
+    detail = api_client.get(_detail_url(book)).json()
+    response = api_client.patch(
+        _detail_url(book), {"tags": detail["tags"]}, content_type="application/json"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["tags"] == detail["tags"] == ["genre:science-fiction"]
+    assert list(book.tags.all()) == [tag]
+    assert Tag.objects.count() == 1
+
+
+@pytest.mark.parametrize("value", [None, []])
+def test_books_patch_null_or_empty_tags_clears_tags(api_client, value):
+    book = make_reviewed_book()
+    book.tags.add(TagFactory())
+
+    response = api_client.patch(
+        _detail_url(book), {"tags": value}, content_type="application/json"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["tags"] == []
+    assert book.tags.count() == 0
+
+
+def test_books_patch_invalid_model_data_returns_400_and_rolls_back(api_client):
+    book = make_reviewed_book()
+
+    response = api_client.patch(
+        _detail_url(book),
+        {"isbn13": "9" * 31, "tags": ["genre:new-tag"]},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert "isbn13" in response.json()["detail"]
+    book.refresh_from_db()
+    assert book.isbn13 is None
+    assert book.tags.count() == 0
+    assert Tag.objects.count() == 0
 
 
 def test_books_patch_invalid_tag_spec_returns_400(api_client):

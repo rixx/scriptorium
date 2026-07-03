@@ -20,6 +20,7 @@ from .admin import (
     ToReviewList,
     healthz,
     logout_view,
+    to_review_dismiss,
     trigger_deploy,
 )
 from .book import (
@@ -95,5 +96,6 @@ __all__ = [
     "graph_data",
     "healthz",
     "logout_view",
+    "to_review_dismiss",
     "trigger_deploy",
 ]

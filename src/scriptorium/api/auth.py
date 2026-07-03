@@ -9,6 +9,11 @@ class ApiKeyAuth(HttpBearer):
     settings (``SCRIPTORIUM_API_KEY`` in the environment)."""
 
     def authenticate(self, request, token):
-        if hmac.compare_digest(token, settings.API_KEY):
+        if not settings.API_KEY:
+            # No key configured: the API is disabled, nothing may match --
+            # especially not an empty bearer token.
+            return None
+        # Compare bytes: compare_digest raises on non-ASCII str input.
+        if hmac.compare_digest(token.encode(), settings.API_KEY.encode()):
             return token
         return None

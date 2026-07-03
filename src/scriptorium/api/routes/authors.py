@@ -33,5 +33,6 @@ def update_author(request, author_slug: str, payload: AuthorPatchIn):
     author = get_object_or_404(Author, name_slug=author_slug)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(author, field, value)
+    author.full_clean()
     author.save()
     return author

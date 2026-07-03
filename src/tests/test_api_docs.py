@@ -24,6 +24,7 @@ def test_openapi_schema_lists_all_routes(client):
         "/api/books/{author_slug}/{title_slug}/quotes/",
         "/api/queue/",
         "/api/queue/next/",
+        "/api/queue/{book_id}/dismiss/",
         "/api/reads/{read_id}/",
         "/api/quotes/{quote_id}/",
         "/api/authors/",

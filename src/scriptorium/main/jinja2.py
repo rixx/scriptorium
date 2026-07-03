@@ -6,6 +6,7 @@ import markdown
 import smartypants
 from django.contrib import messages
 from django.contrib.staticfiles.storage import staticfiles_storage
+from django.db.models import F, Q
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from markdown.extensions.smarty import SmartyExtension
 from markdown.extensions.toc import TocExtension
@@ -27,11 +28,15 @@ def unmark_element(element, stream=None):
 
 
 def get_missing_reviews_data():
-    from scriptorium.main.models import Book, Read  # noqa: PLC0415
+    from scriptorium.main.models import BookStatus, Read  # noqa: PLC0415
 
     all_reads = Read.objects.filter(finished_on__gt=DATE_CUTOFF)
+    # Only genuinely unaccounted reads count: everything on a book still
+    # waiting for its first review, but for published books only the reads
+    # newer than the review itself (older ones are covered by it).
     missing_reviews = all_reads.filter(
-        book__in=Book.all_objects.needs_review().values("pk")
+        Q(book__status=BookStatus.TO_REVIEW)
+        | Q(book__status=BookStatus.REVIEWED, finished_on__gt=F("book__review_updated"))
     ).count()
     if not missing_reviews:
         return {}

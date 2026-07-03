@@ -444,6 +444,17 @@ class ToReviewDelete(LoginRequiredMixin, DetailView):
 
 @login_required
 @require_POST
+def to_review_dismiss(request, pk):
+    """Dismiss a queued reread: the published review still stands, so stamp
+    it as current instead of editing or deleting anything. Only published
+    books can be dismissed -- unreviewed queue entries need a review."""
+    book = get_object_or_404(Book.all_objects.filter(status=BookStatus.REVIEWED), pk=pk)
+    book.mark_review_current()
+    return redirect("/b/toreview/")
+
+
+@login_required
+@require_POST
 def trigger_deploy(request):
     flag_file = django_settings.DEPLOY_FLAG_FILE
     if not flag_file:

@@ -56,7 +56,7 @@ class BookListOut(Schema):
 
     @staticmethod
     def resolve_tags(obj):
-        return [str(tag) for tag in obj.tags.all()]
+        return [tag.spec for tag in obj.tags.all()]
 
 
 class BookDetailOut(BookListOut):
@@ -102,6 +102,12 @@ class QueueItemOut(Schema):
     @staticmethod
     def resolve_why(obj):
         return "unreviewed" if obj.status == BookStatus.TO_REVIEW else "reread"
+
+
+class QueueAddOut(QueueItemOut):
+    queued: bool = Field(
+        description="Whether the book is now actually in the review queue."
+    )
 
 
 class QueueAddIn(Schema):
@@ -156,7 +162,9 @@ class BookMetadataIn(Schema):
     openlibrary_id: str | None = None
     cover_source: str | None = None
     tags: list[str] | None = Field(
-        None, description="Tags as 'category:slug' strings; replaces the tag set."
+        None,
+        description="Tags as 'category:name' strings (names are slugified); "
+        "replaces the tag set, null or [] clears it.",
     )
 
 
@@ -213,7 +221,7 @@ class AuthorDetailOut(AuthorOut):
 
     @staticmethod
     def resolve_books(obj):
-        return obj.all_books().order_by("title_slug")
+        return obj.all_books().prefetch_related("tags").order_by("title_slug")
 
 
 class AuthorPatchIn(Schema):

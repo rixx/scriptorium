@@ -124,8 +124,10 @@ DEPLOY_FLAG_FILE = os.environ.get(
     "SCRIPTORIUM_DEPLOY_FLAG_FILE", str(DATA_DIR / "deploy.flag")
 )
 
-# Bearer token for the single-user REST API at /api/.
-API_KEY = os.environ.get("SCRIPTORIUM_API_KEY", "dev-key-change-me")
+# Bearer token for the single-user REST API at /api/. The well-known dev key
+# is only a fallback under DEBUG; without DEBUG an unset key leaves the API
+# disabled (auth rejects every request).
+API_KEY = os.environ.get("SCRIPTORIUM_API_KEY", "dev-key-change-me" if DEBUG else "")
 
 try:
     import django_extensions  # noqa: F401
