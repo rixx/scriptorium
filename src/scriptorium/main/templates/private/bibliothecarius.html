@@ -25,8 +25,40 @@
       method: 'POST',
       body: new FormData(form),
       credentials: 'same-origin'
-    }).then(function(r) { return r.text(); }).then(function(html) {
-      form.outerHTML = html;
+    }).then(function(r) {
+      if (!r.ok) throw new Error('deploy trigger failed');
+      var el = document.createElement('div');
+      el.style.color = '#666';
+      el.style.fontSize = '0.9em';
+      el.textContent = 'Deploying…';
+      form.replaceWith(el);
+      var dots = 0;
+      var iv = setInterval(function() {
+        dots = (dots + 1) % 4;
+        el.textContent = 'Deploying' + '.'.repeat(dots);
+      }, 500);
+      var ok = 0;
+      function poll() {
+        fetch('/healthz/').then(function(r) {
+          if (r.ok) {
+            ok++;
+            if (ok >= 3) {
+              clearInterval(iv);
+              el.textContent = 'Deploy complete!';
+              el.style.color = 'green';
+              setTimeout(function() { location.reload(); }, 1500);
+            } else {
+              setTimeout(poll, 1000);
+            }
+          } else {
+            ok = 0;
+            setTimeout(poll, 2000);
+          }
+        }).catch(function() { ok = 0; setTimeout(poll, 2000); });
+      }
+      setTimeout(poll, 5000);
+    }).catch(function() {
+      form.querySelector('button').textContent = 'Deploy (failed, retry?)';
     });
   });
   </script>

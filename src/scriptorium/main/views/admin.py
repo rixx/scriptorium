@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Q
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.functional import cached_property
 from django.views.decorators.http import require_POST
@@ -507,32 +507,7 @@ def trigger_deploy(request):
 
     Path(flag_file).touch()
     logger.info("Deploy flag set: %s", flag_file)
-    return HttpResponse(
-        '<div id="deploy-status" style="color: #666; font-size: 0.9em;">'
-        "Deploying\u2026"
-        "<script>"
-        "(function(){"
-        "var el=document.getElementById('deploy-status');"
-        "var dots=0;"
-        "var iv=setInterval(function(){dots=(dots+1)%4;"
-        "el.textContent='Deploying'+'.'.repeat(dots);},500);"
-        "var ok=0;"
-        "function poll(){"
-        "fetch('/healthz/').then(function(r){"
-        "if(r.ok){ok++;"
-        "if(ok>=3){clearInterval(iv);"
-        "el.textContent='Deploy complete!';"
-        "el.style.color='green';"
-        "setTimeout(function(){location.reload();},1500);}"
-        "else{setTimeout(poll,1000);}}"
-        "else{ok=0;setTimeout(poll,2000);}"
-        "}).catch(function(){ok=0;setTimeout(poll,2000);});"
-        "}"
-        "setTimeout(poll,5000);"
-        "})();"
-        "</script>"
-        "</div>"
-    )
+    return JsonResponse({"status": "deploying"})
 
 
 def healthz(request):
