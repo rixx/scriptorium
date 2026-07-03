@@ -60,6 +60,7 @@ def test_reads_create_logs_read_with_metadata(api_client):
         "source": "koreader",
         "notes": "Slow start.",
         "did_not_finish": False,
+        "total_time_seconds": None,
         "highlights": None,
     }
     assert read.finished_on == dt.date(2024, 5, 1)
