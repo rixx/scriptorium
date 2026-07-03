@@ -6,15 +6,15 @@ from django.contrib.auth import get_user_model
 from scriptorium.main.models import (
     Author,
     Book,
+    BookStatus,
     Page,
     Poem,
     PoemStatus,
     Quote,
     Read,
     Review,
+    Series,
     Tag,
-    ToRead,
-    ToReview,
 )
 
 
@@ -52,6 +52,14 @@ class TagFactory(factory.django.DjangoModelFactory):
     name_slug = factory.Sequence(lambda n: f"tag-{n}")
 
 
+class SeriesFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Series
+
+    name = factory.Sequence(lambda n: f"Series {n}")
+    name_slug = factory.Sequence(lambda n: f"series-{n}")
+
+
 class BookFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Book
@@ -81,7 +89,6 @@ class ReviewFactory(factory.django.DjangoModelFactory):
     tldr = "Short."
     rating = 4
     latest_date = factory.LazyFunction(lambda: dt.date(2024, 6, 15))
-    is_draft = False
 
     @factory.post_generation
     def reads(self, create, extracted, **kwargs):
@@ -92,6 +99,16 @@ class ReviewFactory(factory.django.DjangoModelFactory):
         dates = extracted if extracted is not None else [self.latest_date]
         for date in dates:
             ReadFactory(book=self.book, finished_on=date)
+
+    @factory.post_generation
+    def publish(self, create, extracted, **kwargs):
+        """Creating a review publishes the book, mirroring the production
+        flows; pass ``publish=False`` to keep the book's current status."""
+        if not create or extracted is False:
+            return
+        if self.book.status != BookStatus.REVIEWED:
+            self.book.status = BookStatus.REVIEWED
+            self.book.save(update_fields=["status"])
 
 
 class QuoteFactory(factory.django.DjangoModelFactory):
@@ -122,32 +139,13 @@ class PageFactory(factory.django.DjangoModelFactory):
     text = "Some page content."
 
 
-class ToReadFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = ToRead
-
-    title = factory.Sequence(lambda n: f"To read {n}")
-    author = factory.Sequence(lambda n: f"To read author {n}")
-    shelf = "fiction"
-    pages = 300
-
-
-class ToReviewFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = ToReview
-
-    title = factory.Sequence(lambda n: f"To review {n}")
-    author = factory.Sequence(lambda n: f"To review author {n}")
-    date = factory.LazyFunction(lambda: dt.date(2024, 6, 15))
-
-
 def make_reviewed_book(**book_kwargs):
-    """Create a Book with a published (non-draft) Review attached."""
+    """Create a published (status ``reviewed``) Book with a Review attached."""
     review_kwargs = {
         key: book_kwargs.pop(key)
-        for key in ("rating", "text", "tldr", "latest_date", "is_draft", "reads")
+        for key in ("rating", "text", "tldr", "latest_date", "reads")
         if key in book_kwargs
     }
-    book = BookFactory(**book_kwargs)
+    book = BookFactory(**book_kwargs, status=BookStatus.REVIEWED)
     ReviewFactory(book=book, **review_kwargs)
     return book

@@ -9,9 +9,8 @@ from tests.factories import (
     PoemFactory,
     QuoteFactory,
     ReviewFactory,
+    SeriesFactory,
     TagFactory,
-    ToReadFactory,
-    ToReviewFactory,
     UserFactory,
     make_reviewed_book,
 )
@@ -44,7 +43,7 @@ def book(author):
         primary_author=author,
         pages=341,
         publication_year=1974,
-        series="Hainish Cycle",
+        series=SeriesFactory(name="Hainish Cycle", name_slug="hainish-cycle"),
         series_position="5",
     )
 
@@ -62,7 +61,7 @@ def review(book):
 @pytest.fixture
 def reviewed_book(review):
     """A Book with a published Review. Accessing this fixture ensures the
-    Book passes the default (non-draft) BookManager filter."""
+    Book passes the default (reviewed-only) BookManager filter."""
     return review.book
 
 
@@ -92,16 +91,6 @@ def page():
 
 
 @pytest.fixture
-def to_read():
-    return ToReadFactory()
-
-
-@pytest.fixture
-def to_review():
-    return ToReviewFactory()
-
-
-@pytest.fixture
 def user():
     return UserFactory()
 
@@ -118,12 +107,13 @@ def populated_library(author):
     reviewed books by the same author in a series, one extra book by another
     author, and a tag that groups them."""
     tag = TagFactory(category="genre", name="Fantasy", name_slug="fantasy")
+    series = SeriesFactory(name="A Series", name_slug="a-series")
 
     book_one = make_reviewed_book(
         title="Book One",
         title_slug="book-one",
         primary_author=author,
-        series="A Series",
+        series=series,
         series_position="1",
         rating=4,
         latest_date=dt.date(2024, 1, 10),
@@ -132,7 +122,7 @@ def populated_library(author):
         title="Book Two",
         title_slug="book-two",
         primary_author=author,
-        series="A Series",
+        series=series,
         series_position="2",
         rating=5,
         latest_date=dt.date(2024, 2, 20),

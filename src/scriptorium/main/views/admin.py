@@ -7,7 +7,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Max, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.utils.functional import cached_property
@@ -28,6 +28,7 @@ from scriptorium.main.forms import (
     BookEditForm,
     BookSearchForm,
     BookSelectForm,
+    BookToReviewForm,
     BookWizardForm,
     EditionSelectForm,
     LoginForm,
@@ -36,18 +37,17 @@ from scriptorium.main.forms import (
     QuoteForm,
     ReviewEditForm,
     ReviewWizardForm,
-    ToReviewForm,
 )
 from scriptorium.main.models import (
     Author,
     Book,
+    BookStatus,
     Page,
     Poem,
     Quote,
     Read,
     Review,
     Tag,
-    ToReview,
 )
 from scriptorium.main.utils import slugify
 from scriptorium.main.views.mixins import (
@@ -207,7 +207,20 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
             for tag in new_tags:
                 category, name = tag.split(":", maxsplit=1)
                 tags.append(Tag.objects.create(name_slug=name, category=category))
-        book = Book.objects.create(**steps["book"], primary_author=author)
+        book = Book.all_objects.filter(
+            primary_author=author, title_slug=steps["book"]["title_slug"]
+        ).first()
+        if book:
+            # The wizard can pick up a queued (to-read or to-review) book;
+            # update it in place instead of hitting the unique slug constraint.
+            for field, value in steps["book"].items():
+                setattr(book, field, value)
+            book.status = BookStatus.REVIEWED
+            book.save()
+        else:
+            book = Book.objects.create(
+                **steps["book"], primary_author=author, status=BookStatus.REVIEWED
+            )
         book.tags.set(tags)
         review_data = steps["review"]
         dates_read = review_data.pop("dates_read")
@@ -388,9 +401,8 @@ class PoemCreate(LoginRequiredMixin, CreateView):
         return self.object.get_absolute_url()
 
 
-class ToReviewCreate(LoginRequiredMixin, CreateView):
-    model = ToReview
-    form_class = ToReviewForm
+class ToReviewCreate(LoginRequiredMixin, FormView):
+    form_class = BookToReviewForm
     template_name = "private/toreview_edit.html"
 
     def form_valid(self, form):
@@ -399,36 +411,25 @@ class ToReviewCreate(LoginRequiredMixin, CreateView):
 
 
 class ToReviewList(LoginRequiredMixin, ListView):
-    model = ToReview
     template_name = "private/toreview_list.html"
-    context_object_name = "toreviews"
+    context_object_name = "books"
 
     def get_queryset(self):
-        qs = ToReview.objects.all().order_by("date")
-        qs_filter = self.request.GET.get("filter")
-        if qs_filter == "reviewed":
-            qs = qs.filter(book__isnull=False)
-        else:
-            qs = qs.filter(book__isnull=True)
-        return qs
+        return (
+            Book.all_objects.filter(status=BookStatus.TO_REVIEW)
+            .select_related("primary_author", "series")
+            .annotate(date=Max("reads__finished_on"))
+            .order_by("date")
+        )
 
 
 class ToReviewDelete(LoginRequiredMixin, DetailView):
-    model = ToReview
+    def get_queryset(self):
+        return Book.all_objects.filter(status=BookStatus.TO_REVIEW)
 
     def dispatch(self, request, *args, **kwargs):
         self.object = self.get_object()
         self.object.delete()
-        return redirect("/b/toreview")
-
-
-class ToReviewEdit(LoginRequiredMixin, UpdateView):
-    model = ToReview
-    form_class = ToReviewForm
-    template_name = "private/toreview_edit.html"
-
-    def form_valid(self, form):
-        form.save()
         return redirect("/b/toreview")
 
 

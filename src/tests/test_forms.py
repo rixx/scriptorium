@@ -7,6 +7,7 @@ from PIL import Image
 from scriptorium.main.forms import (
     BookEditForm,
     BookSelectForm,
+    BookToReviewForm,
     BookWizardForm,
     CatalogueForm,
     EditionSelectForm,
@@ -14,11 +15,12 @@ from scriptorium.main.forms import (
     ReviewEditForm,
     ReviewWizardForm,
 )
-from scriptorium.main.models import Review
+from scriptorium.main.models import Book, BookStatus, Read, Review, Series
 from tests.factories import (
     AuthorFactory,
     BookFactory,
     ReviewFactory,
+    SeriesFactory,
     TagFactory,
     make_reviewed_book,
 )
@@ -63,8 +65,10 @@ def test_catalogue_form_filters_by_additional_author():
 
 
 def test_catalogue_form_filters_by_series():
-    hainish = make_reviewed_book(series="Hainish Cycle")
-    make_reviewed_book(series="Earthsea")
+    hainish = make_reviewed_book(
+        series=SeriesFactory(name="Hainish Cycle", name_slug="hainish-cycle")
+    )
+    make_reviewed_book(series=SeriesFactory(name="Earthsea", name_slug="earthsea"))
 
     form = CatalogueForm(data={"series": "Hainish Cycle"})
 
@@ -290,7 +294,7 @@ def _book_edit_post(book, tag, **overrides):
         "publication_year": (
             str(book.publication_year) if book.publication_year is not None else ""
         ),
-        "series": book.series or "",
+        "series": book.series.name if book.series else "",
         "series_position": book.series_position or "",
         "plot": book.plot or "",
         "tags": [str(tag.pk)],
@@ -372,6 +376,57 @@ def test_book_edit_form_clean_new_tags_splits_input():
 
     assert form.is_valid(), form.errors
     assert form.cleaned_data["new_tags"] == ["a", "b", "c"]
+
+
+def test_book_edit_form_series_initial_shows_series_name():
+    series = SeriesFactory(name="Earthsea", name_slug="earthsea")
+    book = BookFactory(series=series)
+
+    form = BookEditForm(instance=book)
+
+    assert form.initial["series"] == "Earthsea"
+    assert BookEditForm(instance=BookFactory()).initial["series"] == ""
+    # An unsaved instance has no series to show.
+    assert "series" not in BookEditForm().initial
+
+
+def test_book_edit_form_series_creates_series_from_name():
+    book = BookFactory()
+    tag = TagFactory()
+
+    form = BookEditForm(
+        data=_book_edit_post(book, tag, series="Discworld"), instance=book
+    )
+
+    assert form.is_valid(), form.errors
+    saved = form.save()
+    assert saved.series.name == "Discworld"
+    assert saved.series.name_slug == "discworld"
+
+
+def test_book_edit_form_series_reuses_existing_series_by_slug():
+    existing = SeriesFactory(name="Discworld", name_slug="discworld")
+    book = BookFactory()
+    tag = TagFactory()
+
+    form = BookEditForm(
+        data=_book_edit_post(book, tag, series="DISCWORLD"), instance=book
+    )
+
+    assert form.is_valid(), form.errors
+    saved = form.save()
+    assert saved.series == existing
+    assert Series.objects.count() == 1
+
+
+def test_book_edit_form_empty_series_clears_series():
+    book = BookFactory(series=SeriesFactory())
+    tag = TagFactory()
+
+    form = BookEditForm(data=_book_edit_post(book, tag, series=""), instance=book)
+
+    assert form.is_valid(), form.errors
+    assert form.save().series is None
 
 
 # --- ReviewForm ------------------------------------------------------------
@@ -480,6 +535,84 @@ def test_review_edit_form_save_applies_dnf_to_all_reads():
     form.save()
 
     assert [read.did_not_finish for read in review.book.reads.all()] == [True, True]
+
+
+# --- BookToReviewForm --------------------------------------------------------
+
+
+def _to_review_post(**overrides):
+    data = {
+        "title": "The Tombs of Atuan",
+        "author": "Ursula K. Le Guin",
+        "date": "2024-05-01",
+        "series": "Earthsea",
+        "series_position": "2",
+        "notes": "Read at the beach.",
+    }
+    data.update(overrides)
+    return data
+
+
+def test_book_to_review_form_creates_author_book_and_read():
+    form = BookToReviewForm(data=_to_review_post())
+
+    assert form.is_valid(), form.errors
+    book = form.save()
+
+    assert book.status == BookStatus.TO_REVIEW
+    assert book.title == "The Tombs of Atuan"
+    assert book.title_slug == "the-tombs-of-atuan"
+    assert book.primary_author.name == "Ursula K. Le Guin"
+    assert book.primary_author.name_slug == "ursula-k-le-guin"
+    assert book.series.name == "Earthsea"
+    assert book.series_position == "2"
+    read = Read.objects.get(book=book)
+    assert read.finished_on == dt.date(2024, 5, 1)
+    assert read.source == "manual"
+    assert read.notes == "Read at the beach."
+
+
+def test_book_to_review_form_reuses_existing_author_and_book():
+    author = AuthorFactory(name="Ursula K. Le Guin", name_slug="ursula-k-le-guin")
+    queued = BookFactory(
+        title="The Tombs of Atuan",
+        title_slug="the-tombs-of-atuan",
+        primary_author=author,
+        status=BookStatus.TO_READ,
+    )
+
+    form = BookToReviewForm(data=_to_review_post(series="", notes=""))
+    assert form.is_valid(), form.errors
+    book = form.save()
+
+    assert book == queued
+    assert Book.all_objects.count() == 1
+    book.refresh_from_db()
+    assert book.status == BookStatus.TO_REVIEW
+    read = Read.objects.get(book=book)
+    assert read.notes is None
+
+
+def test_book_to_review_form_records_reread_of_reviewed_book():
+    """Logging a read for an already reviewed book must not demote the book
+    back to to-review, but the read itself is still recorded."""
+    book = make_reviewed_book(
+        title="Reread Me",
+        title_slug="reread-me",
+        latest_date=dt.date(2020, 1, 1),
+        reads=[],
+    )
+
+    form = BookToReviewForm(
+        data=_to_review_post(title="Reread Me", author=book.primary_author.name)
+    )
+    assert form.is_valid(), form.errors
+    saved = form.save()
+
+    assert saved == book
+    saved.refresh_from_db()
+    assert saved.status == BookStatus.REVIEWED
+    assert [read.finished_on for read in saved.reads.all()] == [dt.date(2024, 5, 1)]
 
 
 # --- QuoteForm -------------------------------------------------------------

@@ -27,13 +27,13 @@ def unmark_element(element, stream=None):
 
 
 def get_missing_reviews_data():
-    from scriptorium.main.models import ToReview  # noqa: PLC0415
+    from scriptorium.main.models import BookStatus, Read  # noqa: PLC0415
 
-    all_reviews = ToReview.objects.filter(date__gt=DATE_CUTOFF)
-    missing_reviews = all_reviews.filter(book__isnull=True).count()
+    all_reads = Read.objects.filter(finished_on__gt=DATE_CUTOFF)
+    missing_reviews = all_reads.filter(book__status=BookStatus.TO_REVIEW).count()
     if not missing_reviews:
         return {}
-    all_review_count = all_reviews.count()
+    all_review_count = all_reads.count()
     return {
         "missing_reviews": missing_reviews,
         "missing_reviews_date": DATE_CUTOFF.strftime("%Y-%m-%d"),

@@ -8,22 +8,24 @@ from scriptorium.main import metadata
 from scriptorium.main.models import (
     Author,
     Book,
+    BookStatus,
     Page,
     Poem,
     PoemStatus,
     Quote,
+    Read,
     Review,
     Tag,
-    ToReview,
 )
 from scriptorium.main.views.admin import ReviewCreate, show_edition_step
 from tests.factories import (
     AuthorFactory,
+    BookFactory,
     PageFactory,
     PoemFactory,
     QuoteFactory,
+    ReadFactory,
     TagFactory,
-    ToReviewFactory,
     make_reviewed_book,
 )
 
@@ -210,39 +212,38 @@ def test_quote_delete_removes_quote_and_redirects_to_book(admin_logged_in_client
 # --- ToReview ---------------------------------------------------------------
 
 
-def test_to_review_list_shows_unreviewed_by_default(admin_logged_in_client):
-    book = make_reviewed_book()
-    unlinked = ToReviewFactory(title="Still to review")
-    linked = ToReviewFactory(title="Already linked", book=book)
+def test_to_review_list_shows_books_waiting_for_review(admin_logged_in_client):
+    reviewed = make_reviewed_book(title="Already reviewed")
+    queued = BookFactory(title="Still queued", status=BookStatus.TO_READ)
+    waiting = BookFactory(title="Waiting for review", status=BookStatus.TO_REVIEW)
+    ReadFactory(book=waiting, finished_on=dt.date(2024, 6, 1))
 
     response = admin_logged_in_client.get("/b/toreview/")
 
     assert response.status_code == 200
     body = response.content.decode()
-    assert unlinked.title in body
-    assert linked.title not in body
+    assert waiting.title in body
+    assert "2024-06-01" in body
+    assert reviewed.title not in body
+    assert queued.title not in body
 
 
-def test_to_review_list_reviewed_filter(admin_logged_in_client):
-    book = make_reviewed_book()
-    unlinked = ToReviewFactory(title="Still to review")
-    linked = ToReviewFactory(title="Already linked", book=book)
+def test_to_review_delete_removes_book(admin_logged_in_client):
+    book = BookFactory(title="Trashed", status=BookStatus.TO_REVIEW)
 
-    response = admin_logged_in_client.get("/b/toreview/?filter=reviewed")
-
-    assert response.status_code == 200
-    body = response.content.decode()
-    assert linked.title in body
-    assert unlinked.title not in body
-
-
-def test_to_review_delete_removes_entry(admin_logged_in_client):
-    entry = ToReviewFactory(title="Trashed")
-
-    response = admin_logged_in_client.get(f"/b/toreview/{entry.pk}/delete")
+    response = admin_logged_in_client.get(f"/b/toreview/{book.pk}/delete")
 
     assert response.status_code == 302
-    assert not ToReview.objects.filter(pk=entry.pk).exists()
+    assert not Book.all_objects.filter(pk=book.pk).exists()
+
+
+def test_to_review_delete_rejects_published_books(admin_logged_in_client):
+    book = make_reviewed_book(title="Keep me")
+
+    response = admin_logged_in_client.get(f"/b/toreview/{book.pk}/delete")
+
+    assert response.status_code == 404
+    assert Book.all_objects.filter(pk=book.pk).exists()
 
 
 # --- Deploy trigger ---------------------------------------------------------
@@ -490,7 +491,7 @@ def test_review_create_done_creates_author_book_review_and_tags(rf):
                 "isbn10": None,
                 "isbn13": None,
                 "publication_year": 1974,
-                "series": "",
+                "series": None,
                 "series_position": "",
                 "tags": [],
                 "new_tags": ["genre:scifi"],
@@ -511,9 +512,10 @@ def test_review_create_done_creates_author_book_review_and_tags(rf):
     assert response.status_code == 302
     author = Author.objects.get(name="Ursula K. Le Guin")
     assert author.name_slug == "ursula-k-le-guin"
-    book = Book.objects.with_drafts().get(title="The Dispossessed")
+    book = Book.objects.get(title="The Dispossessed")
     assert book.primary_author == author
     assert book.pages == 341
+    assert book.status == BookStatus.REVIEWED
     assert response.url == f"/{book.slug}/"
     assert list(book.tags.values_list("name_slug", flat=True)) == ["scifi"]
     assert list(book.tags.values_list("category", flat=True)) == ["genre"]
@@ -544,7 +546,7 @@ def test_review_create_done_reuses_existing_author(rf):
                 "isbn10": None,
                 "isbn13": None,
                 "publication_year": 1971,
-                "series": "",
+                "series": None,
                 "series_position": "",
                 "tags": [],
                 "new_tags": [],
@@ -562,10 +564,62 @@ def test_review_create_done_reuses_existing_author(rf):
 
     view.done(form_list=[])
 
-    book = Book.objects.with_drafts().get(title="The Lathe of Heaven")
+    book = Book.objects.get(title="The Lathe of Heaven")
     assert book.primary_author == existing
     assert Author.objects.filter(name="Ursula K. Le Guin").count() == 1
     assert list(book.tags.all()) == []
+
+
+def test_review_create_done_publishes_existing_queued_book(rf):
+    """Reviewing a book that already exists in the queue (status to_review,
+    e.g. from the quick add form) must update that row in place instead of
+    tripping over the unique (author, title_slug) constraint."""
+    author = AuthorFactory(name="Ursula K. Le Guin", name_slug="ursula-k-le-guin")
+    queued = BookFactory(
+        title="The Word for World Is Forest",
+        title_slug="the-word-for-world-is-forest",
+        primary_author=author,
+        pages=None,
+        status=BookStatus.TO_REVIEW,
+    )
+    view = _wizard_view(
+        rf,
+        {
+            "book": {
+                "title": "The Word for World is Forest",
+                "title_slug": "the-word-for-world-is-forest",
+                "author_name": "Ursula K. Le Guin",
+                "source": "",
+                "pages": 189,
+                "cover_source": None,
+                "goodreads_id": None,
+                "isbn10": None,
+                "isbn13": None,
+                "publication_year": 1972,
+                "series": None,
+                "series_position": "",
+                "tags": [],
+                "new_tags": [],
+                "plot": "",
+            },
+            "review": {
+                "dates_read": [dt.date(2024, 5, 2)],
+                "rating": 4,
+                "text": "Trees.",
+                "tldr": "Green.",
+                "did_not_finish": False,
+            },
+        },
+    )
+
+    view.done(form_list=[])
+
+    queued.refresh_from_db()
+    assert queued.status == BookStatus.REVIEWED
+    assert queued.title == "The Word for World is Forest"
+    assert queued.pages == 189
+    assert Book.all_objects.filter(primary_author=author).count() == 1
+    assert queued.review.rating == 4
 
 
 # --- ReviewEdit -------------------------------------------------------------
@@ -940,45 +994,43 @@ def test_poem_edit_post_saves_and_redirects_to_absolute_url(admin_logged_in_clie
     assert poem.text == "New body."
 
 
-# --- ToReview create/edit form_valid ---------------------------------------
+# --- ToReview create form_valid ---------------------------------------------
 
 
-def test_to_review_create_saves_and_redirects_back_to_new(admin_logged_in_client):
+def test_to_review_create_saves_book_and_read_and_redirects_back_to_new(
+    admin_logged_in_client,
+):
     response = admin_logged_in_client.post(
         "/b/toreview/new",
         {
             "title": "Queued",
             "author": "Some One",
             "date": "2024-05-01",
-            "series": "",
-            "series_position": "",
-            "notes": "",
+            "series": "A Cycle",
+            "series_position": "2",
+            "notes": "Read on holiday.",
         },
     )
 
     assert response.status_code == 302
     assert response.url == "/b/toreview/new"
-    entry = ToReview.objects.get(title="Queued")
-    assert entry.author == "Some One"
+    book = Book.all_objects.get(title="Queued")
+    assert book.status == BookStatus.TO_REVIEW
+    assert book.primary_author.name == "Some One"
+    assert book.primary_author.name_slug == "some-one"
+    assert book.series.name == "A Cycle"
+    assert book.series_position == "2"
+    read = Read.objects.get(book=book)
+    assert read.finished_on == dt.date(2024, 5, 1)
+    assert read.source == "manual"
+    assert read.notes == "Read on holiday."
 
 
-def test_to_review_edit_updates_entry_and_redirects_to_list(admin_logged_in_client):
-    entry = ToReviewFactory(title="Before", author="A")
+def test_to_review_create_get_renders_form(admin_logged_in_client):
+    response = admin_logged_in_client.get("/b/toreview/new")
 
-    response = admin_logged_in_client.post(
-        f"/b/toreview/{entry.pk}/",
-        {
-            "title": "After",
-            "author": "A",
-            "date": "2024-05-01",
-            "series": "",
-            "series_position": "",
-            "notes": "Edited notes.",
-        },
-    )
-
-    assert response.status_code == 302
-    assert response.url == "/b/toreview"
-    entry.refresh_from_db()
-    assert entry.title == "After"
-    assert entry.notes == "Edited notes."
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert 'name="title"' in body
+    assert 'name="author"' in body
+    assert 'name="date"' in body

@@ -43,7 +43,7 @@
       {% if book.series %}
         <tr>
           <td>series:</td>
-          <th><a href="/reviews/by-series/#{{ book.series }}">{{ book.series }} {% if book.series_position %}#{{ book.series_position }}{% endif %}</a></th>
+          <th><a href="/reviews/by-series/#{{ book.series.name }}">{{ book.series.name }} {% if book.series_position %}#{{ book.series_position }}{% endif %}</a></th>
         </tr>
       {% endif %}
       <tr>

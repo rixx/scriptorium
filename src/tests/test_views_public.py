@@ -6,15 +6,15 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 
-from scriptorium.main.models import BookRelation
+from scriptorium.main.models import BookRelation, BookStatus
 from scriptorium.main.views import GraphView, QueueView, healthz
 from tests.factories import (
     AuthorFactory,
+    BookFactory,
     PageFactory,
     PoemFactory,
     QuoteFactory,
     TagFactory,
-    ToReadFactory,
     make_reviewed_book,
 )
 
@@ -110,11 +110,11 @@ def test_feed_view_returns_atom_feed(client, reviewed_book):
     assert reviewed_book.title in response.content.decode()
 
 
-def test_feed_view_excludes_drafts(client):
+def test_feed_view_excludes_unpublished_books(client):
     published = make_reviewed_book(title="Published Book")
     draft = make_reviewed_book(title="Draft Book")
-    draft.review.is_draft = True
-    draft.review.save()
+    draft.status = BookStatus.TO_REVIEW
+    draft.save()
 
     response = client.get("/feed.atom")
 
@@ -316,9 +316,9 @@ def test_graph_data_returns_nodes_and_links(client):
 def test_queue_view_shows_shelves_and_totals(rf):
     today = dt.datetime.now(tz=dt.UTC).date()
     last_year = today.replace(year=today.year - 1)
-    ToReadFactory(shelf="fiction", pages=200)
-    ToReadFactory(shelf="fiction", pages=300)
-    ToReadFactory(shelf="non-fiction", pages=100)
+    BookFactory(status=BookStatus.TO_READ, shelf="fiction", pages=200)
+    BookFactory(status=BookStatus.TO_READ, shelf="fiction", pages=300)
+    BookFactory(status=BookStatus.TO_READ, shelf="non-fiction", pages=100)
     make_reviewed_book(title="Read Last Year", pages=250, latest_date=last_year)
 
     view = QueueView()

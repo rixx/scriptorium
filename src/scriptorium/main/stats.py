@@ -9,7 +9,7 @@ import pygal
 from django.db.models import Avg, Sum
 from django.utils.timezone import now
 
-from .models import Book, Review, Tag, ToReview
+from .models import Book, BookStatus, Read, Review, Tag
 
 
 class LineBar(pygal.Line, pygal.Bar):
@@ -183,15 +183,11 @@ def generate_svg(
 def get_stats_grid():
     stats = {}
     time_lookup = defaultdict(list)
-    for review in (
-        Review.objects.all().select_related("book").prefetch_related("book__reads")
-    ):
-        for timestamp in review.dates_read_list:
-            key = timestamp.strftime("%Y-%m")
-            time_lookup[key].append(review)
-    for to_review in ToReview.objects.all().filter(book__isnull=True):
-        key = to_review.date.strftime("%Y-%m")
-        time_lookup[key].append(to_review)
+    # Reads on unreviewed (to-review) books count, too: the book was read,
+    # even if the review is still pending.
+    for read in Read.objects.all().select_related("book"):
+        key = read.finished_on.strftime("%Y-%m")
+        time_lookup[key].append(read)
 
     most_monthly_books = 0
     most_monthly_pages = 0
@@ -205,12 +201,9 @@ def get_stats_grid():
         for month in range(12):
             written_month = f"{month + 1:02}"
             written_date = f"{year}-{written_month}"
-            reviews = time_lookup[written_date]
-            book_count = len(reviews)
-            page_count = sum(
-                int((review.book.pages if review.book else 0) or 0)
-                for review in reviews
-            )
+            reads = time_lookup[written_date]
+            book_count = len(reads)
+            page_count = sum(int(read.book.pages or 0) for read in reads)
             total_pages += page_count
             total_books += book_count
             most_monthly_books = max(most_monthly_books, book_count)
@@ -314,10 +307,12 @@ def get_stats_table():
 
 def get_year_stats(year, extra_years=True):
     reviews = Review.objects.read_in_year(year).prefetch_related("book__reads")
-    to_review = ToReview.objects.filter(date__year=year, book__isnull=True)
+    unreviewed_reads = Read.objects.filter(
+        finished_on__year=year, book__status=BookStatus.TO_REVIEW
+    )
     stats = {}
     total_books = len(reviews)
-    stats["total_books"] = total_books + to_review.count()
+    stats["total_books"] = total_books + unreviewed_reads.count()
     stats["total_pages"] = count_pages(reviews)
     stats["average_pages"] = round(stats["total_pages"] / total_books, 1)
     stats["average_rating"] = average_rating(reviews)
@@ -386,7 +381,7 @@ def get_nodes(graph=None):
                 "name": book.title,
                 "cover": bool(book.cover),
                 "author": book.author_string,
-                "series": book.series,
+                "series": book.series.name if book.series else None,
                 "rating": book.review.rating,
                 "color": book.spine_color,
                 "connections": len(list(graph.neighbors(node))),
@@ -394,7 +389,7 @@ def get_nodes(graph=None):
                     term
                     for term in book.title.lower().split()
                     + book.primary_author.name.lower().split()
-                    + (book.series or "").lower().split()
+                    + (book.series.name.lower().split() if book.series else [])
                     + [f"tag:{tag}" for tag in book.tags.all() or []]
                     + ([f"rating:{book.review.rating}"] if book.review.rating else [])
                     if term

@@ -20,7 +20,6 @@ urlpatterns = [
     path("b/poems/", views.PoemPrivateList.as_view()),
     path("b/toreview/", views.ToReviewList.as_view()),
     path("b/toreview/new", views.ToReviewCreate.as_view()),
-    path("b/toreview/<int:pk>/", views.ToReviewEdit.as_view()),
     path("b/toreview/<int:pk>/delete", views.ToReviewDelete.as_view()),
     path("b/<slug:author>/poems/<slug:slug>/", views.PoemEdit.as_view()),
     path("b/<slug:author>/", views.AuthorEdit.as_view()),

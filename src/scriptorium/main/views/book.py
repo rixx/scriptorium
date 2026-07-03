@@ -12,7 +12,7 @@ from django.views.generic import ListView, TemplateView
 from django_context_decorator import context
 
 from scriptorium.main.forms import CatalogueForm
-from scriptorium.main.models import Author, Book, Review, Tag, ToRead
+from scriptorium.main.models import Author, Book, BookStatus, Review, Tag
 from scriptorium.main.stats import (
     get_all_years,
     get_charts,
@@ -42,7 +42,6 @@ def feed_view(request):
     template = loader.get_template("feed.atom")
     context = {
         "reviews": Review.objects.all()
-        .filter(is_draft=False)
         .annotate(relevant_date=Coalesce("feed_date", "latest_date"))
         .order_by("-relevant_date")[:20]
     }
@@ -214,11 +213,10 @@ class ReviewBySeries(YearNavMixin, ActiveTemplateMixin, TemplateView):
                 sorted(
                     Book.objects.all()
                     .filter(series__isnull=False, series_position__isnull=False)
-                    .exclude(series="")
                     .exclude(series_position=""),
-                    key=lambda book: book.series,
+                    key=lambda book: book.series.name,
                 ),
-                key=lambda book: book.series,
+                key=lambda book: book.series.name,
             )
         ]
         return sorted(
@@ -305,28 +303,36 @@ class QueueView(ActiveTemplateMixin, TemplateView):
     template_name = "public/list_queue.html"
     active = "queue"
 
+    @cached_property
+    def queue(self):
+        return Book.all_objects.filter(status=BookStatus.TO_READ).select_related(
+            "primary_author"
+        )
+
     @context
     def shelves(self):
         shelf_order = sorted(
-            ToRead.objects.all().values_list("shelf", flat=True).distinct()
+            self.queue.exclude(shelf__isnull=True)
+            .values_list("shelf", flat=True)
+            .distinct()
         )
         return [
             {
                 "name": shelf,
-                "books": ToRead.objects.all().filter(shelf=shelf),
-                "page_count": ToRead.objects.all()
-                .filter(shelf=shelf)
-                .aggregate(page_count=Sum("pages"))["page_count"],
+                "books": self.queue.filter(shelf=shelf),
+                "page_count": self.queue.filter(shelf=shelf).aggregate(
+                    page_count=Sum("pages")
+                )["page_count"],
             }
             for shelf in shelf_order
         ]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["total_books"] = ToRead.objects.all().count()
-        context["total_pages"] = ToRead.objects.all().aggregate(
-            page_count=Sum("pages")
-        )["page_count"]
+        context["total_books"] = self.queue.count()
+        context["total_pages"] = self.queue.aggregate(page_count=Sum("pages"))[
+            "page_count"
+        ]
         past_year_reviews = Review.objects.read_in_year(now().year - 1)
         context["past_year_books"] = past_year_reviews.count()
         context["past_year_pages"] = past_year_reviews.aggregate(

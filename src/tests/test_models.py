@@ -9,7 +9,7 @@ from django.core.files.base import ContentFile
 from django.db import models
 from PIL import Image
 
-from scriptorium.main.models import Book, Review, Spine, Tag, Thumbnail
+from scriptorium.main.models import Book, BookStatus, Review, Spine, Tag, Thumbnail
 from tests.factories import (
     AuthorFactory,
     BookFactory,
@@ -17,8 +17,8 @@ from tests.factories import (
     QuoteFactory,
     ReadFactory,
     ReviewFactory,
+    SeriesFactory,
     TagFactory,
-    ToReviewFactory,
     make_reviewed_book,
 )
 
@@ -74,16 +74,30 @@ def test_tag_str_includes_category_and_name():
     assert str(tag) == "genre:Horror"
 
 
+# --- Series -----------------------------------------------------------------
+
+
+def test_series_books_returns_published_books_in_series():
+    series = SeriesFactory(name="Hainish Cycle", name_slug="hainish-cycle")
+    book_one = make_reviewed_book(series=series)
+    book_two = make_reviewed_book(series=series)
+    # The reverse manager filters like the default Book manager does.
+    queued = BookFactory(series=series, status=BookStatus.TO_READ)
+
+    assert set(series.books.all()) == {book_one, book_two}
+    assert queued in Book.all_objects.filter(series=series)
+
+
 # --- Book manager -----------------------------------------------------------
 
 
-def test_book_manager_excludes_drafts_by_default():
+def test_book_manager_only_shows_reviewed_books_by_default():
     published = make_reviewed_book()
-    draft_book = BookFactory()
-    ReviewFactory(book=draft_book, is_draft=True)
+    queued = BookFactory(status=BookStatus.TO_READ)
+    awaiting_review = BookFactory(status=BookStatus.TO_REVIEW)
 
     assert list(Book.objects.all()) == [published]
-    assert set(Book.objects.with_drafts()) == {published, draft_book}
+    assert set(Book.all_objects.all()) == {published, queued, awaiting_review}
 
 
 def test_book_manager_get_by_slug_returns_the_book():
@@ -289,11 +303,10 @@ def test_review_feed_uuid_is_stable_and_unique():
     assert book_one.review.feed_uuid != book_two.review.feed_uuid
 
 
-def test_review_manager_excludes_drafts():
-    published_book = BookFactory()
-    published = ReviewFactory(book=published_book)
-    draft_book = BookFactory()
-    ReviewFactory(book=draft_book, is_draft=True)
+def test_review_manager_excludes_reviews_on_unpublished_books():
+    published = ReviewFactory()
+    draft_book = BookFactory(status=BookStatus.TO_REVIEW)
+    ReviewFactory(book=draft_book, publish=False)
 
     assert list(Review.objects.all()) == [published]
     assert Review.objects.with_drafts().count() == 2
@@ -305,9 +318,6 @@ def test_review_with_dates_read_annotates_read_count():
         latest_date=dt.date(2024, 1, 1),
         reads=[dt.date(2020, 1, 1), dt.date(2022, 1, 1), dt.date(2024, 1, 1)],
     ).review
-    # additional joined rows (e.g. ToReview) must not inflate the read count
-    ToReviewFactory(book=three_reads.book)
-    ToReviewFactory(book=three_reads.book)
 
     counts = {r.pk: r.dates_read_count for r in Review.objects.with_dates_read()}
     assert counts[one_read.pk] == 1
@@ -419,39 +429,6 @@ def test_spine_starred_matches_five_star_rating():
 
     assert Spine(five_star).starred is True
     assert Spine(four_star).starred is False
-
-
-# --- ToReview ---------------------------------------------------------------
-
-
-def test_to_review_match_links_book_and_returns_true():
-    author = AuthorFactory()
-    book = make_reviewed_book(
-        primary_author=author, title_slug="my-book", latest_date=dt.date(2024, 6, 15)
-    )
-    to_review = ToReviewFactory(title="My Book", date=dt.date(2024, 6, 16))
-
-    assert to_review.match() is True
-    to_review.refresh_from_db()
-    assert to_review.book == book
-
-
-def test_to_review_match_rejects_when_dates_disagree():
-    author = AuthorFactory()
-    make_reviewed_book(
-        primary_author=author, title_slug="my-book", latest_date=dt.date(2024, 1, 1)
-    )
-    to_review = ToReviewFactory(title="My Book", date=dt.date(2024, 6, 15))
-
-    assert to_review.match() is False
-    to_review.refresh_from_db()
-    assert to_review.book is None
-
-
-def test_to_review_match_returns_false_when_no_book_exists():
-    to_review = ToReviewFactory(title="Unknown Title", date=dt.date(2024, 1, 1))
-
-    assert to_review.match() is False
 
 
 # --- Book covers, thumbnails, spine colors ---------------------------------

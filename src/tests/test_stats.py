@@ -2,7 +2,7 @@ import datetime as dt
 
 import pytest
 
-from scriptorium.main.models import BookRelation
+from scriptorium.main.models import BookRelation, BookStatus
 from scriptorium.main.stats import (
     LineBar,
     _get_chart,
@@ -10,7 +10,13 @@ from scriptorium.main.stats import (
     get_stats_grid,
     get_year_stats,
 )
-from tests.factories import BookFactory, TagFactory, ToReviewFactory, make_reviewed_book
+from tests.factories import (
+    BookFactory,
+    ReadFactory,
+    SeriesFactory,
+    TagFactory,
+    make_reviewed_book,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -37,26 +43,45 @@ def test_linebar_with_secondary_range_enables_rescale():
     assert chart._secondary_max == 215
 
 
-def test_get_stats_grid_counts_unmatched_to_reviews():
-    """Unmatched ToReview entries (book is null) contribute to the month
-    buckets alongside real reviews, so the grid reflects intent to read even
-    when the book hasn't been imported yet."""
+def test_get_stats_grid_counts_reads_on_unreviewed_books():
+    """Reads on to-review books contribute to the month buckets alongside
+    reviewed books, so the grid stays accurate while reviews are pending."""
     # A real review keeps max_year/max_month non-zero so generate_svg doesn't
     # trip on a divide-by-zero for the totals rect width.
     make_reviewed_book(
         title="Anchor", title_slug="anchor", pages=250, latest_date=dt.date(2024, 3, 1)
     )
-    ToReviewFactory(date=dt.date(2024, 6, 15), book=None)
-    ToReviewFactory(date=dt.date(2024, 6, 20), book=None)
+    waiting = BookFactory(status=BookStatus.TO_REVIEW, pages=None)
+    ReadFactory(book=waiting, finished_on=dt.date(2024, 6, 15))
+    ReadFactory(book=waiting, finished_on=dt.date(2024, 6, 20))
 
     stats = get_stats_grid()
 
-    # The grid anchors both unmatched entries to the 2024-06 month bucket:
-    # book count is 2, pages count is 0 because there is no Book attached.
+    # The grid anchors both pending reads to the 2024-06 month bucket:
+    # book count is 2, pages count is 0 because the page count is unknown.
     assert "2024-06: 2" in stats["books"]
     assert "2024-06: 0" in stats["pages"]
     # The March anchor review still shows up in the books grid.
     assert "2024-03: 1" in stats["books"]
+
+
+@pytest.mark.usefixtures("_gender_tags")
+def test_get_year_stats_counts_unreviewed_reads_in_total():
+    make_reviewed_book(
+        title="Reviewed in 2023",
+        title_slug="reviewed-in-2023",
+        pages=200,
+        publication_year=2000,
+        rating=4,
+        latest_date=dt.date(2023, 5, 1),
+    )
+    waiting = BookFactory(status=BookStatus.TO_REVIEW)
+    ReadFactory(book=waiting, finished_on=dt.date(2023, 7, 1))
+    ReadFactory(book=waiting, finished_on=dt.date(2022, 7, 1))  # other year
+
+    stats = get_year_stats(2023, extra_years=False)
+
+    assert stats["total_books"] == 2
 
 
 @pytest.mark.usefixtures("_gender_tags")
@@ -104,10 +129,14 @@ def test_get_nodes_skips_graph_nodes_without_matching_book():
     """A BookRelation can point at a Book that the default (non-draft)
     BookManager filters out. get_nodes must skip those graph nodes instead
     of exploding with KeyError."""
-    source = make_reviewed_book(title="Source", title_slug="source")
-    # Destination has no Review, so Book.objects.all() (which INNER JOINs
-    # review and filters is_draft=False) excludes it from the lookup, while
-    # the raw FK access in get_graph still surfaces its slug in the graph.
+    source = make_reviewed_book(
+        title="Source",
+        title_slug="source",
+        series=SeriesFactory(name="A Cycle", name_slug="a-cycle"),
+    )
+    # Destination is not reviewed, so Book.objects.all() (which filters on
+    # status=reviewed) excludes it from the lookup, while the raw FK access
+    # in get_graph still surfaces its slug in the graph.
     orphan = BookFactory(title="Orphan", title_slug="orphan")
     BookRelation.objects.create(source=source, destination=orphan, text="see also")
 
@@ -121,6 +150,10 @@ def test_get_nodes_skips_graph_nodes_without_matching_book():
     node_ids = {node["id"] for node in nodes}
     assert node_ids == {source.slug, sibling.slug}
     assert orphan.slug not in node_ids
+    nodes_by_id = {node["id"]: node for node in nodes}
+    assert nodes_by_id[source.slug]["series"] == "A Cycle"
+    assert "cycle" in nodes_by_id[source.slug]["search"]
+    assert nodes_by_id[sibling.slug]["series"] is None
 
 
 @pytest.mark.parametrize("chart_type", ["line", "bar"])

@@ -2,16 +2,20 @@ import datetime as dt
 from types import SimpleNamespace
 from xml.etree import ElementTree as ET
 
+import pytest
 from django.test import RequestFactory
 from markupsafe import Markup
 
 from scriptorium.main.jinja2 import (
+    get_missing_reviews_data,
     render_authors,
     render_date,
     replace_url,
     strip_markdown,
     unmark_element,
 )
+from scriptorium.main.models import BookStatus
+from tests.factories import BookFactory, ReadFactory, make_reviewed_book
 
 
 def test_unmark_element_concatenates_text_and_tail():
@@ -91,3 +95,29 @@ def test_replace_url_removes_key_when_value_is_empty():
     request = RequestFactory().get("/?page=2&sort=title")
 
     assert replace_url(request, "page", "") == "sort=title"
+
+
+@pytest.mark.django_db
+def test_get_missing_reviews_data_empty_when_no_reviews_missing():
+    make_reviewed_book(latest_date=dt.date(2024, 1, 1))
+
+    assert get_missing_reviews_data() == {}
+
+
+@pytest.mark.django_db
+def test_get_missing_reviews_data_counts_recent_unreviewed_reads():
+    make_reviewed_book(latest_date=dt.date(2023, 1, 1))
+    waiting = BookFactory(status=BookStatus.TO_REVIEW)
+    ReadFactory(book=waiting, finished_on=dt.date(2023, 2, 1))
+    # Reads before the cutoff don't count towards the banner.
+    ReadFactory(book=waiting, finished_on=dt.date(2020, 1, 1))
+
+    data = get_missing_reviews_data()
+
+    assert data == {
+        "missing_reviews": 1,
+        "missing_reviews_date": "2022-01-31",
+        "missing_reviews_reviewed": 1,
+        "missing_reviews_total": 2,
+        "missing_reviews_percentage": "50.0%",
+    }

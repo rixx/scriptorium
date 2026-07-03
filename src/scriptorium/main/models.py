@@ -1,4 +1,3 @@
-import datetime as dt
 import hashlib
 import math
 import random
@@ -24,52 +23,6 @@ def get_cover_path(instance, filename):
 
 def get_thumbnail_path(instance, filename):
     return f"{instance.book.slug}/{instance.size}{Path(filename).suffix}"
-
-
-class ToRead(models.Model):
-    title = models.CharField(max_length=300)
-    author = models.CharField(max_length=300)
-    shelf = models.CharField(max_length=300)
-    pages = models.IntegerField(null=True, blank=True)
-    source = models.CharField(default="calibre", max_length=300)
-
-    class Meta:
-        unique_together = (("title", "author"),)
-
-    def __str__(self):
-        return f"{self.title} by {self.author}"
-
-
-class ToReview(models.Model):
-    title = models.CharField(max_length=300)
-    author = models.CharField(max_length=300)
-    series = models.CharField(max_length=300, null=True, blank=True)
-    series_position = models.CharField(max_length=10, null=True, blank=True)
-    notes = models.TextField(null=True, blank=True)
-    date = models.DateField(null=True, blank=True)
-    book = models.ForeignKey(to="Book", on_delete=models.CASCADE, null=True, blank=True)
-    quotes_file = models.FileField(null=True, blank=True)
-
-    def __str__(self):
-        return f"{self.title} by {self.author}"
-
-    def _match_dates(self, book):
-        min_date = self.date - dt.timedelta(days=7)
-        max_date = self.date + dt.timedelta(days=7)
-        return any(min_date <= date <= max_date for date in book.review.dates_read_list)
-
-    def match(self, title_slug=None, ignore_dates=False):
-        from scriptorium.main.utils import slugify  # noqa: PLC0415
-
-        title_slug = title_slug or slugify(self.title)
-        book = Book.objects.filter(title_slug=title_slug).first()
-        if book:
-            if not ignore_dates and self.date and not self._match_dates(book):
-                return False
-            self.book = book
-            self.save()
-            return True
-        return False
 
 
 class Author(models.Model):
@@ -118,17 +71,29 @@ class Tag(models.Model):
         return super().save(*args, **kwargs)
 
 
+class BookStatus(models.TextChoices):
+    TO_READ = "to_read", "to read"
+    TO_REVIEW = "to_review", "to review"
+    REVIEWED = "reviewed", "reviewed"
+
+
+class Series(models.Model):
+    name = models.CharField(max_length=300)
+    name_slug = models.CharField(max_length=300, unique=True)
+    text = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
 class BookManager(models.Manager):
     def get_queryset(self):
         return (
             super()
             .get_queryset()
-            .select_related("review", "primary_author")
+            .select_related("review", "primary_author", "series")
             .prefetch_related("additional_authors")
-        ).filter(review__is_draft=False)
-
-    def with_drafts(self):
-        return super().get_queryset()
+        ).filter(status=BookStatus.REVIEWED)
 
     def get_by_slug(self, slug):
         author, book = slug.strip("/").split("/")
@@ -137,9 +102,16 @@ class BookManager(models.Manager):
         )
 
 
+class AllBooksManager(models.Manager):
+    """Unfiltered access to books of every status."""
+
+
 class Book(models.Model):
     title = models.CharField(max_length=300)
     title_slug = models.CharField(max_length=300)
+    status = models.CharField(
+        max_length=10, choices=BookStatus.choices, default=BookStatus.TO_READ
+    )
     additional_authors = models.ManyToManyField(Author, blank=True)
     primary_author = models.ForeignKey(
         Author, null=True, on_delete=models.PROTECT, related_name="books"
@@ -161,6 +133,8 @@ class Book(models.Model):
 
     dimensions = models.JSONField(null=True, blank=True)
     source = models.CharField(max_length=300, null=True, blank=True)
+    # Reading-queue shelf (from Calibre), only used for to-read books.
+    shelf = models.CharField(max_length=300, null=True, blank=True)
     pages = models.IntegerField(
         null=True,
         blank=True,
@@ -169,13 +143,16 @@ class Book(models.Model):
     publication_year = models.IntegerField(null=True, blank=True)
     date_added = models.DateField(auto_now_add=True)
 
-    series = models.CharField(max_length=300, null=True, blank=True)
-    series_position = models.CharField(max_length=5, null=True, blank=True)
+    series = models.ForeignKey(
+        Series, null=True, blank=True, on_delete=models.SET_NULL, related_name="books"
+    )
+    series_position = models.CharField(max_length=10, null=True, blank=True)
 
     tags = models.ManyToManyField(Tag)
     plot = models.TextField(null=True, blank=True)
 
     objects = BookManager()
+    all_objects = AllBooksManager()
 
     class Meta:
         unique_together = (("primary_author", "title_slug"),)
@@ -322,7 +299,9 @@ class Quote(models.Model):
 
 class ReviewManager(models.Manager):
     def get_queryset(self):
-        return self._add_prefetches(super().get_queryset()).filter(is_draft=False)
+        return self._add_prefetches(super().get_queryset()).filter(
+            book__status=BookStatus.REVIEWED
+        )
 
     def with_drafts(self):
         return self._add_prefetches(super().get_queryset())
@@ -352,7 +331,6 @@ class Review(models.Model):
     tldr = models.TextField(null=True, blank=True)
 
     rating = models.IntegerField(null=True, blank=True)
-    is_draft = models.BooleanField(default=False)
 
     latest_date = models.DateField()
     feed_date = models.DateField(null=True)

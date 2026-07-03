@@ -23,7 +23,7 @@
         {% for book in shelf.books %}
           <li>
             <b>{{ book.title }}</b> by
-            <i>{{ book.author }}</i>
+            <i>{{ book.author_string }}</i>
             {% if book.pages %}({{ book.pages }} pages){% endif %}
           </li>
         {% endfor %}

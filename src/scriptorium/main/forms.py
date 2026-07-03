@@ -6,15 +6,33 @@ from django.db.models import Q
 from scriptorium.main.models import (
     Author,
     Book,
+    BookStatus,
     Page,
     Poem,
     Quote,
     Read,
     Review,
+    Series,
     Tag,
-    ToReview,
 )
 from scriptorium.main.utils import slugify
+
+
+class SeriesNameField(forms.CharField):
+    """Free-text series input that resolves to a Series row on clean,
+    creating the series (deduplicated by slug) if it doesn't exist yet."""
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("required", False)
+        super().__init__(**kwargs)
+
+    def clean(self, value):
+        name = super().clean(value)
+        if not name:
+            return None
+        return Series.objects.get_or_create(
+            name_slug=slugify(name), defaults={"name": name}
+        )[0]
 
 
 class LoginForm(forms.Form):
@@ -76,14 +94,14 @@ class CatalogueForm(forms.Form):
                 Q(primary_author=author) | Q(additional_authors__in=[author])
             )
         if series := data.get("series"):
-            qs = qs.filter(series=series)
+            qs = qs.filter(series__name=series)
         if search := data.get("search_input"):
             text_search = (
                 Q(title__icontains=search)
                 | Q(title_slug__icontains=search)
                 | Q(primary_author__name__icontains=search)
                 | Q(additional_authors__name__icontains=search)
-                | Q(series__icontains=search)
+                | Q(series__name__icontains=search)
                 | Q(isbn10=search)
                 | Q(isbn13=search)
             )
@@ -129,6 +147,7 @@ class BookWizardForm(forms.ModelForm):
     new_tags = forms.CharField(required=False)
     author_name = forms.CharField()
     title_slug = forms.CharField(required=False)
+    series = SeriesNameField()
 
     def __init__(self, *args, openlibrary=None, **kwargs):
         initial = kwargs.pop("initial", {})
@@ -231,6 +250,14 @@ class ReviewWizardForm(ReviewForm):
 
 class BookEditForm(forms.ModelForm):
     new_tags = forms.CharField(required=False)
+    series = SeriesNameField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.initial["series"] = (
+                self.instance.series.name if self.instance.series else ""
+            )
 
     def clean_new_tags(self):
         new_tags = self.cleaned_data["new_tags"]
@@ -327,15 +354,40 @@ class PoemForm(forms.ModelForm):
         )
 
 
-class ToReviewForm(forms.ModelForm):
-    class Meta:
-        model = ToReview
-        fields = (
-            "title",
-            "author",
-            "date",
-            "series",
-            "series_position",
-            "notes",
-            "quotes_file",
+class BookToReviewForm(forms.Form):
+    """Quickly queue a finished book for a later review: creates (or reuses)
+    the author and book, marks the book as waiting for review, and records
+    the read itself."""
+
+    title = forms.CharField()
+    author = forms.CharField()
+    date = forms.DateField(help_text="The date you finished the book")
+    series = SeriesNameField()
+    series_position = forms.CharField(required=False, max_length=10)
+    notes = forms.CharField(required=False, widget=forms.Textarea)
+
+    def save(self):
+        data = self.cleaned_data
+        author, _ = Author.objects.get_or_create(
+            name_slug=slugify(data["author"]), defaults={"name": data["author"]}
         )
+        book, created = Book.all_objects.get_or_create(
+            primary_author=author,
+            title_slug=slugify(data["title"]),
+            defaults={
+                "title": data["title"],
+                "status": BookStatus.TO_REVIEW,
+                "series": data["series"],
+                "series_position": data["series_position"] or None,
+            },
+        )
+        if not created and book.status == BookStatus.TO_READ:
+            book.status = BookStatus.TO_REVIEW
+            book.save(update_fields=["status"])
+        Read.objects.create(
+            book=book,
+            finished_on=data["date"],
+            source="manual",
+            notes=data["notes"] or None,
+        )
+        return book

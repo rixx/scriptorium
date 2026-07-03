@@ -1,15 +1,15 @@
 from django.core.management.base import BaseCommand
-from django.db.models import Count, F, Q
+from django.db.models import Q
 
-from scriptorium.main.models import Book, Review, ToReview
+from scriptorium.main.models import Book
 
 
 class Command(BaseCommand):
-    help = "Closes the specified poll for voting"
+    help = "Regenerates missing spine colours and thumbnails"
 
     def handle(self, *args, **options):
         missing_colour = Q(spine_color__isnull=True) | Q(ui_color__isnull=True)
-        for book in Book.objects.filter(missing_colour).exclude(cover=""):
+        for book in Book.all_objects.filter(missing_colour).exclude(cover=""):
             try:
                 book.update_spine_color()
                 book.update_ui_color()
@@ -17,28 +17,3 @@ class Command(BaseCommand):
                 book.save()
             except Exception as e:  # noqa: BLE001
                 print(e)
-
-        for toreview in ToReview.objects.all().filter(book__isnull=True):
-            toreview.match()
-
-        toreview_objects = []
-        qs = (
-            Review.objects.with_dates_read()
-            .annotate(toreview_count=Count("book__toreview", distinct=True))
-            .filter(toreview_count__lt=F("dates_read_count"))
-            .prefetch_related("book__reads")
-        )
-        for review in qs:
-            toreview_objects.extend(
-                ToReview(
-                    book=review.book,
-                    title=review.book.title,
-                    author=review.book.primary_author.name,
-                    series=review.book.series,
-                    series_position=review.book.series_position,
-                    date=review.dates_read_list[-i - 1],
-                )
-                for i in range(review.dates_read_count - review.toreview_count)
-            )
-
-        ToReview.objects.bulk_create(toreview_objects)
