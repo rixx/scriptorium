@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from django.utils.functional import cached_property
 from django.views.generic import TemplateView
 from django_context_decorator import context
@@ -16,4 +17,4 @@ class PageView(TemplateView):
     @context
     @cached_property
     def page(self):
-        return Page.objects.get(slug=self.kwargs["slug"])
+        return get_object_or_404(Page, slug=self.kwargs["slug"])

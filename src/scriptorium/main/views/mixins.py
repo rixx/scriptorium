@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from django.utils.functional import cached_property
 from django_context_decorator import context
 
@@ -21,9 +22,8 @@ class ReviewMixin:
     @context
     @cached_property
     def book(self):
-        return (
-            Book.objects.select_related("primary_author")
-            .prefetch_related(
+        return get_object_or_404(
+            Book.objects.select_related("primary_author").prefetch_related(
                 "tags",
                 "additional_authors",
                 "reads",
@@ -32,11 +32,9 @@ class ReviewMixin:
                 "related_books__destination__additional_authors",
                 "related_books__destination__reads",
                 "quotes",
-            )
-            .get(
-                primary_author__name_slug=self.kwargs["author"],
-                title_slug=self.kwargs["book"],
-            )
+            ),
+            primary_author__name_slug=self.kwargs["author"],
+            title_slug=self.kwargs["book"],
         )
 
     @context
@@ -54,7 +52,7 @@ class AuthorMixin:
     @context
     @cached_property
     def author_obj(self):
-        return Author.objects.get(name_slug=self.kwargs["author"])
+        return get_object_or_404(Author, name_slug=self.kwargs["author"])
 
     @context
     def books(self):
@@ -71,7 +69,8 @@ class PoemMixin:
 
     def get_object(self):
         if "book" in self.kwargs:
-            return Poem.objects.get(
+            return get_object_or_404(
+                Poem,
                 book__title_slug=self.kwargs["book"],
                 book__primary_author__name_slug=self.kwargs["author"],
                 slug=self.kwargs["slug"],
@@ -81,8 +80,8 @@ class PoemMixin:
                 author__name_slug=self.kwargs["author"], slug=self.kwargs["slug"]
             )
         except Poem.DoesNotExist:
-            return Poem.objects.get(
-                url_slug=self.kwargs["author"], slug=self.kwargs["slug"]
+            return get_object_or_404(
+                Poem, url_slug=self.kwargs["author"], slug=self.kwargs["slug"]
             )
 
     @context

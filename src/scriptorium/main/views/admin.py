@@ -294,7 +294,7 @@ class PageEdit(LoginRequiredMixin, UpdateView):
     template_name = "private/page_edit.html"
 
     def get_object(self):
-        return Page.objects.get(slug=self.kwargs["slug"])
+        return get_object_or_404(Page, slug=self.kwargs["slug"])
 
     def form_valid(self, form):
         form.save()

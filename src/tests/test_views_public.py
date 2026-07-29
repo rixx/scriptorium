@@ -725,3 +725,84 @@ def test_catalogue_view_invalid_form_returns_no_books(client, populated_library)
     assert populated_library["book_one"].title not in body
     assert populated_library["book_two"].title not in body
     assert populated_library["book_three"].title not in body
+
+
+# --- Unknown slugs 404 instead of 500 ---------------------------------------
+# ⁂ Crawlers keep hitting dead links; a missing object must never surface as a
+# server error.
+
+
+def test_review_view_unknown_book_returns_404(client, reviewed_book):
+    response = client.get(f"/{reviewed_book.primary_author.name_slug}/no-such-book/")
+
+    assert response.status_code == 404
+
+
+def test_review_view_unknown_author_returns_404(client, reviewed_book):
+    response = client.get(f"/no-such-author/{reviewed_book.title_slug}/")
+
+    assert response.status_code == 404
+
+
+def test_review_view_unreviewed_book_returns_404(client, book):
+    # `book` is still in the to_read state, so the reviewed-only default manager
+    # does not see it -- that must be a 404, not a crash.
+    assert book.status != BookStatus.REVIEWED
+
+    response = client.get(f"/{book.slug}/")
+
+    assert response.status_code == 404
+
+
+def test_review_cover_view_unknown_book_returns_404(client):
+    response = client.get("/no-such-author/no-such-book/cover.jpg")
+
+    assert response.status_code == 404
+
+
+def test_review_cover_thumbnail_view_unknown_book_returns_404(client):
+    response = client.get("/no-such-author/no-such-book/thumbnail.jpg")
+
+    assert response.status_code == 404
+
+
+def test_author_view_unknown_author_returns_404(client):
+    response = client.get("/no-such-author/")
+
+    assert response.status_code == 404
+
+
+def test_poem_book_list_unknown_book_returns_404(client):
+    response = client.get("/no-such-author/no-such-book/poems/")
+
+    assert response.status_code == 404
+
+
+def test_tag_detail_unknown_tag_returns_404(client):
+    response = client.get("/lists/no-such-tag/")
+
+    assert response.status_code == 404
+
+
+def test_page_view_unknown_slug_returns_404(client):
+    response = client.get("/p/no-such-page/")
+
+    assert response.status_code == 404
+
+
+def test_poem_view_unknown_slug_returns_404(client, poem):
+    response = client.get(f"/{poem.author.name_slug}/poems/no-such-poem/")
+
+    assert response.status_code == 404
+
+
+def test_poem_view_unknown_author_returns_404(client, poem):
+    response = client.get(f"/no-such-author/poems/{poem.slug}/")
+
+    assert response.status_code == 404
+
+
+def test_poem_view_unknown_book_poem_returns_404(client, reviewed_book):
+    response = client.get(f"/{reviewed_book.slug}/poems/no-such-poem/")
+
+    assert response.status_code == 404

@@ -5,6 +5,7 @@ import networkx as nx
 from django.db.models import Avg, Count, Max
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
+from django.shortcuts import get_object_or_404
 from django.template import loader
 from django.utils.functional import cached_property
 from django.utils.timezone import now
@@ -344,8 +345,8 @@ class ListDetail(ActiveTemplateMixin, TemplateView):
     @context
     @cached_property
     def tag_obj(self):
-        return Tag.objects.prefetch_related("book_set").get(
-            name_slug=self.kwargs["tag"]
+        return get_object_or_404(
+            Tag.objects.prefetch_related("book_set"), name_slug=self.kwargs["tag"]
         )
 
     @context
