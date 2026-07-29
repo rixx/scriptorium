@@ -728,7 +728,7 @@ def test_catalogue_view_invalid_form_returns_no_books(client, populated_library)
 
 
 # --- Unknown slugs 404 instead of 500 ---------------------------------------
-# ⁂ Crawlers keep hitting dead links; a missing object must never surface as a
+# Crawlers keep hitting dead links; a missing object must never surface as a
 # server error.
 
 
