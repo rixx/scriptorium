@@ -213,7 +213,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
         if new_tags:
             for tag in new_tags:
                 category, name = tag.split(":", maxsplit=1)
-                tags.append(Tag.objects.create(name_slug=name, category=category))
+                tags.append(Tag.objects.get_or_create_by_name(category, name)[0])
         review_data = steps["review"]
         dates_read = review_data.pop("dates_read")
         did_not_finish = review_data.pop("did_not_finish")
@@ -273,7 +273,7 @@ class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):
             for tag in new_tags:
                 category, name = tag.split(":", maxsplit=1)
                 form.instance.tags.add(
-                    Tag.objects.create(name_slug=name, category=category)
+                    Tag.objects.get_or_create_by_name(category, name)[0]
                 )
         return redirect(f"/{form.instance.slug}/")
 

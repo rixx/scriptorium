@@ -55,6 +55,14 @@ class Author(models.Model):
             book.tags.add(tag)
 
 
+class TagManager(models.Manager):
+    def get_or_create_by_name(self, category, name):
+        name = name.strip()
+        return self.get_or_create(
+            name_slug=slugify(name), defaults={"category": category, "name": name}
+        )
+
+
 class Tag(models.Model):
     class TagCategory(models.TextChoices):
         GENRE = "genre", "genre"
@@ -68,8 +76,10 @@ class Tag(models.Model):
         max_length=300, choices=TagCategory.choices, default=TagCategory.GENRE
     )
     name = models.CharField(max_length=300, blank=True)
-    name_slug = models.CharField(max_length=300)
+    name_slug = models.CharField(max_length=300, unique=True)
     text = models.TextField(null=True, blank=True)
+
+    objects = TagManager()
 
     class Meta:
         ordering = ("category", "name_slug")

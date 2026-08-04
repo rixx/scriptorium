@@ -53,11 +53,16 @@ def _resolve_tags(specs):
                 f"Invalid tag '{spec}': expected 'category:name' with a "
                 f"category out of {', '.join(Tag.TagCategory.values)}.",
             )
-        tags.append(
-            Tag.objects.get_or_create(
-                category=category, name_slug=slug, defaults={"name": name.strip()}
-            )[0]
-        )
+        tag = Tag.objects.get_or_create_by_name(category, name)[0]
+        if tag.category != category:
+            # Slugs are unique across categories, so refuse rather than
+            # silently returning a tag from a category the caller didn't ask for.
+            raise HttpError(
+                400,
+                f"Invalid tag '{spec}': the slug '{slug}' already exists in "
+                f"category '{tag.category}'.",
+            )
+        tags.append(tag)
     return tags
 
 

@@ -1078,6 +1078,25 @@ def test_review_edit_post_valid_saves_both_forms_and_adds_new_tag(
     assert Tag.objects.filter(name_slug="hope", category="themes").count() == 1
 
 
+def test_review_edit_post_new_tag_reuses_existing_tag(admin_logged_in_client):
+    """Re-typing a tag that already exists must not create a second row --
+    duplicate slugs made /lists/<slug>/ ambiguous and crashed the list page."""
+    author = AuthorFactory(name="Author R", name_slug="author-r")
+    book = make_reviewed_book(
+        title="Retagged", title_slug="retagged", primary_author=author
+    )
+    existing_tag = TagFactory(category="genre", name_slug="horror", name="Horror")
+
+    response = admin_logged_in_client.post(
+        f"/b/{author.name_slug}/{book.title_slug}/",
+        _book_post_data(book, [existing_tag], new_tags="genre:Horror"),
+    )
+
+    assert response.status_code == 302
+    assert list(book.tags.all()) == [existing_tag]
+    assert Tag.objects.count() == 1
+
+
 def test_review_edit_post_valid_without_new_tags_skips_tag_creation(
     admin_logged_in_client,
 ):

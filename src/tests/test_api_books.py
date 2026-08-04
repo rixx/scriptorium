@@ -517,6 +517,23 @@ def test_books_patch_tag_name_is_slugified_and_reuses_existing_tag(api_client):
     assert Tag.objects.count() == 1
 
 
+def test_books_patch_tag_slug_taken_by_other_category_is_rejected(api_client):
+    """Tag slugs are unique across categories (/lists/<slug>/ resolves one
+    row), so a spec whose slug already belongs elsewhere errors instead of
+    silently returning the other category's tag."""
+    book = make_reviewed_book()
+    TagFactory(category="genre", name="Horror", name_slug="horror")
+
+    response = api_client.patch(
+        _detail_url(book), {"tags": ["themes:horror"]}, content_type="application/json"
+    )
+
+    assert response.status_code == 400
+    assert "already exists in category 'genre'" in response.json()["detail"]
+    assert Tag.objects.count() == 1
+    assert not book.tags.exists()
+
+
 def test_books_patch_new_tag_from_name_keeps_display_name(api_client):
     book = make_reviewed_book()
 

@@ -7,6 +7,7 @@ import pytest
 import requests
 from django.core.files.base import ContentFile
 from django.db import models
+from django.db.utils import IntegrityError
 from PIL import Image
 
 from scriptorium.main.models import Author, Book, BookStatus, Spine, Tag, Thumbnail
@@ -187,6 +188,34 @@ def test_book_tags_by_category_groups_ordered_tags():
         "genre": [genre_tag],
         "themes": [theme_tag],
     }
+
+
+def test_tag_get_or_create_by_name_reuses_row_for_slug_variant():
+    existing = TagFactory(category="genre", name="Horror", name_slug="horror")
+
+    tag, created = Tag.objects.get_or_create_by_name("genre", " HORROR ")
+
+    assert tag == existing
+    assert not created
+    assert Tag.objects.count() == 1
+
+
+def test_tag_get_or_create_by_name_creates_slugified_row():
+    tag, created = Tag.objects.get_or_create_by_name("themes", "Space Monks")
+
+    assert created
+    assert (tag.category, tag.name, tag.name_slug) == (
+        "themes",
+        "Space Monks",
+        "space-monks",
+    )
+
+
+def test_tag_slug_is_unique():
+    TagFactory(category="genre", name_slug="horror")
+
+    with pytest.raises(IntegrityError):
+        TagFactory(category="themes", name_slug="horror")
 
 
 def test_book_quotes_by_language_groups_adjacent_quotes():
