@@ -3,6 +3,7 @@
 
 ### Scriptorium ###
 .scriptorium-api-token
+/src/data/.secret*
 
 ### Django ###
 *.log

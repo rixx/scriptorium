@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from django.core.management.utils import get_random_secret_key
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -9,16 +11,41 @@ MEDIA_ROOT = DATA_DIR / "media"
 for directory in (BASE_DIR, DATA_DIR, MEDIA_ROOT):
     directory.mkdir(parents=True, exist_ok=True)
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-z59ed4#87anp9l%$m)fv^gz_elaai7y7i7c6*guj()lumfr2xp"  # noqa: S105
+def _load_secret_key() -> str:
+    """Take the key from the environment, else from DATA_DIR/.secret, generating it once."""
+    if key := os.environ.get("SCRIPTORIUM_SECRET_KEY"):
+        return key
+    path = DATA_DIR / ".secret"
+    if not path.exists():
+        # Publish via link() so parallel gunicorn workers agree on one key.
+        tmp = path.with_name(f".secret.{os.getpid()}")
+        tmp.touch(mode=0o600)
+        tmp.write_text(get_random_secret_key())
+        try:
+            os.link(tmp, path)
+        except FileExistsError:
+            pass
+        finally:
+            tmp.unlink()
+    return path.read_text().strip()
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+
+SECRET_KEY = _load_secret_key()
+
+# `just run` (the dev server) sets this; everything else runs with DEBUG off.
+DEBUG = os.environ.get("SCRIPTORIUM_DEBUG") == "1"
 
 ALLOWED_HOSTS = ["127.0.0.1", "localhost", "books.rixx.de"]
+SESSION_COOKIE_SECURE = not DEBUG
+
+# Django's default logging drops tracebacks once DEBUG is off; keep them on stderr.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {"django": {"handlers": ["console"], "level": "ERROR"}},
+}
 
 
 # Application definition
