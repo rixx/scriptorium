@@ -38,6 +38,8 @@ DEBUG = os.environ.get("SCRIPTORIUM_DEBUG") == "1"
 
 ALLOWED_HOSTS = ["127.0.0.1", "localhost", "books.rixx.de"]
 SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_TRUSTED_ORIGINS = ["https://books.rixx.de"]
 
 # Django's default logging drops tracebacks once DEBUG is off; keep them on stderr.
 LOGGING = {
@@ -65,6 +67,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",

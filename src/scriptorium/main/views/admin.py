@@ -14,7 +14,6 @@ from django.utils.functional import cached_property
 from django.views.decorators.http import require_POST
 from django.views.generic import (
     CreateView,
-    DetailView,
     FormView,
     ListView,
     TemplateView,
@@ -77,6 +76,7 @@ class LoginView(FormView):
         return redirect("/b/login")
 
 
+@require_POST
 def logout_view(request):
     logout(request)
     return redirect("/")
@@ -360,19 +360,18 @@ class QuoteEdit(LoginRequiredMixin, UpdateView):
         return redirect(f"/q/{form.instance.id}/")
 
 
-class QuoteDelete(LoginRequiredMixin, DetailView):
-    model = Quote
-
-    def dispatch(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        book = self.object.source_book
-        author = self.object.source_author
-        self.object.delete()
-        if book:
-            return redirect(f"/{book.slug}/")
-        if author:
-            return redirect(f"/a/{author.name_slug}/")
-        return redirect("/q")
+@login_required
+@require_POST
+def quote_delete(request, pk):
+    quote = get_object_or_404(Quote, pk=pk)
+    book = quote.source_book
+    author = quote.source_author
+    quote.delete()
+    if book:
+        return redirect(f"/{book.slug}/")
+    if author:
+        return redirect(f"/a/{author.name_slug}/")
+    return redirect("/q")
 
 
 class PoemPrivateList(LoginRequiredMixin, ActiveTemplateMixin, ListView):
@@ -447,14 +446,14 @@ class ToReviewEdit(LoginRequiredMixin, FormView):
         return redirect("/b/toreview/")
 
 
-class ToReviewDelete(LoginRequiredMixin, DetailView):
-    def get_queryset(self):
-        return Book.all_objects.filter(status=BookStatus.TO_REVIEW)
-
-    def dispatch(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        self.object.delete()
-        return redirect("/b/toreview")
+@login_required
+@require_POST
+def to_review_delete(request, pk):
+    book = get_object_or_404(
+        Book.all_objects.filter(status=BookStatus.TO_REVIEW), pk=pk
+    )
+    book.delete()
+    return redirect("/b/toreview")
 
 
 @login_required

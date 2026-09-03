@@ -64,7 +64,7 @@ def test_login_view_post_redirects_back_on_invalid_credentials(client):
 
 
 def test_logout_view_redirects_home_and_clears_session(admin_logged_in_client):
-    response = admin_logged_in_client.get("/b/logout")
+    response = admin_logged_in_client.post("/b/logout")
 
     assert response.status_code == 302
     assert response.url == "/"
@@ -205,7 +205,7 @@ def test_quote_delete_removes_quote_and_redirects_to_book(admin_logged_in_client
     book = make_reviewed_book()
     quote = QuoteFactory(source_book=book, text="Gone soon.")
 
-    response = admin_logged_in_client.get(f"/b/quotes/{quote.pk}/delete")
+    response = admin_logged_in_client.post(f"/b/quotes/{quote.pk}/delete")
 
     assert response.status_code == 302
     assert response.url == f"/{book.slug}/"
@@ -393,7 +393,7 @@ def test_to_review_edit_rejects_published_books(admin_logged_in_client):
 def test_to_review_delete_removes_book(admin_logged_in_client):
     book = BookFactory(title="Trashed", status=BookStatus.TO_REVIEW)
 
-    response = admin_logged_in_client.get(f"/b/toreview/{book.pk}/delete")
+    response = admin_logged_in_client.post(f"/b/toreview/{book.pk}/delete")
 
     assert response.status_code == 302
     assert not Book.all_objects.filter(pk=book.pk).exists()
@@ -402,7 +402,7 @@ def test_to_review_delete_removes_book(admin_logged_in_client):
 def test_to_review_delete_rejects_published_books(admin_logged_in_client):
     book = make_reviewed_book(title="Keep me")
 
-    response = admin_logged_in_client.get(f"/b/toreview/{book.pk}/delete")
+    response = admin_logged_in_client.post(f"/b/toreview/{book.pk}/delete")
 
     assert response.status_code == 404
     assert Book.all_objects.filter(pk=book.pk).exists()
@@ -424,9 +424,9 @@ def test_to_review_list_reread_rows_link_to_review_edit_and_dismiss(
     assert f'href="/b/{stale.slug}/"' in body
     assert f'action="/b/toreview/{stale.pk}/dismiss"' in body
     assert f'href="/b/toreview/{stale.pk}/"' not in body
-    assert f'href="/b/toreview/{stale.pk}/delete"' not in body
+    assert f'action="/b/toreview/{stale.pk}/delete"' not in body
     assert f'href="/b/toreview/{waiting.pk}/"' in body
-    assert f'href="/b/toreview/{waiting.pk}/delete"' in body
+    assert f'action="/b/toreview/{waiting.pk}/delete"' in body
     assert f'action="/b/toreview/{waiting.pk}/dismiss"' not in body
 
 
@@ -1288,14 +1288,14 @@ def test_quote_edit_with_action_more_without_source_redirects_plain(
     assert response.url == "/b/quotes/new/"
 
 
-# --- QuoteDelete remaining branches -----------------------------------------
+# --- quote_delete remaining branches -----------------------------------------
 
 
 def test_quote_delete_for_author_redirects_to_author_page(admin_logged_in_client):
     author = AuthorFactory(name="Someone", name_slug="someone")
     quote = QuoteFactory(source_author=author, text="Bye.", language="en")
 
-    response = admin_logged_in_client.get(f"/b/quotes/{quote.pk}/delete")
+    response = admin_logged_in_client.post(f"/b/quotes/{quote.pk}/delete")
 
     assert response.status_code == 302
     assert response.url == f"/a/{author.name_slug}/"
@@ -1305,7 +1305,7 @@ def test_quote_delete_for_author_redirects_to_author_page(admin_logged_in_client
 def test_quote_delete_without_source_redirects_to_quote_index(admin_logged_in_client):
     quote = QuoteFactory(text="Orphan.", language="en")
 
-    response = admin_logged_in_client.get(f"/b/quotes/{quote.pk}/delete")
+    response = admin_logged_in_client.post(f"/b/quotes/{quote.pk}/delete")
 
     assert response.status_code == 302
     assert response.url == "/q"

@@ -169,7 +169,7 @@
                 <small><a href="/q/{{ quote.id }}/">permalink</a></small>
                 {% if not request.user.is_anonymous %}
                   <small><a href="/b/quotes/{{ quote.id }}/">edit</a></small>
-                  <small><a href="/b/quotes/{{ quote.id }}/delete">delete</a></small>
+                  <small><form method="post" action="/b/quotes/{{ quote.id }}/delete" class="inline">{{ csrf_input }}<button type="submit" class="linklike">delete</button></form></small>
                 {% endif %}
               </p>
             </div>
@@ -185,7 +185,7 @@
               <small><a href="/q/{{ quote.id }}/">permalink</a></small>
               {% if not request.user.is_anonymous %}
                 <small><a href="/b/quotes/{{ quote.id }}/">edit</a></small>
-                <small><a href="/b/quotes/{{ quote.id }}/delete">delete</a></small>
+                <small><form method="post" action="/b/quotes/{{ quote.id }}/delete" class="inline">{{ csrf_input }}<button type="submit" class="linklike">delete</button></form></small>
               {% endif %}
             </p>
           </div>

@@ -176,6 +176,22 @@ a:hover {
 a:visited {
   color: #007171;
 }
+form.inline {
+  display: inline;
+}
+button.linklike {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: #007171;
+  cursor: pointer;
+}
+button.linklike:hover {
+  color: #1a4c3b;
+}
 ::selection {
   background: #b3d4fc;
   text-shadow: none;

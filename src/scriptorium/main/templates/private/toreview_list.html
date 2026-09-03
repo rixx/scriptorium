@@ -40,7 +40,10 @@
             <td>{{ book.date }}</td>
             <td>
               <a href="/b/toreview/{{ book.id }}/">Edit</a>
-              <a href="/b/toreview/{{ book.id }}/delete">Delete</a>
+              <form method="post" action="/b/toreview/{{ book.id }}/delete" style="display: inline">
+                {{ csrf_input }}
+                <button type="submit">Delete</button>
+              </form>
             </td>
           {% endif %}
         </tr>
