@@ -1440,17 +1440,18 @@ def test_quote_delete_for_author_redirects_to_author_page(admin_logged_in_client
     response = admin_logged_in_client.post(f"/b/quotes/{quote.pk}/delete")
 
     assert response.status_code == 302
-    assert response.url == f"/a/{author.name_slug}/"
+    assert response.url == f"/{author.name_slug}/"
     assert not Quote.objects.filter(pk=quote.pk).exists()
+    assert admin_logged_in_client.get(response.url).status_code == 200
 
 
-def test_quote_delete_without_source_redirects_to_quote_index(admin_logged_in_client):
+def test_quote_delete_without_source_redirects_to_dashboard(admin_logged_in_client):
     quote = QuoteFactory(text="Orphan.", language="en")
 
     response = admin_logged_in_client.post(f"/b/quotes/{quote.pk}/delete")
 
     assert response.status_code == 302
-    assert response.url == "/q"
+    assert response.url == "/b/"
     assert not Quote.objects.filter(pk=quote.pk).exists()
 
 

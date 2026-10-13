@@ -379,8 +379,8 @@ def quote_delete(request, pk):
     if book:
         return redirect(f"/{book.slug}/")
     if author:
-        return redirect(f"/a/{author.name_slug}/")
-    return redirect("/q")
+        return redirect(f"/{author.name_slug}/")
+    return redirect("/b/")
 
 
 class PoemPrivateList(LoginRequiredMixin, ActiveTemplateMixin, ListView):
