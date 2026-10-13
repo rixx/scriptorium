@@ -1522,6 +1522,21 @@ def test_poem_create_get_ignores_bad_book_query(admin_logged_in_client, query):
     assert "book" not in response.context["form"].initial
 
 
+def test_poem_without_book_or_author_has_working_edit_url(admin_logged_in_client):
+    poem = PoemFactory(
+        author=None, book=None, url_slug="anon", slug="old-song", text="La."
+    )
+    edit_url = poem.get_absolute_url(private=True)
+
+    response = admin_logged_in_client.get(edit_url)
+
+    assert response.status_code == 200
+    assert response.context["form"].instance == poem
+    public = admin_logged_in_client.get(poem.get_absolute_url())
+    assert public.status_code == 200
+    assert f'href="{edit_url}"' in public.content.decode()
+
+
 def test_poem_edit_get_uses_poem_and_pre_fills_instance(admin_logged_in_client):
     author = AuthorFactory(name="Poet", name_slug="poet")
     poem = PoemFactory(

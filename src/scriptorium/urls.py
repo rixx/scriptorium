@@ -22,6 +22,7 @@ urlpatterns = [
     path("b/quotes/<int:pk>/delete", views.quote_delete),
     path("b/poems/new/", views.PoemCreate.as_view()),
     path("b/poems/", views.PoemPrivateList.as_view()),
+    path("b/poems/<slug:author>/<slug:slug>/", views.PoemEdit.as_view()),
     path("b/tokens/", views.ApiTokenList.as_view()),
     path("b/tokens/<int:pk>/delete", views.api_token_delete),
     path("b/toreview/", views.ToReviewList.as_view()),
