@@ -177,6 +177,15 @@ def test_admin_navigation_links_resolve(admin_logged_in_client, path, expected):
         assert response.status_code == 200, link
 
 
+def test_tohuwabohu_has_no_stray_text(admin_logged_in_client):
+    make_reviewed_book(pages=300, plot=None)
+
+    body = admin_logged_in_client.get("/b/tohuwabohu/").content.decode()
+
+    assert "No plot: 1" in body
+    assert "no plot" not in body
+
+
 def test_tohuwabohu_lists_books_missing_metadata(admin_logged_in_client):
     good = make_reviewed_book(pages=300, plot="Full plot.")
     missing_pages = make_reviewed_book(pages=None, plot="Plot")
