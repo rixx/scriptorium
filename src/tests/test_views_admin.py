@@ -1505,6 +1505,23 @@ def test_poem_create_saves_and_redirects_to_absolute_url(admin_logged_in_client)
     assert poem.author == author
 
 
+def test_poem_create_get_prefills_book_from_query(admin_logged_in_client):
+    book = make_reviewed_book()
+
+    response = admin_logged_in_client.get(f"/b/poems/new/?book={book.pk}")
+
+    assert response.status_code == 200
+    assert response.context["form"].initial["book"] == book
+
+
+@pytest.mark.parametrize("query", ["?book=99999", "?book=abc", ""])
+def test_poem_create_get_ignores_bad_book_query(admin_logged_in_client, query):
+    response = admin_logged_in_client.get(f"/b/poems/new/{query}")
+
+    assert response.status_code == 200
+    assert "book" not in response.context["form"].initial
+
+
 def test_poem_edit_get_uses_poem_and_pre_fills_instance(admin_logged_in_client):
     author = AuthorFactory(name="Poet", name_slug="poet")
     poem = PoemFactory(
