@@ -6,13 +6,10 @@ import markdown
 import smartypants
 from django.contrib import messages
 from django.contrib.staticfiles.storage import staticfiles_storage
-from django.db.models import F, Q
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from markdown.extensions.smarty import SmartyExtension
 from markdown.extensions.toc import TocExtension
 from markupsafe import Markup
-
-DATE_CUTOFF = dt.date(2022, 1, 31)
 
 
 def unmark_element(element, stream=None):
@@ -27,27 +24,10 @@ def unmark_element(element, stream=None):
     return stream.getvalue()
 
 
-def get_missing_reviews_data():
-    from scriptorium.main.models import BookStatus, Read  # noqa: PLC0415
+def get_missing_reviews_count():
+    from scriptorium.main.models import Book  # noqa: PLC0415
 
-    all_reads = Read.objects.filter(finished_on__gt=DATE_CUTOFF)
-    # Only genuinely unaccounted reads count: everything on a book still
-    # waiting for its first review, but for published books only the reads
-    # newer than the review itself (older ones are covered by it).
-    missing_reviews = all_reads.filter(
-        Q(book__status=BookStatus.TO_REVIEW)
-        | Q(book__status=BookStatus.REVIEWED, finished_on__gt=F("book__review_updated"))
-    ).count()
-    if not missing_reviews:
-        return {}
-    all_review_count = all_reads.count()
-    return {
-        "missing_reviews": missing_reviews,
-        "missing_reviews_date": DATE_CUTOFF.strftime("%Y-%m-%d"),
-        "missing_reviews_reviewed": all_review_count - missing_reviews,
-        "missing_reviews_total": all_review_count,
-        "missing_reviews_percentage": f"{100 * (all_review_count - missing_reviews) / all_review_count:.1f}%",
-    }
+    return Book.all_objects.needs_review().count()
 
 
 # patching Markdown
@@ -131,5 +111,5 @@ def environment(**options):
     env.filters["thousands"] = thousands
     env.filters["url_replace"] = replace_url
     env.globals.update({"get_messages": messages.get_messages})
-    env.globals.update({"get_missing_reviews_data": get_missing_reviews_data})
+    env.globals.update({"get_missing_reviews_count": get_missing_reviews_count})
     return env

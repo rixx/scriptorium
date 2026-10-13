@@ -62,7 +62,7 @@ deps-bump package version:
 [positional-arguments]
 [working-directory("src")]
 run *args:
-    @if [ "$#" -eq 0 ]; then export SCRIPTORIUM_DEBUG=1; set -- runserver --skip-checks; fi; {{ python }} manage.py "$@"
+    @if [ "$#" -eq 0 ]; then set -- runserver --skip-checks; fi; {{ python }} manage.py "$@"
 
 # Open Django shell
 [group('development')]

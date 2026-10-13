@@ -19,6 +19,6 @@
   </nav>
 
   <div id="sidenav-right" class="sidenav">
-    {% if not request.user.is_anonymous %}<a href="/b">admin</a> <span>·</span> <a href="/b/new"> + new</a> <span>·</span> <form method="post" action="/b/logout" class="inline">{{ csrf_input }}<button type="submit" class="linklike">logout</button></form>{% endif %}
+    {% if not request.user.is_anonymous %}<a href="/b">admin</a> <span>·</span> <a href="/b/new"> + new</a> <span>·</span> <form method="post" action="/b/logout" class="inline">{{ csrf_input }}<button type="submit" class="linklike">logout</button></form>{% else %}<a href="/b/login/" id="hidden-login">admin</a>{% endif %}
   </div>
 </header>

@@ -7,7 +7,7 @@ from django.test import RequestFactory
 from markupsafe import Markup
 
 from scriptorium.main.jinja2 import (
-    get_missing_reviews_data,
+    get_missing_reviews_count,
     render_authors,
     render_date,
     replace_url,
@@ -98,64 +98,22 @@ def test_replace_url_removes_key_when_value_is_empty():
 
 
 @pytest.mark.django_db
-def test_get_missing_reviews_data_empty_when_no_reviews_missing():
+def test_get_missing_reviews_count_zero_when_queue_empty():
     make_reviewed_book(latest_date=dt.date(2024, 1, 1))
 
-    assert get_missing_reviews_data() == {}
+    assert get_missing_reviews_count() == 0
 
 
 @pytest.mark.django_db
-def test_get_missing_reviews_data_counts_recent_unreviewed_reads():
-    make_reviewed_book(latest_date=dt.date(2023, 1, 1))
-    waiting = BookFactory(status=BookStatus.TO_REVIEW)
-    ReadFactory(book=waiting, finished_on=dt.date(2023, 2, 1))
-    # Reads before the cutoff don't count towards the banner.
-    ReadFactory(book=waiting, finished_on=dt.date(2020, 1, 1))
-
-    data = get_missing_reviews_data()
-
-    assert data == {
-        "missing_reviews": 1,
-        "missing_reviews_date": "2022-01-31",
-        "missing_reviews_reviewed": 1,
-        "missing_reviews_total": 2,
-        "missing_reviews_percentage": "50.0%",
-    }
-
-
-@pytest.mark.django_db
-def test_get_missing_reviews_data_counts_stale_rereads():
-    """A published review whose book was reread later needs a refresh, so its
-    recent reads count as missing alongside the never-reviewed ones."""
+def test_get_missing_reviews_count_counts_queued_books():
     from scriptorium.main.models import Book  # noqa: PLC0415
 
+    waiting = BookFactory(status=BookStatus.TO_REVIEW)
+    ReadFactory(book=waiting, finished_on=dt.date(2023, 2, 1))
+    ReadFactory(book=waiting, finished_on=dt.date(2024, 2, 1))
     stale = make_reviewed_book(latest_date=dt.date(2024, 2, 2))
     Book.all_objects.filter(pk=stale.pk).update(review_updated=dt.date(2020, 1, 1))
-    make_reviewed_book(latest_date=dt.date(2023, 1, 1))
-    waiting = BookFactory(status=BookStatus.TO_REVIEW)
-    ReadFactory(book=waiting, finished_on=dt.date(2023, 2, 1))
+    make_reviewed_book(latest_date=dt.date(2023, 6, 1))
+    BookFactory(status=BookStatus.TO_READ)
 
-    data = get_missing_reviews_data()
-
-    assert data["missing_reviews"] == 2
-    assert data["missing_reviews_total"] == 3
-    assert data["missing_reviews_reviewed"] == 1
-
-
-@pytest.mark.django_db
-def test_get_missing_reviews_data_ignores_reads_covered_by_the_review():
-    """Only reads newer than the review itself count for a published book:
-    a reviewed book with two old post-cutoff reads and one fresh reread is
-    missing exactly one review, not three."""
-    from scriptorium.main.models import Book  # noqa: PLC0415
-
-    stale = make_reviewed_book(
-        reads=[dt.date(2022, 5, 1), dt.date(2023, 5, 1), dt.date(2024, 6, 1)]
-    )
-    Book.all_objects.filter(pk=stale.pk).update(review_updated=dt.date(2024, 1, 1))
-
-    data = get_missing_reviews_data()
-
-    assert data["missing_reviews"] == 1
-    assert data["missing_reviews_total"] == 3
-    assert data["missing_reviews_reviewed"] == 2
+    assert get_missing_reviews_count() == 2

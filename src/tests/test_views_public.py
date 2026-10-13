@@ -388,6 +388,7 @@ def test_queue_page_lists_books_needing_review(client):
     assert response.status_code == 200
     body = response.content.decode()
     assert "2 books" in body
+    assert '<a href="/queue/">2 books waiting for a review</a>' in body
     assert "Awaiting Review" in body
     assert "Stale Reread" in body
     assert "Still To Read" not in body
@@ -396,6 +397,8 @@ def test_queue_page_lists_books_needing_review(client):
     assert f'href="/{stale_reread.slug}/"' in body
     # Anonymous visitors see no review-editing entry points.
     assert "/b/toreview/" not in body
+    # Only the invisible login link points into the admin area.
+    assert '<a href="/b/login/" id="hidden-login">admin</a>' in body
     assert f'href="/b/{stale_reread.slug}/"' not in body
 
 
@@ -426,8 +429,9 @@ def test_queue_page_offers_edit_links_when_logged_in(admin_logged_in_client):
 
     assert response.status_code == 200
     body = response.content.decode()
-    assert f'href="/b/toreview/{unreviewed.pk}/"' in body
-    assert f'href="/b/{stale_reread.slug}/"' in body
+    assert f'<a href="/b/toreview/{unreviewed.pk}/">Awaiting Review</a>' in body
+    assert f'<a href="/b/{stale_reread.slug}/">Stale Reread</a>' in body
+    assert body.index("Awaiting Review") < body.index("Stale Reread")
 
 
 # --- Quote ------------------------------------------------------------------

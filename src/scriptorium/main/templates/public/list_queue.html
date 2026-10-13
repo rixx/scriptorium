@@ -14,7 +14,9 @@
     <ul>
       {% for book in books %}
         <li>
-          {% if book.status == "reviewed" %}
+          {% if not request.user.is_anonymous %}
+            <b><a href="{% if book.status == "reviewed" %}/b/{{ book.slug }}/{% else %}/b/toreview/{{ book.id }}/{% endif %}">{{ book.title }}</a></b>
+          {% elif book.status == "reviewed" %}
             <b><a href="/{{ book.slug }}/">{{ book.title }}</a></b>
           {% else %}
             <b>{{ book.title }}</b>
@@ -22,14 +24,6 @@
           by <i>{{ book.author_string }}</i>
           {% if book.series %}({{ book.series.name }}{% if book.series_position %} #{{ book.series_position }}{% endif %}){% endif %}
           {% if book.date %}— read {{ book.date|render_date }}{% endif %}
-          {% if not request.user.is_anonymous %}
-            ·
-            {% if book.status == "reviewed" %}
-              <a href="/b/{{ book.slug }}/">edit review</a>
-            {% else %}
-              <a href="/b/toreview/{{ book.id }}/">write review</a>
-            {% endif %}
-          {% endif %}
         </li>
       {% endfor %}
     </ul>

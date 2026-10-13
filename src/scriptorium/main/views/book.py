@@ -2,7 +2,7 @@ from collections import defaultdict
 from itertools import groupby
 
 import networkx as nx
-from django.db.models import Avg, Count, Max
+from django.db.models import Avg, Count, F, Max
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404
@@ -301,7 +301,9 @@ class QueueView(ActiveTemplateMixin, TemplateView):
 
     @context
     def books(self):
-        return Book.all_objects.needs_review()
+        return Book.all_objects.needs_review().order_by(
+            F("date").desc(nulls_last=True), "-pk"
+        )
 
     @context
     @cached_property
