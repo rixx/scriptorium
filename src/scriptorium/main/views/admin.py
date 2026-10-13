@@ -269,7 +269,7 @@ class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):
         return ReviewEditForm(instance=self.book)
 
     def form_invalid(self, form):
-        messages.error(self.request, form.errors)
+        messages.error(self.request, "Please correct the errors below.")
         return super().form_invalid(form)
 
     def form_valid(self, form):

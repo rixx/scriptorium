@@ -1,8 +1,12 @@
 import datetime as dt
 import json
+import re
 
 import pytest
+from django.contrib import messages
 from django.contrib.messages.storage.fallback import FallbackStorage
+from django.contrib.messages.storage.session import SessionStorage
+from django.http import HttpResponse
 
 from scriptorium.main import metadata
 from scriptorium.main.models import (
@@ -1229,6 +1233,56 @@ def test_review_edit_post_both_forms_invalid_shows_both_errors(admin_logged_in_c
     assert response.status_code == 200
     assert response.context["form"].errors.get("title")
     assert "Dates must be YYYY-MM-DD" in response.content.decode()
+
+
+# --- Messages ---------------------------------------------------------------
+
+
+def _queue_message(client, rf, settings, text):
+    settings.MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
+    session = client.session
+    request = rf.get("/")
+    request.session = session
+    storage = SessionStorage(request)
+    storage.add(messages.ERROR, text)
+    storage.update(HttpResponse())
+    session.save()
+
+
+@pytest.mark.parametrize("on_review_page", [True, False])
+def test_messages_render_once_on_any_page(
+    admin_logged_in_client, rf, settings, on_review_page
+):
+    author = AuthorFactory(name="Author V", name_slug="author-v")
+    book = make_reviewed_book(title="Dup", title_slug="dup", primary_author=author)
+    _queue_message(admin_logged_in_client, rf, settings, "First problem.")
+    path = f"/{book.slug}/" if on_review_page else "/b/toreview/"
+
+    body = admin_logged_in_client.get(path).content.decode()
+
+    assert body.count("First problem.") == 1
+    assert re.search(
+        r'<ul class="messages">\s*<li class="error">First problem.</li>\s*</ul>', body
+    )
+    second = admin_logged_in_client.get(path).content.decode()
+    assert "First problem." not in second
+    assert 'class="messages"' not in second
+
+
+def test_review_edit_invalid_post_shows_error_message(admin_logged_in_client):
+    author = AuthorFactory(name="Author S", name_slug="author-s")
+    book = make_reviewed_book(
+        title="Intact", title_slug="intact", primary_author=author
+    )
+
+    response = admin_logged_in_client.post(
+        f"/b/{author.name_slug}/{book.title_slug}/",
+        _book_post_data(book, [], dates_read="garbage"),
+    )
+
+    body = response.content.decode()
+    assert re.search(r'<ul class="messages">\s*<li class="error">', body)
+    assert "&lt;ul" not in body
 
 
 # --- QuoteCreate initial / form_valid branches ------------------------------

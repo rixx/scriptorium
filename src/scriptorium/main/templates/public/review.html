@@ -20,11 +20,6 @@
 {% endblock %}
 
 {% block content %}
-  <div class="messages">
-    {% for message in get_messages(request) %}
-      <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-    {% endfor %}
-  </div>
   <div class="book-meta-wrapper"><div>
     <h1 id="title">{{ book.title | smartypants | safe }}</h1>
     {% if not request.user.is_anonymous %}

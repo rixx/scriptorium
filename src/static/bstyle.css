@@ -35,3 +35,17 @@ p .ts-dropdown {
   font-size: 1em;
   line-height: inherit;
 }
+ul.messages {
+  padding: 0;
+  list-style: none;
+}
+ul.messages li {
+  margin: 0.5em 0;
+  padding: 0.5em 1em;
+  border-left: 4px solid #007171;
+  background: #00717122;
+}
+ul.messages li.error {
+  border-color: #990000;
+  background: #99000022;
+}

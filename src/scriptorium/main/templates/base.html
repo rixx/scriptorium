@@ -27,6 +27,14 @@
           There are currently <a href="/queue/">{{ missing_reviews }} books waiting for a review</a>.
         </div>
       {% endif %}
+      {% set flash_messages = get_messages(request) %}
+      {% if flash_messages %}
+        <ul class="messages">
+          {% for message in flash_messages %}
+            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
       {% block content %}{% endblock %}
     </main>
 
