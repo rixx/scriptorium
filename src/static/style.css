@@ -42,11 +42,9 @@ main:not(.wide) {
   border-image: var(--border-url) 0 50% 0 50% round;
 }
 code,
-pre,
-.code.literal-block {
+pre {
   font-family: "Ubuntu Mono", "Inconsolata", monospace;
 }
-.code.literal-block,
 pre {
   font-size: 0.9em;
 }
@@ -65,8 +63,7 @@ details summary {
 }
 article p:first-child::first-letter,
 article details p:nth-child(2)::first-letter,
-.initial::first-letter,
-pre.code + p::first-letter {
+.initial::first-letter {
   font-size: 5.15em;
   font-family: "Kanzlei";
   font-weight: normal;
@@ -91,12 +88,6 @@ blockquote p::first-letter {
   float: inherit !important;
   color: inherit !important;
   text-indent: inherit !important;
-}
-#search {
-  padding: 6px;
-  margin-top: 5px;
-  border: solid #ccc 1px;
-  border-radius: 4px;
 }
 .alphabet-section {
   min-height: 8em;
@@ -247,8 +238,7 @@ button {
   display: block;
 }
 
-.book-card,
-.lists {
+.book-card {
   min-height: 161px;
   max-width: calc(100vw - 40px);
   position: relative;
@@ -278,15 +268,13 @@ hr + .external-link {
   justify-content: center;
 }
 
-.external-link img,
-.external-icon {
+.external-link img {
   height: 24px;
   width: 24px;
   margin-left: 10px;
 }
 
-.external-link img.amazon,
-.external-icon.amazon {
+.external-link img.amazon {
   height: 28px;
   width: 28px;
   margin-left: 7px;
@@ -298,8 +286,7 @@ hr + .external-link {
     0 1px 5px rgba(0, 0, 0, 0.36);
 }
 
-.book-card-fav,
-.lists {
+.book-card-fav {
   border-color: #990000;
 }
 
@@ -308,17 +295,6 @@ hr + .external-link {
   width: 100%;
   color: black;
   text-decoration: none;
-}
-
-.lists .covers {
-  margin: 20px 24px;
-  display: flex;
-  overflow: hidden;
-}
-
-.lists .covers img.cover {
-  margin: 0 4px;
-  height: 160px;
 }
 
 .cover-wrapper {
@@ -342,10 +318,6 @@ hr + .external-link {
   background-color: var(--spine-color);
 }
 
-.lists p.title {
-  margin-left: 24px;
-}
-
 .book-metadata {
   margin: auto 24px;
   line-height: 1.25em;
@@ -360,9 +332,6 @@ hr + .external-link {
 }
 .book-card .book-metadata p.title {
   margin-bottom: -2px;
-}
-.book-card .book-metadata p.title.title-padded {
-  padding-top: 12px;
 }
 .book-metadata hr {
   margin-right: 24px;
@@ -495,27 +464,6 @@ header a {
   cursor: default;
 }
 
-.note {
-  margin-left: 1em;
-  margin-right: 1em;
-}
-
-.note p:first-child {
-  margin-top: 0;
-}
-
-.note p:last-child {
-  margin-bottom: 0.75em;
-}
-
-.divider {
-  color: #bbb;
-  text-align: center;
-  font-size: 2em;
-  margin-top: 1em;
-  margin-bottom: 1em;
-}
-
 .book-cover .cover {
   float: right;
   max-width: 180px;
@@ -537,10 +485,6 @@ header a {
   float: left;
 }
 
-#jump_to {
-  margin-bottom: -0.5em;
-}
-
 #stats-section svg {
   margin-left: auto;
   margin-right: auto;
@@ -559,16 +503,14 @@ header a {
 #stats-section table th {
   text-align: right;
 }
-#stats-section input[type="checkbox"],
-#social-article input[type="checkbox"] {
+#stats-section input[type="checkbox"] {
   height: 0;
   width: 0;
   visibility: hidden;
   position: absolute;
 }
 
-#stats-section label#toggle,
-#social-article label#toggle {
+#stats-section label#toggle {
   cursor: pointer;
   text-indent: -9999px;
   width: 50px;
@@ -582,12 +524,7 @@ header a {
   background: #990000;
 }
 
-#social-article label#toggle {
-  background: rgb(29, 161, 242);
-}
-
-#stats-section label#toggle:after,
-#social-article label#toggle:after {
+#stats-section label#toggle:after {
   content: "";
   position: absolute;
   top: 5px;
@@ -603,27 +540,18 @@ header a {
   background: #007171;
 }
 
-#social-article input:checked + #social label {
-  background: #444b5d;
-}
-
-#stats-section input:checked + #stats label:after,
-#social-article input:checked + #social label:after {
+#stats-section input:checked + #stats label:after {
   left: calc(100% - 5px);
   transform: translateX(-100%);
 }
 
 #stats-section input + #stats #book-stats,
-#stats-section input:checked + #stats #page-stats,
-#social-article input + #social #twitter,
-#social-article input:checked + #social #mastodon {
+#stats-section input:checked + #stats #page-stats {
   display: flex;
 }
 
 #stats-section input + #stats #page-stats,
-#stats-section input:checked + #stats #book-stats,
-#social-article input + #social #mastodon,
-#social-article input:checked + #social #twitter {
+#stats-section input:checked + #stats #book-stats {
   display: none;
 }
 #stats-section input + #stats #label:before {
@@ -633,25 +561,12 @@ header a {
 #stats-section input:checked + #stats #label:before {
   content: "Pages";
 }
-#social-article input + #social #label:before {
-  content: "Twitter";
-  font-family: sans-serif;
-  font-size: 14px;
-}
-#social-article input:checked + #social #label:before {
-  content: "Fedi";
-  margin-right: 8px;
-  font-family: sans-serif;
-  font-size: 14px;
-}
 
-#stats-section label#toggle:active:after,
-#social-article label#toggle:active:after {
+#stats-section label#toggle:active:after {
   width: 30px;
 }
 
-#stats,
-#social {
+#stats {
   position: relative;
 }
 #stats label#toggle,
@@ -664,119 +579,6 @@ header a {
   top: -16px;
   margin-right: 2px;
 }
-#social label#toggle,
-#social #label {
-  top: 12px;
-  right: 6px;
-  margin-right: 4px;
-  position: absolute;
-}
-#social #label {
-  position: absolute;
-  right: 6px;
-  top: 42px;
-}
-#social-article {
-  margin-top: 18px;
-}
-#social #twitter,
-#social #mastodon {
-  width: 500px;
-  max-width: 90%;
-  margin-left: auto;
-  margin-right: auto;
-  border: 1px solid #e1e8ed;
-  border-radius: 4px;
-  font-family: sans-serif;
-  font-size: 16px;
-  font-weight: normal;
-  padding: 16px 32px;
-  display: flex;
-  flex-direction: column;
-}
-#social .header a {
-  margin: 8px 0;
-  display: flex;
-  font-weight: normal;
-}
-#social .header img {
-  width: 47px;
-  height: 47px;
-  margin-right: 12px;
-}
-#social .header .author {
-  display: flex;
-  flex-direction: column;
-}
-#social .header .author-name {
-  font-weight: bold;
-  font-size: 18px;
-}
-#social .footer {
-  border-top: 1px solid #e1e8ed;
-  padding-top: 12px;
-  margin-top: 12px;
-}
-#social .footer a {
-  display: flex;
-  justify-content: space-around;
-}
-#social .footer svg {
-  width: 1.25em;
-  height: 1.25em;
-  padding: 0 50px;
-}
-#social .footer svg#twitter-reply:hover path {
-  fill: rgb(29, 161, 242);
-}
-#social .footer svg#twitter-fav:hover path {
-  fill: rgb(224, 36, 94);
-}
-#social .footer svg#twitter-rt:hover path {
-  fill: rgb(23, 191, 99);
-}
-
-#social #twitter {
-  color: rgb(20, 23, 26);
-  background-color: white;
-  line-height: 1.5;
-}
-#social #twitter .header a {
-  color: #1c2022;
-}
-#social #twitter .header a:hover .author-name {
-  color: #3b94d9;
-}
-#social #twitter .header .author-nick {
-  color: #697882;
-}
-#social #twitter .footer svg path {
-  fill: rgb(101, 119, 134);
-}
-#social #twitter .header img {
-  border-radius: 50%;
-}
-
-#social #mastodon {
-  color: rgb(217, 225, 232);
-  background-color: #282c37;
-}
-#social #mastodon .header a {
-  color: rgb(217, 225, 232);
-}
-#social #mastodon .header a:hover .author-name {
-  text-decoration: underline;
-}
-#social #mastodon .header .author-nick {
-  color: rgb(217, 225, 232);
-}
-#social #mastodon .footer svg path {
-  fill: rgb(96, 105, 132);
-}
-#social #mastodon .header img {
-  border-radius: 4px;
-}
-
 .spoiler,
 .spoilers {
   color: transparent;
@@ -926,60 +728,6 @@ header a {
 }
 .spine.spine-lined {
   background-image: url("/static/lined.png");
-}
-
-#search-results.empty {
-  display: none;
-}
-#search-container {
-  position: relative;
-}
-#search-results {
-  display: flex;
-  flex-direction: column;
-  position: absolute;
-  top: 45px;
-  right: 0;
-  width: 300px;
-  max-height: calc(100vh - 48px);
-  overflow-y: auto;
-  box-shadow:
-    0 1px 5px rgba(0, 0, 0, 0.12),
-    0 1px 3px rgba(0, 0, 0, 0.24);
-}
-#search-results .tag-result,
-#search-results .book-result {
-  padding: 16px;
-  background-color: white;
-}
-#search-results .tag-result:hover,
-#search-results .book-result:hover {
-  background-color: #eee;
-}
-#search-results .tag-result {
-  padding-left: 90px;
-  color: #222;
-  line-height: 1.4;
-  font-size: 0.9em;
-  font-family: "EB Garamond 12";
-}
-#search-results .book-result {
-  display: flex;
-}
-#search-results .book-result img {
-  max-height: 100px;
-}
-#search-results .book-result .search-content {
-  display: flex;
-  flex-direction: column;
-  margin-left: 16px;
-}
-#search-results .book-result .search-content .book-title,
-#search-results .book-result .search-content .book-author {
-  color: #222;
-  line-height: 1.4;
-  font-size: 0.8em;
-  font-family: "EB Garamond 12";
 }
 
 #graph-wrapper {
@@ -1414,23 +1162,7 @@ progress::-moz-progress-bar {
   }
 }
 @media (max-width: 700px) {
-  #sidenav-left,
-  #nav-links #graph-nav {
+  #sidenav-left {
     display: none;
-  }
-  #social-article {
-    margin-left: 0;
-    margin-right: 0;
-  }
-  #social #twitter,
-  #social #mastodon {
-    width: auto;
-  }
-  #social-article input:checked + #social #label:before {
-    color: white;
-    padding-top: 2px;
-  }
-  #social-article input:checked + #social label#toggle {
-    border: 1px solid white;
   }
 }
