@@ -235,6 +235,24 @@ def test_book_wizard_form_without_openlibrary_leaves_initial_untouched():
     assert "openlibrary_id" not in form.initial
 
 
+def test_book_wizard_form_keeps_openlibrary_id_and_allows_no_tags():
+    form = BookWizardForm(
+        data={
+            "title": "The Left Hand of Darkness",
+            "author_name": "Ursula K. Le Guin",
+            "openlibrary_id": "OL12345W",
+            "new_tags": "genre:Science Fiction",
+        },
+        openlibrary=OPENLIBRARY_FIXTURE,
+    )
+
+    assert form.is_valid(), form.errors
+    assert form.cleaned_data["openlibrary_id"] == "OL12345W"
+    assert list(form.cleaned_data["tags"]) == []
+    assert 'name="openlibrary_id"' in form.as_p()
+    assert 'value="OL12345W"' in BookWizardForm(openlibrary=OPENLIBRARY_FIXTURE).as_p()
+
+
 def test_book_wizard_form_clean_new_tags_splits_and_strips():
     form = BookWizardForm()
     form.cleaned_data = {"new_tags": "  fantasy ,, science fiction , "}

@@ -1254,6 +1254,32 @@ def test_review_edit_post_both_forms_invalid_shows_both_errors(admin_logged_in_c
     assert "Dates must be YYYY-MM-DD" in response.content.decode()
 
 
+def test_review_edit_accepts_no_tags_when_new_tags_given(admin_logged_in_client):
+    author = AuthorFactory(name="Author U", name_slug="author-u")
+    book = make_reviewed_book(title="Bare", title_slug="bare", primary_author=author)
+
+    response = admin_logged_in_client.post(
+        f"/b/{author.name_slug}/{book.title_slug}/",
+        _book_post_data(book, [], new_tags="genre:Fresh"),
+    )
+
+    assert response.status_code == 302
+    assert list(book.tags.values_list("name", flat=True)) == ["Fresh"]
+
+
+def test_review_edit_accepts_no_tags_at_all(admin_logged_in_client):
+    author = AuthorFactory(name="Author U", name_slug="author-u")
+    book = make_reviewed_book(title="Bare", title_slug="bare", primary_author=author)
+    book.tags.add(TagFactory(category="genre", name_slug="gone", name="Gone"))
+
+    response = admin_logged_in_client.post(
+        f"/b/{author.name_slug}/{book.title_slug}/", _book_post_data(book, [])
+    )
+
+    assert response.status_code == 302
+    assert not book.tags.exists()
+
+
 # --- Messages ---------------------------------------------------------------
 
 

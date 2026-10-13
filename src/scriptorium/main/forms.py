@@ -166,6 +166,7 @@ class BookWizardForm(forms.ModelForm):
         if initial.get("title"):
             initial["title_slug"] = slugify(initial["title"])
         super().__init__(*args, **kwargs, initial=initial)
+        self.fields["tags"].required = False
 
     def clean_new_tags(self):
         new_tags = self.cleaned_data["new_tags"]
@@ -189,6 +190,7 @@ class BookWizardForm(forms.ModelForm):
             "source",
             "pages",
             "cover_source",
+            "openlibrary_id",
             "goodreads_id",
             "isbn10",
             "isbn13",
@@ -251,6 +253,7 @@ class BookEditForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["tags"].required = False
         if self.instance.pk:
             self.initial["series"] = (
                 self.instance.series.name if self.instance.series else ""
