@@ -483,6 +483,9 @@ header a {
 #sidenav-right > * {
   margin-left: 16px;
 }
+#hidden-login {
+  color: transparent;
+}
 #year-nav {
   text-align: right;
 }
