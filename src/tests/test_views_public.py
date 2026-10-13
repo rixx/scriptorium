@@ -1,9 +1,11 @@
 import datetime as dt
 import io
 import json
+import xml.etree.ElementTree as ET
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.template import engines
 from PIL import Image
 
 from scriptorium.main.models import Book, BookRelation, BookStatus
@@ -118,6 +120,30 @@ def test_feed_view_returns_atom_feed(client, reviewed_book):
     assert response.status_code == 200
     assert response.headers["Content-Type"].startswith("application/atom+xml")
     assert reviewed_book.title in response.content.decode()
+
+
+def test_feed_view_escapes_markup_in_book_data(client):
+    book = make_reviewed_book(
+        title="Tom & Jerry <3",
+        primary_author=AuthorFactory(name="Ann <Bee>"),
+        text="Some **bold** text & more.",
+        source='https://example.com/?a=1&b="2"',
+    )
+    book.additional_authors.add(AuthorFactory(name="Cee & Dee"))
+
+    response = client.get("/feed.atom")
+
+    root = ET.fromstring(response.content)  # noqa: S314
+    ns = {"atom": "http://www.w3.org/2005/Atom"}
+    entry = root.find("atom:entry", ns)
+    assert entry.find("atom:title", ns).text == "Tom & Jerry <3"
+    content = entry.find("atom:content", ns).text
+    assert (
+        "I finished reading Tom &amp; Jerry &lt;3 by Ann &lt;Bee&gt; &amp; Cee &amp; Dee."
+        in content
+    )
+    assert "<strong>bold</strong> text &amp; more." in content
+    assert 'href="https://example.com/?a=1&amp;b=&#34;2&#34;"' in content
 
 
 def test_feed_view_excludes_unpublished_books(client):
@@ -581,6 +607,61 @@ def test_border_image_invalid_number_falls_back_to_random(client, border_param):
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "image/svg+xml"
     assert "<svg" in response.content.decode()
+
+
+@pytest.mark.parametrize("color", ["abc", "ABCDEF", "a1b2c3"])
+def test_border_image_accepts_hex_colors(client, color):
+    response = client.get(f"/img/border/?border=1&color={color}")
+
+    assert f'fill="#{color}"' in response.content.decode()
+
+
+@pytest.mark.parametrize(
+    "color",
+    [
+        '"/><script>alert(1)</script>',
+        "red",
+        "12345",
+        "1234567",
+        "abcdeg",
+        "#123456",
+        "123456;x",
+        "123456\n",
+    ],
+)
+def test_border_image_rejects_non_hex_colors(client, color):
+    response = client.get("/img/border/", {"border": "1", "color": color})
+
+    body = response.content.decode()
+    assert response.status_code == 200
+    assert 'fill="#990000"' in body
+    assert "<script" not in body
+
+
+def test_border_svg_templates_are_autoescaped():
+    template = engines["jinja2"].env.get_template("_borders/1.svg")
+
+    rendered = template.render(border_color='"/><script>')
+
+    assert "<script>" not in rendered
+    assert "&#34;/&gt;&lt;script&gt;" in rendered
+
+
+def test_base_template_passes_valid_border_param(client):
+    response = client.get("/", {"border": "3"})
+
+    assert "&border=3)" in response.content.decode()
+
+
+@pytest.mark.parametrize(
+    "border", ["3);background:url(https://evil.example/x", "-1", "0", "99999", "x"]
+)
+def test_base_template_drops_invalid_border_param(client, border):
+    response = client.get("/", {"border": border})
+
+    body = response.content.decode()
+    assert "border=" not in body.split("--border-url", 1)[1].split(";", 1)[0]
+    assert "evil.example" not in body
 
 
 def test_border_image_list_view(client, settings):

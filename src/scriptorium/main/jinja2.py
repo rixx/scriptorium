@@ -11,6 +11,8 @@ from markdown.extensions.smarty import SmartyExtension
 from markdown.extensions.toc import TocExtension
 from markupsafe import Markup
 
+from scriptorium.main.utils import parse_border_number
+
 
 def unmark_element(element, stream=None):
     if stream is None:
@@ -95,7 +97,7 @@ def replace_url(request, key, new_value):
 
 
 def environment(**options):
-    options["autoescape"] = select_autoescape(["html", "xml"])
+    options["autoescape"] = select_autoescape(["html", "xml", "svg", "atom"])
     options["loader"] = FileSystemLoader(pathlib.Path(__file__).parent / "templates")
     options["cache_size"] = 0
 
@@ -112,4 +114,5 @@ def environment(**options):
     env.filters["url_replace"] = replace_url
     env.globals.update({"get_messages": messages.get_messages})
     env.globals.update({"get_missing_reviews_count": get_missing_reviews_count})
+    env.globals.update({"parse_border_number": parse_border_number})
     return env

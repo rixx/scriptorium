@@ -3,6 +3,7 @@ import re
 
 import numpy as np
 from coloraide import Color
+from django.conf import settings
 from PIL import Image
 from sklearn.cluster import KMeans
 from unidecode import unidecode
@@ -35,6 +36,14 @@ _RGB_FROM_XYZ = np.linalg.inv(_XYZ_FROM_RGB)
 _D65 = np.array([0.95047, 1.0, 1.08883])
 _LAB_EPS = 216 / 24389
 _LAB_KAPPA = 24389 / 27
+
+
+def parse_border_number(value):
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return None
+    return number if 1 <= number <= settings.MAX_BORDER else None
 
 
 def slugify(text):
