@@ -11,6 +11,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.functional import cached_property
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.views.generic import (
     CreateView,
@@ -65,15 +66,24 @@ class LoginView(FormView):
 
     def post(self, request):
         form = self.get_form()
-        if form.is_valid():
-            user = authenticate(
-                username=form.cleaned_data["username"],
-                password=form.cleaned_data["password"],
-            )
-            if user:
-                login(request, user)
-                return redirect("/b/new")
-        return redirect("/b/login")
+        if not form.is_valid():
+            return self.form_invalid(form)
+        user = authenticate(
+            username=form.cleaned_data["username"],
+            password=form.cleaned_data["password"],
+        )
+        if not user:
+            form.add_error(None, "Wrong username or password.")
+            return self.form_invalid(form)
+        login(request, user)
+        next_url = request.GET.get("next")
+        if not url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            next_url = "/b/toreview/"
+        return redirect(next_url)
 
 
 @require_POST

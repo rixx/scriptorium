@@ -47,20 +47,65 @@ def test_login_view_renders_form(client):
     assert 'type="submit"' in body
 
 
-def test_login_view_post_redirects_to_wizard_on_valid_credentials(client, user):
+def test_login_view_post_redirects_to_review_queue_on_valid_credentials(client, user):
     response = client.post(
         "/b/login/", {"username": user.username, "password": "password"}
     )
 
     assert response.status_code == 302
-    assert response.url == "/b/new"
+    assert response.url == "/b/toreview/"
+    assert client.session["_auth_user_id"] == str(user.pk)
 
 
-def test_login_view_post_redirects_back_on_invalid_credentials(client):
-    response = client.post("/b/login/", {"username": "nobody", "password": "wrong"})
+def test_login_view_post_honours_safe_next(client, user):
+    response = client.post(
+        "/b/login/?next=/b/tokens/", {"username": user.username, "password": "password"}
+    )
 
     assert response.status_code == 302
-    assert response.url == "/b/login"
+    assert response.url == "/b/tokens/"
+
+
+@pytest.mark.parametrize(
+    "next_url", ["https://evil.example/", "//evil.example/b/", "javascript:alert(1)"]
+)
+def test_login_view_post_ignores_offsite_next(client, user, next_url):
+    response = client.post(
+        "/b/login/",
+        {"username": user.username, "password": "password"},
+        QUERY_STRING=f"next={next_url}",
+    )
+
+    assert response.status_code == 302
+    assert response.url == "/b/toreview/"
+
+
+def test_login_view_post_rerenders_with_error_on_invalid_credentials(client, user):
+    response = client.post(
+        "/b/login/?next=/b/tokens/", {"username": user.username, "password": "wrong"}
+    )
+
+    assert response.status_code == 200
+    assert response.context["form"].non_field_errors()
+    assert "_auth_user_id" not in client.session
+    body = response.content.decode()
+    assert 'class="errorlist' in body
+    assert f'value="{user.username}"' in body
+
+
+def test_anonymous_admin_access_redirects_to_working_login_and_back(client, user):
+    response = client.get("/b/tokens/")
+
+    assert response.status_code == 302
+    assert response.url == "/b/login/?next=/b/tokens/"
+    assert client.get(response.url).status_code == 200
+
+    login = client.post(
+        response.url, {"username": user.username, "password": "password"}
+    )
+
+    assert login.status_code == 302
+    assert login.url == "/b/tokens/"
 
 
 def test_logout_view_redirects_home_and_clears_session(admin_logged_in_client):
@@ -93,7 +138,7 @@ def test_admin_views_redirect_anonymous_to_login(client, path):
     response = client.get(path)
 
     assert response.status_code == 302
-    assert "/b/login" in response.url or "/accounts/login" in response.url
+    assert response.url == f"/b/login/?next={path}"
 
 
 # --- Bibliothecarius / dashboard --------------------------------------------
@@ -497,13 +542,12 @@ def test_trigger_deploy_without_flag_file_configured(admin_logged_in_client, set
 # --- Login form invalid branch ---------------------------------------------
 
 
-def test_login_view_post_with_missing_fields_redirects_back(client):
-    """Covers the form.is_valid() == False branch: an empty POST can never
-    authenticate and must bounce back to the login page."""
+def test_login_view_post_with_missing_fields_rerenders_with_errors(client):
     response = client.post("/b/login/", {})
 
-    assert response.status_code == 302
-    assert response.url == "/b/login"
+    assert response.status_code == 200
+    assert set(response.context["form"].errors) == {"username", "password"}
+    assert "_auth_user_id" not in client.session
 
 
 # --- AuthorEdit -------------------------------------------------------------
