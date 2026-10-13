@@ -1,6 +1,7 @@
 import datetime as dt
 import json
 import re
+from urllib.parse import urljoin
 
 import pytest
 from django.contrib import messages
@@ -156,6 +157,24 @@ def test_bibliothecarius_dashboard_renders_for_admin(admin_logged_in_client):
     assert "href=/b/new" in body
     assert 'href="/b/toreview/"' in body
     assert "tohuwabohu" in body
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"), [("/b/", "/b/pages"), ("/b/pages/", "/b/pages/about")]
+)
+def test_admin_navigation_links_resolve(admin_logged_in_client, path, expected):
+    PageFactory(title="About", slug="about")
+    body = admin_logged_in_client.get(path).content.decode()
+    links = {
+        urljoin(path, href)
+        for href in re.findall(r'<a href="?([^" >]+)', body)
+        if href.startswith("/b") or not href.startswith(("/", "http", "#", "mailto"))
+    }
+
+    assert expected in {link.rstrip("/") for link in links}
+    for link in links:
+        response = admin_logged_in_client.get(link, follow=True)
+        assert response.status_code == 200, link
 
 
 def test_tohuwabohu_lists_books_missing_metadata(admin_logged_in_client):
