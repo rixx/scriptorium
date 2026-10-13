@@ -274,8 +274,7 @@ class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):
 
     def form_valid(self, form):
         if not self.review_form.is_valid():
-            messages.error(self.request, self.review_form.errors)
-            raise ValueError(self.review_form.errors)
+            return self.form_invalid(form)
         form.save()
         self.review_form.save()
         new_tags = form.cleaned_data.pop("new_tags")

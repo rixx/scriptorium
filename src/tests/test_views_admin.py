@@ -1187,9 +1187,9 @@ def test_review_edit_post_invalid_book_form_re_renders_with_errors(
     assert book.title == "Keep Me"
 
 
-def test_review_edit_post_invalid_review_form_raises(admin_logged_in_client):
-    """If BookEditForm is valid but ReviewEditForm is not, form_valid raises
-    ValueError — this is the sad-path branch at admin.py:241-243."""
+def test_review_edit_post_invalid_review_form_rerenders_with_input(
+    admin_logged_in_client,
+):
     author = AuthorFactory(name="Author S", name_slug="author-s")
     book = make_reviewed_book(
         title="Intact", title_slug="intact", primary_author=author
@@ -1197,13 +1197,38 @@ def test_review_edit_post_invalid_review_form_raises(admin_logged_in_client):
     tag = TagFactory(category="genre", name_slug="short", name="Short")
     book.tags.add(tag)
 
-    with pytest.raises(ValueError):
-        admin_logged_in_client.post(
-            f"/b/{author.name_slug}/{book.title_slug}/",
-            _book_post_data(book, [tag], rating="not-a-number"),
-        )
+    response = admin_logged_in_client.post(
+        f"/b/{author.name_slug}/{book.title_slug}/",
+        _book_post_data(
+            book, [tag], title="Changed", dates_read="garbage", text="Long draft."
+        ),
+    )
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "Dates must be YYYY-MM-DD" in body
+    assert "Long draft." in body
+    assert 'value="Changed"' in body
     book.refresh_from_db()
     assert book.title == "Intact"
+    assert book.text != "Long draft."
+
+
+def test_review_edit_post_both_forms_invalid_shows_both_errors(admin_logged_in_client):
+    author = AuthorFactory(name="Author S", name_slug="author-s")
+    book = make_reviewed_book(
+        title="Intact", title_slug="intact", primary_author=author
+    )
+    tag = TagFactory(category="genre", name_slug="short", name="Short")
+
+    response = admin_logged_in_client.post(
+        f"/b/{author.name_slug}/{book.title_slug}/",
+        _book_post_data(book, [tag], title="", dates_read="garbage"),
+    )
+
+    assert response.status_code == 200
+    assert response.context["form"].errors.get("title")
+    assert "Dates must be YYYY-MM-DD" in response.content.decode()
 
 
 # --- QuoteCreate initial / form_valid branches ------------------------------
