@@ -3,14 +3,11 @@
     <a id="site-title" href="/">log(book)</a>
   </div>
   <nav id="nav-links">
-    <a href="/reviews"{% if active == "read" %} class="active"{% endif %}>Log</a>
-    <span class="sep"> · </span>
-    <span class="sep"> · </span>
-    <a href="/queue"{% if active == "queue" %} class="active"{% endif %}>Queue</a>
+    <a href="/reviews/"{% if active == "read" %} class="active"{% endif %}>Log</a>
+    <a href="/queue/"{% if active == "queue" %} class="active"{% endif %}>Queue</a>
     <a href="/catalogue/"{% if active == "list" or active == "catalogue" %} class="active"{% endif %} id="catalogue-link">🔍 Catalogue</a>
-    <span class="sep"> · </span>
-    <a href="/stats"{% if active == "stats" %} class="active"{% endif %}>Stats</a>
-    <a href="/poems"{% if active == "poems" %} class="active"{% endif %}>Poems</a>
+    <a href="/stats/"{% if active == "stats" %} class="active"{% endif %}>Stats</a>
+    <a href="/poems/"{% if active == "poems" %} class="active"{% endif %}>Poems</a>
   </nav>
   <nav id="catalogue-form" class="hidden">
     <form action="/catalogue/" method="get">
@@ -18,7 +15,7 @@
     </form>
   </nav>
 
-  <div id="sidenav-right" class="sidenav">
-    {% if not request.user.is_anonymous %}<a href="/b">admin</a> <span>·</span> <a href="/b/new"> + new</a> <span>·</span> <form method="post" action="/b/logout" class="inline">{{ csrf_input }}<button type="submit" class="linklike">logout</button></form>{% else %}<a href="/b/login/" id="hidden-login">admin</a>{% endif %}
+  <div id="sidenav-right" class="sidenav{% if not request.user.is_anonymous %} admin-links{% endif %}">
+    {% if not request.user.is_anonymous %}<a href="/b/">admin</a> <span>·</span> <a href="/b/new"> + new</a> <span>·</span> <form method="post" action="/b/logout" class="inline">{{ csrf_input }}<button type="submit" class="linklike">logout</button></form>{% else %}<a href="/b/login/" id="hidden-login">admin</a>{% endif %}
   </div>
 </header>

@@ -202,7 +202,7 @@ img {
   justify-content: space-between;
   align-items: flex-start;
 }
-table.book-metadata {
+table.book_metadata {
   border-collapse: collapse;
   margin-bottom: 1em;
 }
@@ -414,8 +414,7 @@ header a {
   font-variant: bold;
   margin: auto;
 }
-.hidden,
-#nav-links .sep {
+.hidden {
   display: none !important;
 }
 #nav-links a {
@@ -812,7 +811,6 @@ header a {
 }
 h1#year-stats-headline {
   display: flex;
-  width: 100%;
   justify-content: center;
   align-items: center;
   text-align: center;
@@ -1123,18 +1121,31 @@ progress::-moz-progress-bar {
   .book-card .cover {
     margin: 0 18px 6px 0px;
   }
-  table.book-metadata {
+  table.book_metadata {
     clear: both;
   }
-  #nav-links a,
-  #nav-links .sep {
+  .book-meta-wrapper {
+    flex-wrap: wrap;
+  }
+  .quote {
+    box-sizing: border-box;
+  }
+  table.stats-table {
+    font-size: 0.8em;
+  }
+  #year-stats-covers {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 12px;
+  }
+  #nav-links {
+    width: 100%;
+    justify-content: space-evenly;
+    font-size: 20px;
+  }
+  #nav-links a {
     margin: 8px 0;
     padding: 0;
     padding-top: 12px;
-  }
-  #nav-links .sep {
-    display: block;
-    margin: 8px 8px;
   }
   .alphabet-section .initial::first-letter {
     padding-right: none;
@@ -1147,10 +1158,24 @@ progress::-moz-progress-bar {
   }
 }
 @media (max-width: 880px) {
-  main {
+  main,
+  main:not(.wide) {
     margin: 0 8px;
     max-width: 100%;
     min-width: auto;
+  }
+  #year-stats-facts .stats-line {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 1200px) {
+  header {
+    height: auto;
+    min-height: 46px;
+  }
+  #sidenav-right.admin-links {
+    position: static;
+    justify-content: center;
   }
 }
 @media (max-width: 1300px) {
