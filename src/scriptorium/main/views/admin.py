@@ -395,13 +395,6 @@ class PoemEdit(PoemMixin, LoginRequiredMixin, FormView):
         form.save()
         return super().form_valid(form)
 
-    def get_initial(self):
-        initial = super().get_initial()
-        book_id = self.request.GET.get("book", "")
-        if book_id.isdecimal() and (book := Book.objects.filter(pk=book_id).first()):
-            initial["book"] = book
-        return initial
-
     def get_success_url(self):
         return self.form.instance.get_absolute_url()
 
@@ -410,6 +403,13 @@ class PoemCreate(LoginRequiredMixin, CreateView):
     template_name = "private/poem_edit.html"
     form_class = PoemForm
     active = "poems"
+
+    def get_initial(self):
+        initial = super().get_initial()
+        book_id = self.request.GET.get("book", "")
+        if book_id.isdecimal() and (book := Book.objects.filter(pk=book_id).first()):
+            initial["book"] = book
+        return initial
 
     def get_success_url(self):
         return self.object.get_absolute_url()
