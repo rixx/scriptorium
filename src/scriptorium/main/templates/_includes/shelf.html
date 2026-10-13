@@ -1,8 +1,8 @@
 <div id="shelftop">
-  <img src="{{ static('shelftop.png') }}">
+  <img src="{{ static('shelftop.png') }}" alt="">
 </div>
 <div id="shelf-wrapper">
-  <img class="shelf-side" src="{{ static('shelfside.svg') }}">
+  <img class="shelf-side" src="{{ static('shelfside.svg') }}" alt="">
   <div id="shelf">
     {% set is_tilted = {'flag': False} %}
     {% for book in shelf_books %}{% if book.spine_color %}
@@ -42,7 +42,7 @@
         {% set spine_style = "lined" %}
       {% endif %}
 
-      <a href="/{{ book.slug }}/" class="spine-wrapper" style="--cover-img: url('/{{ book.slug }}/thumbnail.jpg'){% if is_tilted.flag %}; margin-right: {{ side_margin }}px; margin-left: {{ side_margin }}px{% endif %}">
+      <a href="/{{ book.slug }}/" class="spine-wrapper" aria-label="{{ book.title }}" style="--cover-img: url('/{{ book.slug }}/thumbnail.jpg'){% if is_tilted.flag %}; margin-right: {{ side_margin }}px; margin-left: {{ side_margin }}px{% endif %}">
         <div class="spine{% if spine_style %} spine-{{ spine_style }}{% endif %}" style="background-color: {{ book.spine.color }}; width: {{ book.spine.width }}px; height: {{ book.spine.height }}px; {% if not is_tilted.flag %}margin-top: {{ 125 - book.spine.height }}px; {% else %} transform: rotate({{ tilt_degree }}deg); margin-bottom: 1px{% endif %}">
           {% if book.spine.starred %}
             <div class="spine-label spine-starred">
@@ -66,8 +66,8 @@
       </a>
     {% endif %}{% endfor %}
   </div>
-  <img class="shelf-side" src="{{ static('shelfside.svg') }}">
+  <img class="shelf-side" src="{{ static('shelfside.svg') }}" alt="">
 </div>
 <div id="shelfbottom">
-  <img class="shelf-side" src="{{ static('shelftop.png') }}">
+  <img class="shelf-side" src="{{ static('shelftop.png') }}" alt="">
 </div>

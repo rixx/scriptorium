@@ -70,7 +70,7 @@ def render_date(date_value, link=True):
     if not link:
         return date_value
     year, rest = date_value.split("-", maxsplit=1)
-    return Markup(f'<a href="/reviews/{year}">{year}</a>-{rest}')  # noqa: S704
+    return Markup(f'<a href="/reviews/{year}/">{year}</a>-{rest}')  # noqa: S704
 
 
 def render_authors(authors):

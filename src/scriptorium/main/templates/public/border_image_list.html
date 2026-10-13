@@ -16,7 +16,7 @@
       <div style="display: flex">
         <button id="previous" style="margin-right: 24px; margin-left: auto; width: 100px;">Previous</button>
         <select id="border-image">
-          {% for border in range(1, max_border) %}
+          {% for border in range(1, max_border + 1) %}
             <option value="{{ border }}" {% if border.id == border_id %}selected{% endif %}>Border {{ border }}</option>
           {% endfor %}
         </select>

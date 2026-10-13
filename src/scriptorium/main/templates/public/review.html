@@ -9,7 +9,7 @@
   <meta property="og:url" content="https://books.rixx.de/{{ book.slug }}/">
   <meta property="og:title" content="{{ book.title }} by {{ book.author_string }}"/>
   {% if book.tldr %}
-    <meta name="og:description" content="Review: {{ book.tldr }}" />
+    <meta property="og:description" content="Review: {{ book.tldr }}" />
   {% endif %}
   {% if book.cover_thumbnail and book.cover_thumbnail.thumb %}
     <meta name="twitter:image" content="https://books.rixx.de{{ book.cover_thumbnail.thumb.url }}"/>
@@ -123,9 +123,9 @@
         <summary><h2 class="plot-header" id="plot-summary">Plot summary</h2>
           <small>Beware: full spoilers! Also probably incomplete and possibly incomprehensible.</small>
         </summary>
-        <p>
+        <div>
           {{ book.plot | render_markdown | safe }}
-        </p>
+        </div>
       </details>
     {% endif %}
   </article>

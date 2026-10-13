@@ -23,11 +23,11 @@
   {% endif %}
 
   <article>
-    <p class="context">
-      {% if poem.context %}
+    {% if poem.context %}
+      <div class="context">
         {{ poem.context | render_markdown | safe }}
-      {% endif %}
-    </p>
+      </div>
+    {% endif %}
     <hr>
     <div class="poem">
       {{ poem.text | render_quotes | safe }}

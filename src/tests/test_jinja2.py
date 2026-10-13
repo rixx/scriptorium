@@ -45,14 +45,14 @@ def test_strip_markdown_removes_formatting():
 def test_render_date_accepts_date_object():
     result = render_date(dt.date(2024, 6, 15))
 
-    assert result == Markup('<a href="/reviews/2024">2024</a>-06-15')
+    assert result == Markup('<a href="/reviews/2024/">2024</a>-06-15')
 
 
 def test_render_date_accepts_string():
     """Strings skip the strftime branch and are used verbatim."""
     result = render_date("2023-01-02")
 
-    assert result == Markup('<a href="/reviews/2023">2023</a>-01-02')
+    assert result == Markup('<a href="/reviews/2023/">2023</a>-01-02')
 
 
 def test_render_date_without_link_returns_plain_string():

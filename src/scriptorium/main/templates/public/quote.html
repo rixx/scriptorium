@@ -15,7 +15,7 @@
       {% set book = quote.source_book %}
       {% include "_includes/book_card.html" %}
     {% elif quote.source_author %}
-      quote from <a href="/a/{{ quote.source_author.name_slug }}">{{ quote.source_author.name }}</a>
+      quote from <a href="/{{ quote.source_author.name_slug }}/">{{ quote.source_author.name }}</a>
     {% endif %}
   </div>
 
