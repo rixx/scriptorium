@@ -357,15 +357,6 @@ class QuoteEdit(LoginRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         form.save()
-        action = self.request.POST.get("action")
-        if action == "more":
-            if form.instance.source_book:
-                return redirect(f"/b/quotes/new/?book={form.instance.source_book_id}")
-            if form.instance.source_author:
-                return redirect(
-                    f"/b/quotes/new/?author={form.instance.source_author_id}"
-                )
-            return redirect("/b/quotes/new/")
         return redirect(f"/q/{form.instance.id}/")
 
 

@@ -1411,7 +1411,7 @@ def test_quote_edit_saves_and_redirects_to_quote(admin_logged_in_client):
     assert quote.text == "Edited."
 
 
-def test_quote_edit_with_action_more_for_book_redirects_back(admin_logged_in_client):
+def test_quote_edit_ignores_action_more(admin_logged_in_client):
     book = make_reviewed_book()
     quote = QuoteFactory(source_book=book, text="Original.", language="en")
 
@@ -1421,39 +1421,7 @@ def test_quote_edit_with_action_more_for_book_redirects_back(admin_logged_in_cli
     )
 
     assert response.status_code == 302
-    assert response.url == f"/b/quotes/new/?book={book.pk}"
-
-
-def test_quote_edit_with_action_more_for_author_redirects_back(admin_logged_in_client):
-    author = AuthorFactory()
-    quote = QuoteFactory(source_author=author, text="Original.", language="en")
-
-    response = admin_logged_in_client.post(
-        f"/b/quotes/{quote.pk}/",
-        {
-            "source_author": author.pk,
-            "text": "Edited.",
-            "language": "en",
-            "action": "more",
-        },
-    )
-
-    assert response.status_code == 302
-    assert response.url == f"/b/quotes/new/?author={author.pk}"
-
-
-def test_quote_edit_with_action_more_without_source_redirects_plain(
-    admin_logged_in_client,
-):
-    quote = QuoteFactory(text="Orphan.", language="en")
-
-    response = admin_logged_in_client.post(
-        f"/b/quotes/{quote.pk}/",
-        {"text": "Edited orphan.", "language": "en", "action": "more"},
-    )
-
-    assert response.status_code == 302
-    assert response.url == "/b/quotes/new/"
+    assert response.url == f"/q/{quote.pk}/"
 
 
 # --- quote_delete remaining branches -----------------------------------------
