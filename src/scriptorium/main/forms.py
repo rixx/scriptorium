@@ -33,6 +33,38 @@ class SeriesNameField(forms.CharField):
         return Series.objects.get_or_create_by_name(name)[0]
 
 
+class NewTagsField(forms.CharField):
+    def __init__(self, **kwargs):
+        kwargs.setdefault("required", False)
+        kwargs.setdefault(
+            "help_text",
+            "Comma-separated, each as category:name, e.g. genre:Fantasy, "
+            f"themes:Hope. Categories: {', '.join(Tag.TagCategory.values)}.",
+        )
+        super().__init__(**kwargs)
+
+    def clean(self, value):
+        value = super().clean(value)
+        pairs = []
+        for tag in (t.strip() for t in value.split(",")):
+            if not tag:
+                continue
+            category, _, name = tag.partition(":")
+            category, name = category.strip().lower(), name.strip()
+            if not name or category not in Tag.TagCategory.values:
+                raise forms.ValidationError(
+                    "“%(tag)s” is not a valid new tag. Use category:name, "
+                    "with category one of: %(categories)s.",
+                    code="invalid_tag",
+                    params={
+                        "tag": tag,
+                        "categories": ", ".join(Tag.TagCategory.values),
+                    },
+                )
+            pairs.append((category, name))
+        return pairs
+
+
 class LoginForm(forms.Form):
     username = forms.CharField()
     password = forms.CharField(widget=forms.PasswordInput)
@@ -140,7 +172,7 @@ class EditionSelectForm(forms.Form):
 
 
 class BookWizardForm(forms.ModelForm):
-    new_tags = forms.CharField(required=False)
+    new_tags = NewTagsField()
     author_name = forms.CharField()
     title_slug = forms.CharField(required=False)
     series = SeriesNameField()
@@ -167,12 +199,6 @@ class BookWizardForm(forms.ModelForm):
             initial["title_slug"] = slugify(initial["title"])
         super().__init__(*args, **kwargs, initial=initial)
         self.fields["tags"].required = False
-
-    def clean_new_tags(self):
-        new_tags = self.cleaned_data["new_tags"]
-        if new_tags:
-            return [t.strip() for t in new_tags.split(",") if t.strip()]
-        return []
 
     def clean(self, *args, **kwargs):
         result = super().clean(*args, **kwargs)
@@ -248,7 +274,7 @@ class ReviewWizardForm(ReviewForm):
 
 
 class BookEditForm(forms.ModelForm):
-    new_tags = forms.CharField(required=False)
+    new_tags = NewTagsField()
     series = SeriesNameField()
 
     def __init__(self, *args, **kwargs):
@@ -258,12 +284,6 @@ class BookEditForm(forms.ModelForm):
             self.initial["series"] = (
                 self.instance.series.name if self.instance.series else ""
             )
-
-    def clean_new_tags(self):
-        new_tags = self.cleaned_data["new_tags"]
-        if new_tags:
-            return [t.strip() for t in new_tags.split(",") if t.strip()]
-        return []
 
     def save(self, *args, **kwargs):
         # TODO put all this in BookMixin
