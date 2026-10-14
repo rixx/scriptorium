@@ -25,7 +25,7 @@ def test_login_post_without_csrf_token_is_rejected(strict_client, user):
 def test_logout_without_csrf_token_keeps_session(strict_client, user):
     strict_client.force_login(user)
 
-    response = strict_client.post("/b/logout")
+    response = strict_client.post("/b/logout/")
 
     assert response.status_code == 403
     assert "_auth_user_id" in strict_client.session
@@ -35,7 +35,7 @@ def test_quote_delete_without_csrf_token_keeps_quote(strict_client, user):
     strict_client.force_login(user)
     quote = QuoteFactory(source_book=make_reviewed_book(), text="Stays.")
 
-    response = strict_client.post(f"/b/quotes/{quote.pk}/delete")
+    response = strict_client.post(f"/b/quotes/{quote.pk}/delete/")
 
     assert response.status_code == 403
     assert Quote.objects.filter(pk=quote.pk).exists()
@@ -44,7 +44,7 @@ def test_quote_delete_without_csrf_token_keeps_quote(strict_client, user):
 def test_quote_delete_rejects_get(admin_logged_in_client):
     quote = QuoteFactory(source_book=make_reviewed_book(), text="Stays.")
 
-    response = admin_logged_in_client.get(f"/b/quotes/{quote.pk}/delete")
+    response = admin_logged_in_client.get(f"/b/quotes/{quote.pk}/delete/")
 
     assert response.status_code == 405
     assert Quote.objects.filter(pk=quote.pk).exists()

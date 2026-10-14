@@ -19,9 +19,7 @@ form p textarea {
   font-family: inherit;
   font-size: 1em;
 }
-form button,
-form input[type="submit"] {
-  margin-top: 1em;
+button {
   padding: 0.6em 1em 0.4em 1em;
   border: 0;
   border-radius: 3px;
@@ -31,6 +29,45 @@ form input[type="submit"] {
   font-size: 1em;
   font-weight: bold;
   cursor: pointer;
+}
+form > button {
+  margin-top: 1em;
+}
+button.secondary {
+  margin: 0;
+  padding: 0.15em 0.6em 0.05em 0.6em;
+  border: 1px solid #aaa;
+  background: white;
+  color: #333;
+  font-size: 0.8em;
+  font-weight: normal;
+}
+button.secondary:hover {
+  border-color: #333;
+}
+button.danger {
+  border-color: #990000;
+  color: #990000;
+}
+button.danger:hover {
+  background: #99000011;
+}
+.hint {
+  color: #666;
+  font-size: 0.9em;
+}
+.hint.success {
+  color: green;
+}
+.admin-nav {
+  margin-bottom: 1em;
+  padding-bottom: 0.5em;
+  border-bottom: 1px solid #ccc;
+  font-family: "EB Garamond SC 8";
+  font-size: 0.85em;
+}
+.admin-nav a {
+  font-weight: normal;
 }
 p .ts-control,
 p .ts-control input,

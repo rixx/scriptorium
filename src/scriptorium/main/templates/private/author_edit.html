@@ -10,7 +10,7 @@
   <form method="POST">
     {{ csrf_input }}
     {{ form.as_p() }}
-    <input type="submit">
+    <button type="submit">Save author</button>
   </form>
 
   {% for book in books %}

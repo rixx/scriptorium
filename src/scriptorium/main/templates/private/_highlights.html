@@ -5,7 +5,7 @@
     <section>
       <h3>
         Highlights from {{ read.finished_on }} ({{ read.highlights | length }})
-        <button type="button" data-copy-highlights="{{ read.id }}">Copy all</button>
+        <button type="button" class="secondary" data-copy-highlights="{{ read.id }}">Copy all</button>
       </h3>
       <script type="application/json" id="highlights-data-{{ read.id }}">{{ read.highlights | tojson }}</script>
       <ol>
@@ -17,7 +17,7 @@
               {% if highlight.chapter %}{{ highlight.chapter }}{% endif %}
               {% if highlight.pageno %}(p. {{ highlight.pageno }}){% endif %}
             </small>
-            <button type="button" class="copy-highlight">Copy</button>
+            <button type="button" class="secondary copy-highlight">Copy</button>
           </li>
         {% endfor %}
       </ol>

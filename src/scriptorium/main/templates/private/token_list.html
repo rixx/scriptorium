@@ -35,9 +35,9 @@
           <td>{{ token.created.date() }}</td>
           <td>{% if token.last_used %}{{ token.last_used.date() }}{% else %}never{% endif %}</td>
           <td>
-            <form method="post" action="/b/tokens/{{ token.id }}/delete" style="display: inline">
+            <form method="post" action="/b/tokens/{{ token.id }}/delete/" class="inline" data-confirm="Revoke token “{{ token.name }}”? Clients using it will stop working.">
               {{ csrf_input }}
-              <button type="submit">Revoke</button>
+              <button type="submit" class="secondary danger">Revoke</button>
             </form>
           </td>
         </tr>

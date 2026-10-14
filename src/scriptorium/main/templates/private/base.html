@@ -11,3 +11,17 @@
     {% block private_head_content %}
     {% endblock %}
 {% endblock %}
+
+{% block banner %}
+  {% if not request.user.is_anonymous %}
+    <nav class="admin-nav">
+      <a href="/b/toreview/">Queue</a> ·
+      <a href="/b/new/">New review</a> ·
+      <a href="/b/pages/">Pages</a> ·
+      <a href="/b/poems/">Poems</a> ·
+      <a href="/b/tokens/">Tokens</a> ·
+      <a href="/b/tohuwabohu/">Tohuwabohu</a> ·
+      <a href="/b/">Admin home</a>
+    </nav>
+  {% endif %}
+{% endblock banner %}

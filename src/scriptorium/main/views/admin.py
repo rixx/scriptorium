@@ -134,6 +134,7 @@ class AuthorEdit(AuthorMixin, LoginRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         form.save()
+        messages.success(self.request, "Author saved.")
         return redirect(f"/{form.instance.name_slug}/")
 
 
@@ -154,26 +155,38 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
     ]
     condition_dict = {"edition": show_edition_step}
     template_name = "private/review_create.html"
+    step_titles = {
+        "search": "Find the book",
+        "select": "Pick the work",
+        "edition": "Pick the edition",
+        "book": "Book details",
+        "review": "Write the review",
+    }
+
+    def get_context_data(self, form, **kwargs):
+        context = super().get_context_data(form=form, **kwargs)
+        context["step_title"] = self.step_titles[self.steps.current]
+        return context
 
     def get_form_kwargs(self, step=None):
         kwargs = {}
         from scriptorium.main.metadata import (  # noqa: PLC0415
+            MetadataError,
             get_openlibrary_book,
             get_openlibrary_editions,
             search_book,
         )
 
         if step == "select":
-            try:
-                kwargs["works"] = search_book(
-                    self.get_cleaned_data_for_step("search")["search_input"]
-                )
-            except Exception:  # noqa: BLE001
-                messages.error(
-                    self.request,
-                    "Something went wrong while searching for books. Please try again or enter the data yourself.",
-                )
-                kwargs["works"] = [("manual", "Enter manually")]
+            kwargs["works"] = []
+            if search_data := self.get_cleaned_data_for_step("search"):
+                try:
+                    kwargs["works"] = search_book(search_data["search_input"])
+                except MetadataError:
+                    messages.error(
+                        self.request,
+                        "Something went wrong while searching for books. Please try again or enter the data yourself.",
+                    )
         elif step == "edition":
             # includes cover
             select_data = self.get_cleaned_data_for_step("select")
@@ -220,10 +233,10 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
             return redirect(f"/b/{book.slug}/")
         new_tags = steps["book"].pop("new_tags")
         tags = list(steps["book"].pop("tags")) or []
-        if new_tags:
-            for tag in new_tags:
-                category, name = tag.split(":", maxsplit=1)
-                tags.append(Tag.objects.get_or_create_by_name(category, name)[0])
+        tags += [
+            Tag.objects.get_or_create_by_name(category, name)[0]
+            for category, name in new_tags
+        ]
         review_data = steps["review"]
         dates_read = review_data.pop("dates_read")
         did_not_finish = review_data.pop("did_not_finish")
@@ -250,6 +263,7 @@ class ReviewCreate(LoginRequiredMixin, SessionWizardView):
         book.sync_reads(dates_read, did_not_finish=did_not_finish)
         # TODO create quotes
         # TODO download cover, update dimensions etc
+        messages.success(self.request, "Review published.")
         return redirect(f"/{book.slug}/")
 
 
@@ -277,13 +291,9 @@ class ReviewEdit(LoginRequiredMixin, ReviewMixin, UpdateView):
             return self.form_invalid(form)
         form.save()
         self.review_form.save()
-        new_tags = form.cleaned_data.pop("new_tags")
-        if new_tags:
-            for tag in new_tags:
-                category, name = tag.split(":", maxsplit=1)
-                form.instance.tags.add(
-                    Tag.objects.get_or_create_by_name(category, name)[0]
-                )
+        for category, name in form.cleaned_data.pop("new_tags"):
+            form.instance.tags.add(Tag.objects.get_or_create_by_name(category, name)[0])
+        messages.success(self.request, "Review saved.")
         return redirect(f"/{form.instance.slug}/")
 
 
@@ -294,6 +304,7 @@ class PageCreate(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.save()
+        messages.success(self.request, "Page saved.")
         return redirect(f"/p/{form.instance.slug}/")
 
 
@@ -307,6 +318,7 @@ class PageEdit(LoginRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         form.save()
+        messages.success(self.request, "Page saved.")
         return redirect(f"/p/{form.instance.slug}/")
 
 
@@ -338,6 +350,7 @@ class QuoteCreate(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.save()
+        messages.success(self.request, "Quote saved.")
         action = self.request.POST.get("action")
         if action == "more":
             if form.instance.source_book:
@@ -357,6 +370,7 @@ class QuoteEdit(LoginRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         form.save()
+        messages.success(self.request, "Quote saved.")
         return redirect(f"/q/{form.instance.id}/")
 
 
@@ -367,6 +381,7 @@ def quote_delete(request, pk):
     book = quote.source_book
     author = quote.source_author
     quote.delete()
+    messages.success(request, "Quote deleted.")
     if book:
         return redirect(f"/{book.slug}/")
     if author:
@@ -393,6 +408,7 @@ class PoemEdit(PoemMixin, LoginRequiredMixin, FormView):
     def form_valid(self, form):
         self.form = form
         form.save()
+        messages.success(self.request, "Poem saved.")
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -411,6 +427,10 @@ class PoemCreate(LoginRequiredMixin, CreateView):
             initial["book"] = book
         return initial
 
+    def form_valid(self, form):
+        messages.success(self.request, "Poem saved.")
+        return super().form_valid(form)
+
     def get_success_url(self):
         return self.object.get_absolute_url()
 
@@ -420,8 +440,9 @@ class ToReviewCreate(LoginRequiredMixin, FormView):
     template_name = "private/toreview_edit.html"
 
     def form_valid(self, form):
-        form.save()
-        return redirect("/b/toreview/new")
+        book = form.save()
+        messages.success(self.request, f"Queued “{book.title}” for review.")
+        return redirect("/b/toreview/new/")
 
 
 class ToReviewList(LoginRequiredMixin, ListView):
@@ -450,6 +471,7 @@ class ToReviewEdit(LoginRequiredMixin, FormView):
 
     def form_valid(self, form):
         form.save()
+        messages.success(self.request, "Queue entry saved.")
         return redirect("/b/toreview/")
 
 
@@ -460,7 +482,8 @@ def to_review_delete(request, pk):
         Book.all_objects.filter(status=BookStatus.TO_REVIEW), pk=pk
     )
     book.delete()
-    return redirect("/b/toreview")
+    messages.success(request, f"Removed “{book.title}” from the queue.")
+    return redirect("/b/toreview/")
 
 
 @login_required
@@ -471,6 +494,7 @@ def to_review_dismiss(request, pk):
     books can be dismissed -- unreviewed queue entries need a review."""
     book = get_object_or_404(Book.all_objects.filter(status=BookStatus.REVIEWED), pk=pk)
     book.mark_review_current()
+    messages.success(request, f"Dismissed the reread of “{book.title}”.")
     return redirect("/b/toreview/")
 
 
@@ -498,6 +522,7 @@ class ApiTokenList(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.user = self.request.user
         self.object = form.save()
+        messages.success(self.request, "Token created.")
         return redirect(f"/b/tokens/?created={self.object.pk}")
 
 
@@ -506,6 +531,7 @@ class ApiTokenList(LoginRequiredMixin, CreateView):
 def api_token_delete(request, pk):
     token = get_object_or_404(ApiToken, pk=pk)
     token.delete()
+    messages.success(request, "Token revoked.")
     return redirect("/b/tokens/")
 
 

@@ -6,6 +6,12 @@ select,
 textarea {
   color: #222;
 }
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
 body {
   display: flex;
   padding: 0;
@@ -32,8 +38,8 @@ main:not(.wide) {
   margin-left: auto;
   margin-right: auto;
   padding: 1em;
-  max-width: min(800px, 100vw);
-  min-width: min(600px, 100vw);
+  box-sizing: border-box;
+  width: min(calc(800px + 120px + 2em), 100%);
   min-height: 83vh;
   overflow-wrap: break-word;
   background: white;
@@ -184,6 +190,40 @@ button.linklike {
 button.linklike:hover {
   color: #1a4c3b;
 }
+.edit-link {
+  font-size: 18px;
+  margin-left: 8px;
+}
+.alert {
+  padding: 10px 16px 8px 16px;
+  margin: 8px;
+  border: 1px solid #007171;
+  background-color: #99000033;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.05),
+    0 1px 1px rgba(0, 0, 0, 0.05),
+    0 1px 1px rgba(0, 0, 0, 0.05);
+}
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin: 24px 0;
+  font-family: "EB Garamond SC 8";
+}
+.pagination .page-links {
+  display: flex;
+  gap: 24px;
+  align-items: baseline;
+}
+.pagination .page-current {
+  color: #777;
+}
+.empty-state {
+  margin: 40px 0;
+  text-align: center;
+  color: #777;
+}
 ::selection {
   background: #b3d4fc;
   text-shadow: none;
@@ -235,8 +275,6 @@ button {
   cursor: pointer;
   padding: 4px 12px;
   font-size: 18px;
-  margin-left: auto;
-  display: block;
 }
 
 .book-card {
@@ -412,7 +450,6 @@ header a {
   padding: 0;
   justify-content: space-around;
   font-size: 22px;
-  font-variant: bold;
   margin: auto;
 }
 .hidden {
@@ -929,7 +966,9 @@ table.stats-table {
   margin-bottom: 30px;
 }
 table.stats-table th,
-td {
+table.stats-table td,
+table.book_metadata td,
+#table td {
   text-align: right;
   padding: 6px 12px;
 }
@@ -947,8 +986,6 @@ table.small-stats-table tr td {
   padding: 3px;
   padding-left: 0;
   text-align: left !important;
-}
-table.small-stats-table tr td:last-child {
 }
 a#mastodon-linkback {
   display: none;
@@ -1060,7 +1097,7 @@ progress::-moz-progress-bar {
 .catalogue-form form {
   display: flex;
   flex-wrap: wrap;
-  align-items: top;
+  align-items: flex-start;
   margin: 30px 0 40px 0;
   border: 1px solid #d0d0d0;
   padding: 20px;
@@ -1162,8 +1199,7 @@ progress::-moz-progress-bar {
   main,
   main:not(.wide) {
     margin: 0 8px;
-    max-width: 100%;
-    min-width: auto;
+    width: auto;
   }
   #year-stats-facts .stats-line {
     flex-wrap: wrap;
@@ -1189,6 +1225,9 @@ progress::-moz-progress-bar {
 }
 @media (max-width: 700px) {
   #sidenav-left {
-    display: none;
+    position: static;
+    justify-content: center;
+    margin: 4px 0 0 0;
+    font-size: 24px;
   }
 }

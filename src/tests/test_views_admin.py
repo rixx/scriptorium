@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 
 import pytest
 from django.contrib import messages
+from django.contrib.messages import get_messages
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.messages.storage.session import SessionStorage
 from django.http import HttpResponse
@@ -37,6 +38,10 @@ from tests.factories import (
 )
 
 pytestmark = pytest.mark.django_db
+
+
+def _message_levels(response):
+    return [message.level_tag for message in get_messages(response.wsgi_request)]
 
 
 # --- Auth -------------------------------------------------------------------
@@ -114,7 +119,7 @@ def test_anonymous_admin_access_redirects_to_working_login_and_back(client, user
 
 
 def test_logout_view_redirects_home_and_clears_session(admin_logged_in_client):
-    response = admin_logged_in_client.post("/b/logout")
+    response = admin_logged_in_client.post("/b/logout/")
 
     assert response.status_code == 302
     assert response.url == "/"
@@ -128,10 +133,10 @@ def test_logout_view_redirects_home_and_clears_session(admin_logged_in_client):
     "path",
     [
         "/b/",
-        "/b/new",
+        "/b/new/",
         "/b/tohuwabohu/",
         "/b/pages/",
-        "/b/pages/new",
+        "/b/pages/new/",
         "/b/quotes/new/",
         "/b/poems/",
         "/b/poems/new/",
@@ -154,7 +159,7 @@ def test_bibliothecarius_dashboard_renders_for_admin(admin_logged_in_client):
 
     assert response.status_code == 200
     body = response.content.decode()
-    assert "href=/b/new" in body
+    assert 'href="/b/new/"' in body
     assert 'href="/b/toreview/"' in body
     assert "tohuwabohu" in body
 
@@ -208,10 +213,11 @@ def test_tohuwabohu_lists_books_missing_metadata(admin_logged_in_client):
 
 def test_page_create_saves_and_redirects(admin_logged_in_client):
     response = admin_logged_in_client.post(
-        "/b/pages/new", {"title": "Imprint", "slug": "imprint", "text": "Body."}
+        "/b/pages/new/", {"title": "Imprint", "slug": "imprint", "text": "Body."}
     )
 
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     assert response.url == "/p/imprint/"
     page = Page.objects.get(slug="imprint")
     assert page.title == "Imprint"
@@ -227,6 +233,7 @@ def test_page_edit_updates_existing_page(admin_logged_in_client):
     )
 
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     assert response.url == "/p/colophon/"
     page.refresh_from_db()
     assert page.text == "new"
@@ -256,6 +263,7 @@ def test_quote_create_saves_and_redirects_to_detail(admin_logged_in_client):
     )
 
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     quote = Quote.objects.get(text="A perfect line.")
     assert response.url == f"/q/{quote.pk}/"
     assert quote.source_book == book
@@ -282,9 +290,10 @@ def test_quote_delete_removes_quote_and_redirects_to_book(admin_logged_in_client
     book = make_reviewed_book()
     quote = QuoteFactory(source_book=book, text="Gone soon.")
 
-    response = admin_logged_in_client.post(f"/b/quotes/{quote.pk}/delete")
+    response = admin_logged_in_client.post(f"/b/quotes/{quote.pk}/delete/")
 
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     assert response.url == f"/{book.slug}/"
     assert not Quote.objects.filter(pk=quote.pk).exists()
 
@@ -419,6 +428,7 @@ def test_to_review_edit_post_updates_existing_book_and_read(admin_logged_in_clie
     )
 
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     assert response.url == "/b/toreview/"
     book.refresh_from_db()
     assert book.title == "Queued, Corrected"
@@ -470,16 +480,17 @@ def test_to_review_edit_rejects_published_books(admin_logged_in_client):
 def test_to_review_delete_removes_book(admin_logged_in_client):
     book = BookFactory(title="Trashed", status=BookStatus.TO_REVIEW)
 
-    response = admin_logged_in_client.post(f"/b/toreview/{book.pk}/delete")
+    response = admin_logged_in_client.post(f"/b/toreview/{book.pk}/delete/")
 
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     assert not Book.all_objects.filter(pk=book.pk).exists()
 
 
 def test_to_review_delete_rejects_published_books(admin_logged_in_client):
     book = make_reviewed_book(title="Keep me")
 
-    response = admin_logged_in_client.post(f"/b/toreview/{book.pk}/delete")
+    response = admin_logged_in_client.post(f"/b/toreview/{book.pk}/delete/")
 
     assert response.status_code == 404
     assert Book.all_objects.filter(pk=book.pk).exists()
@@ -499,12 +510,12 @@ def test_to_review_list_reread_rows_link_to_review_edit_and_dismiss(
 
     body = response.content.decode()
     assert f'href="/b/{stale.slug}/"' in body
-    assert f'action="/b/toreview/{stale.pk}/dismiss"' in body
+    assert f'action="/b/toreview/{stale.pk}/dismiss/"' in body
     assert f'href="/b/toreview/{stale.pk}/"' not in body
-    assert f'action="/b/toreview/{stale.pk}/delete"' not in body
+    assert f'action="/b/toreview/{stale.pk}/delete/"' not in body
     assert f'href="/b/toreview/{waiting.pk}/"' in body
-    assert f'action="/b/toreview/{waiting.pk}/delete"' in body
-    assert f'action="/b/toreview/{waiting.pk}/dismiss"' not in body
+    assert f'action="/b/toreview/{waiting.pk}/delete/"' in body
+    assert f'action="/b/toreview/{waiting.pk}/dismiss/"' not in body
 
 
 def test_to_review_dismiss_clears_reread_from_queue(admin_logged_in_client):
@@ -512,9 +523,10 @@ def test_to_review_dismiss_clears_reread_from_queue(admin_logged_in_client):
     Book.all_objects.filter(pk=stale.pk).update(review_updated=dt.date(2020, 1, 1))
     assert Book.all_objects.needs_review().filter(pk=stale.pk).exists()
 
-    response = admin_logged_in_client.post(f"/b/toreview/{stale.pk}/dismiss")
+    response = admin_logged_in_client.post(f"/b/toreview/{stale.pk}/dismiss/")
 
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     assert response.url == "/b/toreview/"
     stale.refresh_from_db()
     assert stale.review_updated == dt.datetime.now(tz=dt.UTC).date()
@@ -525,7 +537,7 @@ def test_to_review_dismiss_rejects_unreviewed_books(admin_logged_in_client):
     book = BookFactory(title="Needs a review first", status=BookStatus.TO_REVIEW)
     ReadFactory(book=book, finished_on=dt.date(2024, 6, 1))
 
-    response = admin_logged_in_client.post(f"/b/toreview/{book.pk}/dismiss")
+    response = admin_logged_in_client.post(f"/b/toreview/{book.pk}/dismiss/")
 
     assert response.status_code == 404
     assert Book.all_objects.needs_review().filter(pk=book.pk).exists()
@@ -535,7 +547,7 @@ def test_to_review_dismiss_requires_post(admin_logged_in_client):
     stale = make_reviewed_book(title="Reread since review")
     Book.all_objects.filter(pk=stale.pk).update(review_updated=dt.date(2020, 1, 1))
 
-    response = admin_logged_in_client.get(f"/b/toreview/{stale.pk}/dismiss")
+    response = admin_logged_in_client.get(f"/b/toreview/{stale.pk}/dismiss/")
 
     assert response.status_code == 405
     stale.refresh_from_db()
@@ -603,6 +615,7 @@ def test_author_edit_post_updates_author_and_redirects(admin_logged_in_client):
     )
 
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     assert response.url == "/new-slug/"
     author.refresh_from_db()
     assert author.name_slug == "new-slug"
@@ -641,7 +654,7 @@ def _wizard_view(rf, steps_data, form_list=None):
     with get_cleaned_data_for_step / get_form_list replaced by stubs. This lets
     us unit-test the two interesting methods (get_form_kwargs, done) without
     walking the full SessionWizardView storage machinery."""
-    request = rf.get("/b/new")
+    request = rf.get("/b/new/")
     request.session = {}
     request._messages = FallbackStorage(request)
     view = ReviewCreate()
@@ -672,14 +685,47 @@ def test_review_create_get_form_kwargs_select_calls_search_book(rf, monkeypatch)
 def test_review_create_get_form_kwargs_select_falls_back_on_error(rf, monkeypatch):
 
     def boom(_):
-        raise RuntimeError("openlibrary is down")
+        raise metadata.MetadataError("openlibrary is down")
 
     monkeypatch.setattr(metadata, "search_book", boom)
     view = _wizard_view(rf, {"search": {"search_input": "anything"}})
 
     kwargs = view.get_form_kwargs(step="select")
 
-    assert kwargs == {"works": [("manual", "Enter manually")]}
+    assert kwargs == {"works": []}
+    assert [m.level_tag for m in view.request._messages] == ["error"]
+
+
+def test_review_create_get_form_kwargs_select_without_search_skips_search(rf):
+    view = _wizard_view(rf, {})
+
+    kwargs = view.get_form_kwargs(step="select")
+
+    assert kwargs == {"works": []}
+    assert list(view.request._messages) == []
+
+
+def test_review_create_get_renders_first_step_without_error(admin_logged_in_client):
+    response = admin_logged_in_client.get("/b/new/")
+
+    assert response.status_code == 200
+    assert _message_levels(response) == []
+    body = response.content.decode()
+    assert "<h2>Find the book</h2>" in body
+    assert "Step 1 of 5" in body
+
+
+def test_review_create_shows_form_errors_once(admin_logged_in_client):
+    admin_logged_in_client.get("/b/new/")
+
+    response = admin_logged_in_client.post(
+        "/b/new/", {"review_create-current_step": "search", "search-search_input": ""}
+    )
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert 'id="wizard-search"' in body
+    assert body.count('class="errorlist') == 1
 
 
 def test_review_create_get_form_kwargs_edition_calls_openlibrary(rf, monkeypatch):
@@ -789,7 +835,7 @@ def test_review_create_done_creates_author_book_review_and_tags(rf):
                 "series": None,
                 "series_position": "",
                 "tags": [],
-                "new_tags": ["genre:scifi"],
+                "new_tags": [("genre", "scifi")],
                 "plot": "",
             },
             "review": {
@@ -805,6 +851,7 @@ def test_review_create_done_creates_author_book_review_and_tags(rf):
     response = view.done(form_list=[])
 
     assert response.status_code == 302
+    assert [m.level_tag for m in view.request._messages] == ["success"]
     author = Author.objects.get(name="Ursula K. Le Guin")
     assert author.name_slug == "ursula-k-le-guin"
     book = Book.objects.get(title="The Dispossessed")
@@ -1146,6 +1193,7 @@ def test_review_edit_post_valid_saves_both_forms_and_adds_new_tag(
     )
 
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     assert response.url == f"/{author.name_slug}/old-title/"
     book.refresh_from_db()
     assert book.title == "New Title"
@@ -1217,6 +1265,31 @@ def test_review_edit_post_invalid_book_form_re_renders_with_errors(
     assert response.context["form"].errors.get("title")
     book.refresh_from_db()
     assert book.title == "Keep Me"
+
+
+def test_review_edit_post_new_tag_without_category_rerenders_with_error(
+    admin_logged_in_client,
+):
+    author = AuthorFactory(name="Author R", name_slug="author-r")
+    book = make_reviewed_book(
+        title="Keep Me", title_slug="keep-me", primary_author=author
+    )
+    tag = TagFactory(category="genre", name_slug="novella", name="Novella")
+    book.tags.add(tag)
+
+    response = admin_logged_in_client.post(
+        f"/b/{author.name_slug}/{book.title_slug}/",
+        _book_post_data(book, [tag], title="Renamed", new_tags="fantasy"),
+    )
+
+    assert response.status_code == 200
+    assert response.context["form"].errors.as_data()["new_tags"][0].code == (
+        "invalid_tag"
+    )
+    assert _message_levels(response) == ["error"]
+    book.refresh_from_db()
+    assert book.title == "Keep Me"
+    assert list(Tag.objects.all()) == [tag]
 
 
 def test_review_edit_post_invalid_review_form_rerenders_with_input(
@@ -1415,6 +1488,7 @@ def test_quote_edit_saves_and_redirects_to_quote(admin_logged_in_client):
     )
 
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     assert response.url == f"/q/{quote.pk}/"
     quote.refresh_from_db()
     assert quote.text == "Edited."
@@ -1440,7 +1514,7 @@ def test_quote_delete_for_author_redirects_to_author_page(admin_logged_in_client
     author = AuthorFactory(name="Someone", name_slug="someone")
     quote = QuoteFactory(source_author=author, text="Bye.", language="en")
 
-    response = admin_logged_in_client.post(f"/b/quotes/{quote.pk}/delete")
+    response = admin_logged_in_client.post(f"/b/quotes/{quote.pk}/delete/")
 
     assert response.status_code == 302
     assert response.url == f"/{author.name_slug}/"
@@ -1451,7 +1525,7 @@ def test_quote_delete_for_author_redirects_to_author_page(admin_logged_in_client
 def test_quote_delete_without_source_redirects_to_dashboard(admin_logged_in_client):
     quote = QuoteFactory(text="Orphan.", language="en")
 
-    response = admin_logged_in_client.post(f"/b/quotes/{quote.pk}/delete")
+    response = admin_logged_in_client.post(f"/b/quotes/{quote.pk}/delete/")
 
     assert response.status_code == 302
     assert response.url == "/b/"
@@ -1477,6 +1551,7 @@ def test_poem_create_saves_and_redirects_to_absolute_url(admin_logged_in_client)
     )
 
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     assert response.url == f"/{author.name_slug}/poems/ode/"
     poem = Poem.objects.get(slug="ode")
     assert poem.author == author
@@ -1545,6 +1620,7 @@ def test_poem_edit_post_saves_and_redirects_to_absolute_url(admin_logged_in_clie
     )
 
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     assert response.url == f"/{author.name_slug}/poems/{poem.slug}/"
     poem.refresh_from_db()
     assert poem.title == "New Title"
@@ -1558,7 +1634,7 @@ def test_to_review_create_saves_book_and_read_and_redirects_back_to_new(
     admin_logged_in_client,
 ):
     response = admin_logged_in_client.post(
-        "/b/toreview/new",
+        "/b/toreview/new/",
         {
             "title": "Queued",
             "author": "Some One",
@@ -1570,7 +1646,10 @@ def test_to_review_create_saves_book_and_read_and_redirects_back_to_new(
     )
 
     assert response.status_code == 302
-    assert response.url == "/b/toreview/new"
+    assert response.url == "/b/toreview/new/"
+    [message] = get_messages(response.wsgi_request)
+    assert message.level_tag == "success"
+    assert "“Queued”" in message.message
     book = Book.all_objects.get(title="Queued")
     assert book.status == BookStatus.TO_REVIEW
     assert book.primary_author.name == "Some One"
@@ -1584,7 +1663,7 @@ def test_to_review_create_saves_book_and_read_and_redirects_back_to_new(
 
 
 def test_to_review_create_get_renders_form(admin_logged_in_client):
-    response = admin_logged_in_client.get("/b/toreview/new")
+    response = admin_logged_in_client.get("/b/toreview/new/")
 
     assert response.status_code == 200
     body = response.content.decode()
@@ -1623,6 +1702,7 @@ def test_token_create_generates_server_side_token_and_displays_it(
 
     token = ApiToken.objects.get()
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     assert response.url == f"/b/tokens/?created={token.pk}"
     assert token.user == user
     assert token.name == "CLI"
@@ -1653,9 +1733,10 @@ def test_token_list_ignores_bogus_created_parameter(admin_logged_in_client):
 def test_token_revoke_deletes_token(admin_logged_in_client):
     token = ApiTokenFactory(name="Old")
 
-    response = admin_logged_in_client.post(f"/b/tokens/{token.pk}/delete")
+    response = admin_logged_in_client.post(f"/b/tokens/{token.pk}/delete/")
 
     assert response.status_code == 302
+    assert _message_levels(response) == ["success"]
     assert response.url == "/b/tokens/"
     assert not ApiToken.objects.exists()
 
@@ -1663,7 +1744,7 @@ def test_token_revoke_deletes_token(admin_logged_in_client):
 def test_token_revoke_requires_post(admin_logged_in_client):
     token = ApiTokenFactory(name="Old")
 
-    response = admin_logged_in_client.get(f"/b/tokens/{token.pk}/delete")
+    response = admin_logged_in_client.get(f"/b/tokens/{token.pk}/delete/")
 
     assert response.status_code == 405
     assert ApiToken.objects.exists()
@@ -1672,7 +1753,7 @@ def test_token_revoke_requires_post(admin_logged_in_client):
 def test_token_revoke_requires_login(client):
     token = ApiTokenFactory(name="Old")
 
-    response = client.post(f"/b/tokens/{token.pk}/delete")
+    response = client.post(f"/b/tokens/{token.pk}/delete/")
 
     assert response.status_code == 302
     assert "login" in response.url

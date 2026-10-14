@@ -3,13 +3,17 @@ import datetime as dt
 import pytest
 from bs4 import BeautifulSoup
 from django.conf import settings
+from django.contrib.auth.models import AnonymousUser
+from django.template.loader import get_template
 from django.test import Client
 
 from tests.factories import (
     AuthorFactory,
+    PageFactory,
     PoemFactory,
     QuoteFactory,
     ReadFactory,
+    TagFactory,
     make_reviewed_book,
 )
 
@@ -211,3 +215,124 @@ def test_public_pages_have_alt_text_on_every_image(client):
     alts = [img["alt"].strip() for img in links.find_all("img")]
     assert len(alts) == 3
     assert all(alts)
+
+
+def test_public_poem_cards_hide_status_and_nest_no_links(client):
+    author = AuthorFactory(name="Mascha Kaléko", name_slug="mascha-kaleko")
+    PoemFactory(author=author, title="Sozusagen grundlos vergnügt")
+
+    response = client.get("/poems/")
+
+    card = _soup(response).find("div", class_="book-card")
+    links = card.find_all("a")
+    assert [a.find_all("a") for a in links] == [[]]
+    assert "Mascha Kaléko" in links[0].get_text()
+    labels = [td.get_text() for td in card.select("table.small-stats-table td")][::2]
+    assert labels == ["lines:", "language:"]
+
+
+def test_private_poem_list_shows_poem_status(admin_logged_in_client):
+    PoemFactory(author=AuthorFactory())
+
+    response = admin_logged_in_client.get("/b/poems/")
+
+    card = _soup(response).find("div", class_="book-card")
+    cells = [td.get_text() for td in card.select("table.small-stats-table td")]
+    assert cells[-2:] == ["status:", "archived"]
+
+
+@pytest.mark.parametrize(
+    ("search", "expected_empty_state"), [("Findable", False), ("zzzz", True)]
+)
+def test_catalogue_shows_empty_state_only_without_results(
+    client, search, expected_empty_state
+):
+    make_reviewed_book(title="Findable")
+
+    response = client.get("/catalogue/", {"search_input": search})
+
+    soup = _soup(response)
+    assert (soup.find(class_="empty-state") is not None) is expected_empty_state
+    assert len(soup.find_all("div", class_="book-card")) == (
+        0 if expected_empty_state else 1
+    )
+
+
+def test_tag_list_pluralizes_book_count(client):
+    one = TagFactory(category="genre", name="Solo", name_slug="solo")
+    two = TagFactory(category="genre", name="Duo", name_slug="duo")
+    first, second = make_reviewed_book(), make_reviewed_book()
+    first.tags.add(one, two)
+    second.tags.add(two)
+
+    response = client.get("/lists/")
+
+    texts = {
+        a["href"]: a.get_text().split(",")[0]
+        for a in _soup(response).find_all("a", href=True)
+        if a["href"] in {"/lists/solo/", "/lists/duo/"}
+    }
+    assert texts == {"/lists/solo/": "Solo (1 book", "/lists/duo/": "Duo (2 books"}
+
+
+def test_year_stats_header_puts_older_year_left(client):
+    for gender in ("female", "male"):
+        name = f"gender:{gender}"
+        TagFactory(category="author", name=name, name_slug=name)
+    make_reviewed_book(latest_date=dt.date(2024, 3, 1))
+
+    response = client.get("/reviews/2023/stats/")
+
+    header = _soup(response).find(class_="stats-header")
+    assert [a["href"] for a in header.find_all("a")] == [
+        "/reviews/2022/stats/",
+        "/reviews/2023/",
+        "/reviews/2024/stats/",
+    ]
+
+
+def test_stats_prose_has_no_literal_markdown(rf):
+    request = rf.get("/stats/")
+    request.user = AnonymousUser()
+    context = {"grid": {"books": "", "pages": ""}, "charts": [], "table": []}
+
+    html = get_template("public/stats.html").render(context, request)
+
+    main = BeautifulSoup(html, "html.parser").find("main")
+    assert "**" not in main.get_text()
+    assert [s.get_text() for s in main.find_all("strong")] == ["not"]
+
+
+def test_edit_links_sit_inside_page_heading(admin_logged_in_client):
+    author = AuthorFactory(name="Greg Egan", name_slug="greg-egan")
+    book = make_reviewed_book(primary_author=author)
+    poem = PoemFactory(author=author)
+    PageFactory(slug="about")
+    pages = {
+        f"/{book.slug}/": f"/b/{book.slug}/",
+        "/greg-egan/": "/b/greg-egan/",
+        "/p/about/": "/b/pages/about/",
+        poem.get_absolute_url(): poem.get_absolute_url(private=True),
+    }
+
+    found = {}
+    for url in pages:
+        edit = _soup(admin_logged_in_client.get(url)).find(class_="edit-link")
+        found[url] = (edit.parent.name, edit.find("a")["href"])
+
+    assert found == {
+        f"/{book.slug}/": ("h1", f"/b/{book.slug}/"),
+        "/greg-egan/": ("h2", "/b/greg-egan/"),
+        "/p/about/": ("h2", "/b/pages/about/"),
+        poem.get_absolute_url(): ("h2", poem.get_absolute_url(private=True)),
+    }
+
+
+def test_quote_delete_form_asks_for_confirmation(admin_logged_in_client):
+    book = make_reviewed_book()
+    quote = QuoteFactory(source_book=book)
+
+    response = admin_logged_in_client.get(f"/{book.slug}/")
+
+    form = _soup(response).find("form", action=f"/b/quotes/{quote.pk}/delete/")
+    assert form["data-confirm"]

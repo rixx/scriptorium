@@ -34,6 +34,8 @@
     <div class="catalogue-results">
       {% for book in books %}
         {% include "_includes/book_card.html" %}
+      {% else %}
+        <p class="empty-state">No books match this search.</p>
       {% endfor %}
     </div>
 

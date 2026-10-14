@@ -2,6 +2,7 @@ import datetime as dt
 import io
 
 import pytest
+from django import forms
 from PIL import Image
 
 from scriptorium.main.forms import (
@@ -11,6 +12,7 @@ from scriptorium.main.forms import (
     BookWizardForm,
     CatalogueForm,
     EditionSelectForm,
+    NewTagsField,
     QuoteForm,
     ReviewEditForm,
     ReviewWizardForm,
@@ -253,18 +255,37 @@ def test_book_wizard_form_keeps_openlibrary_id_and_allows_no_tags():
     assert 'value="OL12345W"' in BookWizardForm(openlibrary=OPENLIBRARY_FIXTURE).as_p()
 
 
-def test_book_wizard_form_clean_new_tags_splits_and_strips():
-    form = BookWizardForm()
-    form.cleaned_data = {"new_tags": "  fantasy ,, science fiction , "}
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("", []),
+        (
+            "  genre:fantasy ,, Themes : science fiction , ",
+            [("genre", "fantasy"), ("themes", "science fiction")],
+        ),
+        ("awards:Hugo: Best Novel", [("awards", "Hugo: Best Novel")]),
+    ],
+)
+def test_new_tags_field_parses_category_name_pairs(value, expected):
+    assert NewTagsField().clean(value) == expected
 
-    assert form.clean_new_tags() == ["fantasy", "science fiction"]
+
+@pytest.mark.parametrize(
+    "value", ["fantasy", "genre:fantasy, scifi", "genre:", ":fantasy", "mood:grim"]
+)
+def test_new_tags_field_rejects_malformed_tags(value):
+    with pytest.raises(forms.ValidationError) as excinfo:
+        NewTagsField().clean(value)
+
+    assert excinfo.value.code == "invalid_tag"
 
 
-def test_book_wizard_form_clean_new_tags_returns_empty_when_blank():
-    form = BookWizardForm()
-    form.cleaned_data = {"new_tags": ""}
+@pytest.mark.parametrize("form_class", [BookWizardForm, BookEditForm])
+def test_book_forms_explain_new_tags_format(form_class):
+    field = form_class.base_fields["new_tags"]
 
-    assert form.clean_new_tags() == []
+    assert isinstance(field, NewTagsField)
+    assert "category:name" in field.help_text
 
 
 def test_book_wizard_form_clean_generates_missing_title_slug():
@@ -388,11 +409,26 @@ def test_book_edit_form_clean_new_tags_splits_input():
     tag = TagFactory()
 
     form = BookEditForm(
-        data=_book_edit_post(book, tag, new_tags=" a, b ,, c "), instance=book
+        data=_book_edit_post(book, tag, new_tags=" genre:a, format:b ,, themes:c "),
+        instance=book,
     )
 
     assert form.is_valid(), form.errors
-    assert form.cleaned_data["new_tags"] == ["a", "b", "c"]
+    assert form.cleaned_data["new_tags"] == [
+        ("genre", "a"),
+        ("format", "b"),
+        ("themes", "c"),
+    ]
+
+
+def test_book_edit_form_rejects_new_tag_without_category():
+    book = BookFactory()
+    tag = TagFactory()
+
+    form = BookEditForm(data=_book_edit_post(book, tag, new_tags="a"), instance=book)
+
+    assert not form.is_valid()
+    assert form.errors.as_data()["new_tags"][0].code == "invalid_tag"
 
 
 def test_book_edit_form_series_initial_shows_series_name():

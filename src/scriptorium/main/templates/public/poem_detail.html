@@ -4,7 +4,7 @@
 
   <h2>{{ poem.title }}
     {% if not request.user.is_anonymous %}
-      <small><a href="{{ poem.get_absolute_url(private=True) }}">edit</a></small>
+      <small class="edit-link"><a href="{{ poem.get_absolute_url(private=True) }}">edit</a></small>
     {% endif %}
   </h2>
 

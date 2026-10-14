@@ -5,17 +5,17 @@
     <a href="/b/">Back to /b/</a>
   </p>
 
-  <h2>{{ wizard.steps.current }}</h2>
+  <h2>{{ step_title }}</h2>
+  <p>Step {{ wizard.steps.step1 }} of {{ wizard.steps.count }}</p>
 
   <form method="POST" id="wizard-{{ wizard.steps.current }}">
     {{ wizard.form.media }}
     {{ wizard.management_form }}
-    {{ wizard.form.errors }}
     {{ csrf_input }}
     {{ wizard.form.as_p() }}
-    <button type="submit" class="btn btn-success btn-lg float-right flip ml-auto">Next step</button>
+    <button type="submit">Next step</button>
     {% if wizard.steps.prev %}
-      <button name="wizard_goto_step" type="submit" value="{{ wizard.steps.prev }}" class="btn btn-lg btn-info">Previous step</button>
+      <button name="wizard_goto_step" type="submit" value="{{ wizard.steps.prev }}">Previous step</button>
     {% else %}
       <span></span>
     {% endif %}

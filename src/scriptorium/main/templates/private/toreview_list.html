@@ -4,7 +4,7 @@
 
   <h2>Books waiting for review</h2>
 
-  <a href="/b/toreview/new">Add book</a>
+  <a href="/b/toreview/new/">Add book</a>
 
   <div class="table-scroll">
   <table>
@@ -29,9 +29,9 @@
             <td>{{ book.date }}</td>
             <td>
               <a href="/b/{{ book.slug }}/">Edit review</a>
-              <form method="post" action="/b/toreview/{{ book.id }}/dismiss" style="display: inline">
+              <form method="post" action="/b/toreview/{{ book.id }}/dismiss/" class="inline">
                 {{ csrf_input }}
-                <button type="submit">Dismiss</button>
+                <button type="submit" class="secondary">Dismiss</button>
               </form>
             </td>
           {% else %}
@@ -41,9 +41,9 @@
             <td>{{ book.date }}</td>
             <td>
               <a href="/b/toreview/{{ book.id }}/">Edit</a>
-              <form method="post" action="/b/toreview/{{ book.id }}/delete" style="display: inline">
+              <form method="post" action="/b/toreview/{{ book.id }}/delete/" class="inline" data-confirm="Delete “{{ book.title }}” from the review queue?">
                 {{ csrf_input }}
-                <button type="submit">Delete</button>
+                <button type="submit" class="secondary danger">Delete</button>
               </form>
             </td>
           {% endif %}

@@ -21,10 +21,11 @@
 
 {% block content %}
   <div class="book-meta-wrapper"><div>
-    <h1 id="title">{{ book.title | smartypants | safe }}</h1>
-    {% if not request.user.is_anonymous %}
-      <small><a href="/b/{{ book.slug }}/">edit</a></small>
-    {% endif %}
+    <h1 id="title">{{ book.title | smartypants | safe }}
+      {% if not request.user.is_anonymous %}
+        <small class="edit-link"><a href="/b/{{ book.slug }}/">edit</a></small>
+      {% endif %}
+    </h1>
     <table class="book_metadata">
       <tr>
         <td>author{% if book.authors|length > 1 %}s{% endif %}:</td>
@@ -164,7 +165,7 @@
                 <small><a href="/q/{{ quote.id }}/">permalink</a></small>
                 {% if not request.user.is_anonymous %}
                   <small><a href="/b/quotes/{{ quote.id }}/">edit</a></small>
-                  <small><form method="post" action="/b/quotes/{{ quote.id }}/delete" class="inline">{{ csrf_input }}<button type="submit" class="linklike">delete</button></form></small>
+                  <small><form method="post" action="/b/quotes/{{ quote.id }}/delete/" class="inline" data-confirm="Delete this quote?">{{ csrf_input }}<button type="submit" class="linklike">delete</button></form></small>
                 {% endif %}
               </p>
             </div>
@@ -180,7 +181,7 @@
               <small><a href="/q/{{ quote.id }}/">permalink</a></small>
               {% if not request.user.is_anonymous %}
                 <small><a href="/b/quotes/{{ quote.id }}/">edit</a></small>
-                <small><form method="post" action="/b/quotes/{{ quote.id }}/delete" class="inline">{{ csrf_input }}<button type="submit" class="linklike">delete</button></form></small>
+                <small><form method="post" action="/b/quotes/{{ quote.id }}/delete/" class="inline" data-confirm="Delete this quote?">{{ csrf_input }}<button type="submit" class="linklike">delete</button></form></small>
               {% endif %}
             </p>
           </div>

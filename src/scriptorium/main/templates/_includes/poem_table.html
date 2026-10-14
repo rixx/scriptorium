@@ -15,9 +15,9 @@
         <small>
           by
           {% if poem.author %}
-            <a href="/{{ poem.author.name_slug }}/">{{ poem.author }}</a>
+            {{ poem.author }}
           {% elif poem.book.primary_author %}
-            {{ poem.book.authors | render_authors }}
+            {{ poem.book.author_string }}
           {% else %}
             {{ poem.author_name or "" }}
           {% endif %} {% if poem.book and poem.book.publication_year %}({{ poem.book.publication_year }}){% endif %}
@@ -25,7 +25,7 @@
           <table class="small-stats-table">
             <tr><td>lines:</td><td>{{ poem.line_count }}<br></td></tr>
             <tr><td>language:</td><td>{{ poem.language }}<br></td></tr>
-            <tr><td>status:</td><td>{{ poem.get_status_display() }}</td></tr>
+            {% if show_status %}<tr><td>status:</td><td>{{ poem.get_status_display() }}</td></tr>{% endif %}
           </table>
         </small>
       </div>

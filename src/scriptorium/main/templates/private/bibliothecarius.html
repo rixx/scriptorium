@@ -1,18 +1,19 @@
 {% extends "private/base.html" %}
 
 {% block content %}
+  <h2>Bibliothecarius</h2>
   <ul>
-    <li><a href=/b/new>New review</a></li>
-    <li><a href="/b/toreview/">To review</a> · <a href="/b/toreview/new">New book to review</a></li>
-    <li><a href="/b/pages/">List of pages</a> · <a href="/b/pages/new">New page</a></li>
-    <li><a href=/b/poems>List of poems</a> · <a href=/b/poems/new>New poem</a></li>
+    <li><a href="/b/new/">New review</a></li>
+    <li><a href="/b/toreview/">To review</a> · <a href="/b/toreview/new/">New book to review</a></li>
+    <li><a href="/b/pages/">List of pages</a> · <a href="/b/pages/new/">New page</a></li>
+    <li><a href="/b/poems/">List of poems</a> · <a href="/b/poems/new/">New poem</a></li>
     <li><a href="/b/tokens/">API tokens</a></li>
-    <li><a href=tohuwabohu>Tohuwabohu (broken data)</a></li>
+    <li><a href="/b/tohuwabohu/">Tohuwabohu (broken data)</a></li>
   </ul>
 
   {% if deploy_enabled %}
   <h3>Deploy</h3>
-  <p style="color: #666; font-size: 0.9em;">Pull latest code, run migrations, and restart.</p>
+  <p class="hint">Pull latest code, run migrations, and restart.</p>
   <form id="deploy-form" method="POST" action="/b/deploy/">
     {{ csrf_input }}
     <button type="submit">Deploy</button>
@@ -28,8 +29,7 @@
     }).then(function(r) {
       if (!r.ok) throw new Error('deploy trigger failed');
       var el = document.createElement('div');
-      el.style.color = '#666';
-      el.style.fontSize = '0.9em';
+      el.className = 'hint';
       el.textContent = 'Deploying…';
       form.replaceWith(el);
       var dots = 0;
@@ -45,7 +45,7 @@
             if (ok >= 3) {
               clearInterval(iv);
               el.textContent = 'Deploy complete!';
-              el.style.color = 'green';
+              el.classList.add('success');
               setTimeout(function() { location.reload(); }, 1500);
             } else {
               setTimeout(poll, 1000);

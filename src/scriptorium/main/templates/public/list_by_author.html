@@ -4,10 +4,11 @@
 
   {% include "_includes/year_nav.html" %}
 
-  <p></p>
-  {% for letter, _ in authors %}
-    <a href="#{{ letter }}">{{ letter }}</a>
-  {% endfor %}
+  <p>
+    {% for letter, _ in authors %}
+      <a href="#{{ letter }}">{{ letter }}</a>
+    {% endfor %}
+  </p>
 
   <h2>All books I've read by author</h2>
 
