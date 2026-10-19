@@ -740,6 +740,15 @@ def test_year_in_books_view_renders_empty_year(client, stats_library):
     assert "all time" in body
 
 
+@pytest.mark.parametrize(
+    "path", ["/reviews/1/stats/", "/reviews/9999/stats/", "/reviews/10000/"]
+)
+def test_year_views_404_outside_date_range(client, path):
+    response = client.get(path)
+
+    assert response.status_code == 404
+
+
 # --- Cover / thumbnail ------------------------------------------------------
 
 

@@ -1,10 +1,17 @@
+import datetime as dt
 from collections import defaultdict
 from itertools import groupby
 
 import networkx as nx
 from django.db.models import Avg, Count, F, Max
 from django.db.models.functions import Coalesce
-from django.http import FileResponse, HttpResponse, HttpResponseNotFound, JsonResponse
+from django.http import (
+    FileResponse,
+    Http404,
+    HttpResponse,
+    HttpResponseNotFound,
+    JsonResponse,
+)
 from django.shortcuts import get_object_or_404
 from django.template import loader
 from django.utils.functional import cached_property
@@ -67,7 +74,10 @@ class YearView(YearNavMixin, ActiveTemplateMixin, TemplateView):
     @context
     @cached_property
     def year(self):
-        return self.kwargs.get("year") or now().year
+        year = self.kwargs.get("year") or now().year
+        if not dt.MINYEAR < year < dt.MAXYEAR:
+            raise Http404
+        return year
 
     @context
     @cached_property
